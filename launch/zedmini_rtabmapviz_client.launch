@@ -1,0 +1,47 @@
+<launch>
+    <arg name="gui_cfg"                 default="$(find rtabmap_ros)/launch/config/rtabmap_gui.ini"/>
+    <arg name="output"                  default="screen"/> 
+    <arg name="launch_prefix"           default=""/>         <!-- for debugging purpose, it fills launch-prefix tag of the nodes -->
+    <arg name="args"                    default="--uinfo"/>     
+    
+    <arg name="frame_id"                default="base_link"/>  <!-- fixed body base_link -->
+    <arg name="wait_for_transform"      default="0.2"/>
+    <arg name="visual_odometry"         default="false"/> 
+    <arg name="queue_size"              default="4"/> 
+    <arg name="approx_sync"             default="false"/>   <!--false = exact synchronization-->
+    
+    <arg name="odom_frame_id"                 default="odom"/> 
+    <arg name="odom_info_topic_relay"         default="/data_odom_sync/odom_info_relay" />
+    <arg name="odom_topic_relay"              default="/zedm/zed_node/odom"/>   <!-- Odometry topic name -->  
+
+    <arg name="cam_namespace"                   default="/zedm/zed_node"/>
+    <arg name="rgb_topic_relay"                default="$(arg cam_namespace)/rgb/image_rect_color_relay"/>
+    <arg name="camera_info_topic_relay"        default="$(arg cam_namespace)/rgb/camera_info_relay"/>
+    <arg name="depth_topic_relay"              default="$(arg cam_namespace)/depth/depth_registered_relay"/>
+    
+
+    <!-- Visualisation RTAB-Map -->
+    <group ns="rtabmap">  
+    <node pkg="rtabmap_ros" type="rtabmapviz" name="rtabmapviz" args="-d $(arg gui_cfg)" output="$(arg output)" launch-prefix="$(arg launch_prefix)">
+      <param name="subscribe_depth"  type="bool" value="true"/>
+
+      <param name="subscribe_odom_info" type="bool" value="true"/>
+      
+      <param name="frame_id"             type="string" value="$(arg frame_id)"/>
+      <param name="odom_frame_id"        type="string" value="$(arg odom_frame_id)"/>
+      
+      <param name="wait_for_transform_duration" type="double"   value="$(arg wait_for_transform)"/>
+      <param name="queue_size"           type="int"    value="$(arg queue_size)"/>
+      <param name="approx_sync"          type="bool"   value="$(arg approx_sync)"/>
+    
+      <remap from="rgb/image"       to="$(arg rgb_topic_relay)"/>
+      <remap from="depth/image"     to="$(arg depth_topic_relay)"/>
+      <remap from="rgb/camera_info" to="$(arg camera_info_topic_relay)"/>
+      <remap from="odom_info"       to="$(arg odom_info_topic_relay)" />
+      <remap from="odom"            to="$(arg odom_topic_relay)"/>
+    </node>
+    </group>
+
+
+
+</launch>

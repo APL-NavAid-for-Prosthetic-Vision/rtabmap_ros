@@ -1,0 +1,22 @@
+<launch>
+    <arg name="output"                  default="screen"/> 
+    <arg name="launch_prefix"           default=""/>         <!-- for debugging purpose, it fills launch-prefix tag of the nodes -->
+    <arg name="args"                    default="--uinfo"/>      
+
+    <!--  
+    <group ns="rtabmap">
+        <node pkg="rtabmap_ros"  type="map_assembler" name="map_assembler" output="$(arg output)" args="$(arg args)" launch-prefix="$(arg launch_prefix)">
+    -->
+            <!-- by default is subscribes to the topic /rtabmap/mapData -->
+    <!--
+        </node> 
+    </group>
+    -->
+   
+    <!-- Visualisation RVIZ -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find rtabmap_ros)/launch/config/localization_rs.rviz" output="$(arg output)"/>
+    
+
+
+
+</launch>

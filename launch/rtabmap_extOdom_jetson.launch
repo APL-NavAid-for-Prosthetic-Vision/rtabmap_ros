@@ -1,0 +1,87 @@
+<launch>
+    <!--APL RTABMap parameters configuration -->
+    <arg name="rtabmap_workingDirectory" default="~/APP_EXT/rtabmap_working_dir"/>
+    <arg name="database_path"            default="~/APP_EXT/rtabmap_working_dir/rtabmap.db"/>
+    <arg name="rtabmap_cfg"              default="" />
+    <arg name="rtabmap_output"           default="screen"/> 
+    <arg name="rtabmap_args"             default=""/>
+
+    <!-- sensors input parameters --> 
+    <arg name="odom_topic"              default="/t265/odom/sample"/>
+    <arg name="frame_id"                default="t265_link"/>
+    <arg name="use_sim_time"            default="false"/>
+    <arg name="rgb_topic"               default="/d435/color/image_rect"/>
+    <arg name="camera_info_topic"       default="/d435/color/camera_info"/>
+    <arg name="depth_topic"             default="/d435/aligned_depth_to_color/image_rect"/>
+    <arg name="depth_camera_info_topic" default="/d435/aligned_depth_to_color/camera_info"/>
+    <arg name="imageAlreadyRectify"     default="true"/>   <!-- Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false -->
+    <arg name="rectifyOnlyFeatures"     default="false"/>  <!-- the whole RGB image will not be rectified, only the features. If imageAlreadyRectify is false otherwise this must be set to true -->
+    <arg name="map_frame_id"            default="world"/>
+    <arg name="grid_maxObstacleHeight"  default="1.5"/>
+    <arg name="raytracing"              default="false"/>
+
+    <!-- mapping configuration -->
+    <arg name="rtabmap_detectionRate"   default="2"/>
+
+    <!-- Localization-only mode -->
+    <arg name="localization"                default="false"/>
+    <arg name="map_always_update"           default="false"/>
+    <arg name="rgbd_proximityByTime"        default="false"/>
+    <arg name="bayes_fullPredictionUpdate"  default="false"/>
+    <arg name="rgbd_maxOdomCacheSize"       default="0"/>
+    
+       
+    <!-- ********** RTABMAP LAUNCH ********** -->
+    <!-- 
+        publish_tf_map : this is argument "publish_tf" for rtabmap; It disables map->odom TF so Rtabmap can use external localization pkgs.
+    -->
+    <include file="$(find rtabmap_ros)/launch/rtabmap.launch">
+        <arg name="output"                  default="$(arg rtabmap_output)"/>
+        <arg name="cfg"                     default="$(arg rtabmap_cfg)"/>
+        <arg name="rtabmap_args"            value="$(arg rtabmap_args)"/>
+        <arg name="use_sim_time"            default="$(arg use_sim_time)"/>
+        <arg name="map_frame_id"            default="$(arg map_frame_id)" />
+
+        <arg name="localization"            default="$(arg localization)" />
+        <arg name="visual_odometry"         default="false"/>
+        <arg name="odom_topic"              default="$(arg odom_topic)"/>   <!-- Odometry topic name -->  
+        <arg name="frame_id"                default="$(arg frame_id)"/>  <!-- fixed body base_link -->
+        <arg name="extern_odom_info"        default="false" />
+        <arg name="rgbd_sync"               default="true"/>
+        <arg name="approx_rgbd_sync"        default="false"/>
+        <arg name="rgbd_decimation"         default="1"/>
+        
+        <!-- RGB-D related topics -->
+        <arg name="rgb_topic"               default="$(arg rgb_topic)"/>
+        <arg name="camera_info_topic"       default="$(arg camera_info_topic)"/>
+        <arg name="depth_topic"             default="$(arg depth_topic)"/>
+        <arg name="depth_camera_info_topic" default="$(arg depth_camera_info_topic)"/>
+
+        <!--mapping related parameters -->
+        <arg name="rtabmap_workingDirectory"    default="$(arg rtabmap_workingDirectory)"/>
+        <arg name="database_path"               default="$(arg database_path)"/>
+        <arg name="publish_tf_odom"             default="false"/>
+        <arg name="publish_tf_map"              default="true"/>
+        <arg name="map_always_update"           default="$(arg map_always_update)"/>
+        <arg name="raytracing"                  default="$(arg raytracing)"/>
+        <arg name="time_threshold"              default="700"/>   <!-- "Rtabmap/TimeThr" : If the map takes longer than this threshold in milliseconds to update then it is moved to long term storage (does not impact octomap) -->
+        <arg name="memory_threshold"            default="1000"/>  <!--  "Rtabmap/MemoryThr" : number of nodes in octomap before moved to long-term storage-->
+        <arg name="map_resolution"              default="0.05"/>  <!-- "Grid/CellSize": resolution in m of grid/octomap-->
+        <arg name="max_nodes"                   default="2500"/>  <!--  "GridGlobal/MaxNodes:" : Maximum nodes assembled in the map starting from the last node (octomap)-->
+        <arg name="queue_size"                  default="200"/>
+        <arg name="rtabmap_detectionRate"       default="$(arg rtabmap_detectionRate)"/>      <!-- "Rtabmap/DetectionRate" : [Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.] --> 
+        <arg name="tf_delay"                    default="0.0334"/>  <!-- (30 Hz) in order to keep up with the odometry time update-->
+        <arg name="grid_rangeMax"               default="10.0"/>
+        <arg name="queue_size_rgbd"             default="15"/>
+        <arg name="mem_STMSize"                 default="20"/>
+        <arg name="bayes_fullPredictionUpdate"  default="$(arg bayes_fullPredictionUpdate)"/>
+        <arg name="imageAlreadyRectify"         default="$(arg imageAlreadyRectify)"/>  <!-- /color/image_raw has not been rectified -->
+        <arg name="rectifyOnlyFeatures"         default="$(arg rectifyOnlyFeatures)"/>  <!-- projection of RGB-D image to point cloud is assuming that images are rectified, so needs to be true -->
+        <arg name="rgbd_proximityByTime"        default="$(arg rgbd_proximityByTime)"/>
+        <arg name="grid_maxObstacleHeight"      default="$(arg grid_maxObstacleHeight)"/>
+        <arg name="rgbd_maxOdomCacheSize"       default="$(arg rgbd_maxOdomCacheSize)"/>
+        <arg name="rgbd_optimizeMaxError"       default="3"/>
+        <!-- <arg name="optimizer_robust"            default="true"/> -->
+    </include>
+
+</launch>

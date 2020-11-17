@@ -1,0 +1,3 @@
+[submodule "repository/rtabmap_ros"]
+	path = repository/rtabmap_ros
+	url = https://github.com/introlab/rtabmap_ros.git
