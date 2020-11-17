@@ -1,9 +1,9 @@
-# RTABMap_APL
+# rtabmap_ros 
 This is a wrapper to the RTABMap_ros package with linking to the RTABMap_apl library. Furthermore, it was tested to build on ROS Melodic with python3. The ROS Melodic was built from source. 
 
 Original RTABMap_ros : https://github.com/introlab/rtabmap_ros.git ; branch: melodic-devel
 
-This modified wrapper to RTABMap_ros has been developed by JHUAPL.<br>
+This modified wrapper to RTABMap_ros has been developed by JHUAPL.  
 Developers:
 Nicolas Norena-Acosta {nicolas.norena@jhuapl.edu}
 

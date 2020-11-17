@@ -44,7 +44,11 @@ FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface f
 ELSE()
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation )
 ENDIF()
-add_definitions(${PCL_DEFINITIONS})  #To include -march=native if set
+add_definitions(${PCL_DEFINITIONS}) # To include -march=native if set
+
+IF(WIN32)
+add_compile_options(-bigobj)
+ENDIF(WIN32)
 
 option(RTABMAP_SYNC_MULTI_RGBD "Build with multi RGBD camera synchronization support"  OFF)
 option(RTABMAP_SYNC_USER_DATA "Build with input user data support"  OFF)
@@ -249,7 +253,6 @@ ELSE()
    ADD_DEFINITIONS("-DCV_BRIDGE_HYDRO")
 ENDIF()   
 
-
 # If octomap is found, add definition
 IF(octomap_msgs_FOUND)
 MESSAGE(STATUS "WITH octomap_msgs")
@@ -304,21 +307,13 @@ add_dependencies(rtabmap_plugins ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_executable(rtabmap ${RTABMAP_ROS_PATH}/src/CoreNode.cpp)
 target_link_libraries(rtabmap ${Libraries})
 
-add_executable(rtabmap_stereo_odometry ${RTABMAP_ROS_PATH}/src/StereoOdometryNode.cpp)
-target_link_libraries(rtabmap_stereo_odometry ${Libraries})
-set_target_properties(rtabmap_stereo_odometry PROPERTIES OUTPUT_NAME "stereo_odometry")
-
 add_executable(rtabmap_rgbd_odometry ${RTABMAP_ROS_PATH}/src/RGBDOdometryNode.cpp)
 target_link_libraries(rtabmap_rgbd_odometry ${Libraries})
 set_target_properties(rtabmap_rgbd_odometry PROPERTIES OUTPUT_NAME "rgbd_odometry")
 
-add_executable(rtabmap_rgbd_relay ${RTABMAP_ROS_PATH}/src/RGBDRelayNode.cpp)
-target_link_libraries(rtabmap_rgbd_relay ${Libraries})
-set_target_properties(rtabmap_rgbd_relay PROPERTIES OUTPUT_NAME "rgbd_relay")
-
-add_executable(rtabmap_rgbd_sync ${RTABMAP_ROS_PATH}/src/RGBDSyncNode.cpp)
-target_link_libraries(rtabmap_rgbd_sync ${Libraries})
-set_target_properties(rtabmap_rgbd_sync PROPERTIES OUTPUT_NAME "rgbd_sync")
+add_executable(rtabmap_stereo_odometry ${RTABMAP_ROS_PATH}/src/StereoOdometryNode.cpp)
+target_link_libraries(rtabmap_stereo_odometry ${Libraries})
+set_target_properties(rtabmap_stereo_odometry PROPERTIES OUTPUT_NAME "stereo_odometry")
 
 add_executable(rtabmap_rgbdicp_odometry ${RTABMAP_ROS_PATH}/src/RGBDICPOdometryNode.cpp)
 target_link_libraries(rtabmap_rgbdicp_odometry ${Libraries})
@@ -327,6 +322,14 @@ set_target_properties(rtabmap_rgbdicp_odometry PROPERTIES OUTPUT_NAME "rgbdicp_o
 add_executable(rtabmap_icp_odometry ${RTABMAP_ROS_PATH}/src/ICPOdometryNode.cpp)
 target_link_libraries(rtabmap_icp_odometry ${Libraries})
 set_target_properties(rtabmap_icp_odometry PROPERTIES OUTPUT_NAME "icp_odometry")
+
+add_executable(rtabmap_rgbd_sync ${RTABMAP_ROS_PATH}/src/RGBDSyncNode.cpp)
+target_link_libraries(rtabmap_rgbd_sync ${Libraries})
+set_target_properties(rtabmap_rgbd_sync PROPERTIES OUTPUT_NAME "rgbd_sync")
+
+add_executable(rtabmap_rgbd_relay ${RTABMAP_ROS_PATH}/src/RGBDRelayNode.cpp)
+target_link_libraries(rtabmap_rgbd_relay ${Libraries})
+set_target_properties(rtabmap_rgbd_relay PROPERTIES OUTPUT_NAME "rgbd_relay")
 
 add_executable(rtabmap_map_optimizer ${RTABMAP_ROS_PATH}/src/MapOptimizerNode.cpp)
 target_link_libraries(rtabmap_map_optimizer rtabmap_ros)
@@ -339,6 +342,15 @@ set_target_properties(rtabmap_map_assembler PROPERTIES OUTPUT_NAME "map_assemble
 add_executable(rtabmap_imu_to_tf ${RTABMAP_ROS_PATH}/src/ImuToTFNode.cpp)
 target_link_libraries(rtabmap_imu_to_tf ${Libraries})
 set_target_properties(rtabmap_imu_to_tf PROPERTIES OUTPUT_NAME "imu_to_tf")
+
+#IF(NOT WIN32)
+#add_executable(rtabmap_wifi_signal_pub ${RTABMAP_ROS_PATH}/src/WifiSignalPubNode.cpp)
+#target_link_libraries(rtabmap_wifi_signal_pub rtabmap_ros)
+#set_target_properties(rtabmap_wifi_signal_pub PROPERTIES OUTPUT_NAME "wifi_signal_pub")
+#ENDIF(NOT WIN32)
+#add_executable(rtabmap_wifi_signal_sub ${RTABMAP_ROS_PATH}/src/WifiSignalSubNode.cpp)
+#target_link_libraries(rtabmap_wifi_signal_sub rtabmap_ros)
+#set_target_properties(rtabmap_wifi_signal_sub PROPERTIES OUTPUT_NAME "wifi_signal_sub")
 
 # If find_object_2d is found, add save objects example
 IF(find_object_2d_FOUND)
@@ -499,20 +511,19 @@ IF(costmap_2d_FOUND)
     )
 ENDIF(costmap_2d_FOUND)
 
-
 #############
 ## Install ##
 #############
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-install(PROGRAMS
+catkin_install_python(PROGRAMS
    ${RTABMAP_ROS_PATH}/scripts/patrol.py
    ${RTABMAP_ROS_PATH}/scripts/objects_to_tags.py
    ${RTABMAP_ROS_PATH}/scripts/point_to_tf.py
    ${RTABMAP_ROS_PATH}/scripts/transform_to_tf.py
    ${RTABMAP_ROS_PATH}/scripts/yaml_to_camera_info.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark executables and/or libraries for installation
@@ -538,7 +549,6 @@ install(TARGETS
    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-
 IF(RTABMAP_GUI)
     install(TARGETS 
        rtabmapviz
@@ -547,7 +557,6 @@ IF(RTABMAP_GUI)
        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
      )
 ENDIF(RTABMAP_GUI)
-
 
 ## Mark cpp header files for installation
 install(DIRECTORY ${RTABMAP_ROS_PATH}/include/${PROJECT_NAME}/
@@ -577,7 +586,6 @@ install(FILES
    nodelet_plugins.xml
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
-
 IF(rviz_FOUND)
     install(TARGETS 
        rtabmap_rviz_plugins
@@ -590,7 +598,6 @@ IF(rviz_FOUND)
       DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
     )
 ENDIF(rviz_FOUND)
-
 
 IF(costmap_2d_FOUND)
     install(TARGETS 
@@ -605,7 +612,6 @@ IF(costmap_2d_FOUND)
        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
     )
 ENDIF(costmap_2d_FOUND)
-
 
 #############
 ## Testing ##
