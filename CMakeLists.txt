@@ -181,11 +181,12 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  ${RTABMAP_ROS_PATH}/include
-  ${rtabmap_apl_INCLUDE_DIRS}          
-  ${OpenCV_INCLUDE_DIRS}
-  ${PCL_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
+   include
+   ${RTABMAP_ROS_PATH}/include
+   ${rtabmap_apl_INCLUDE_DIRS}          
+   ${OpenCV_INCLUDE_DIRS}
+   ${PCL_INCLUDE_DIRS}
+   ${catkin_INCLUDE_DIRS}
 )
 
 # libraries
@@ -204,7 +205,8 @@ SET(rtabmap_sync_lib_src
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberRGBD.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberScan.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberOdom.cpp
-   ${RTABMAP_ROS_PATH}/src/CoreWrapper.cpp # we put CoreWrapper here instead of plugins lib to avoid long compilation time on plugins lib
+   #${RTABMAP_ROS_PATH}/src/CoreWrapper.cpp # we put CoreWrapper here instead of plugins lib to avoid long compilation time on plugins lib
+   src/CoreWrapper.cpp
 )
 IF(RTABMAP_SYNC_MULTI_RGBD)
   SET(rtabmap_sync_lib_src
@@ -217,7 +219,8 @@ ENDIF(RTABMAP_SYNC_MULTI_RGBD)
   
 SET(rtabmap_ros_lib_src
    ${RTABMAP_ROS_PATH}/src/MsgConversion.cpp
-   ${RTABMAP_ROS_PATH}/src/MapsManager.cpp
+   #${RTABMAP_ROS_PATH}/src/MapsManager.cpp
+   src/MapsManager.cpp
    ${RTABMAP_ROS_PATH}/src/OdometryROS.cpp
    ${RTABMAP_ROS_PATH}/src/PluginInterface.cpp
 )
