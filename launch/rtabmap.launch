@@ -112,16 +112,16 @@
   
 
   <!-- APL added parameters -->
-  <arg name="queue_size_rgbd"              default="30"/>
-  <arg name="queue_size_stereo"            default="30"/>
-  <arg name="raytracing"                   default="false"/>
-  <arg name="initial_pose"                 default="0 0 0 0 0 0"/>         <!-- x y z roll pitch yaw -->
-  <arg name="time_threshold"               default="0"/>
-  <arg name="memory_threshold"             default="0"/>
-  <arg name="map_resolution"               default="0.05"/>
-  <arg name="max_nodes"                    default="1000"/> <!--maximum number of nodes in octomap-->
-  <arg name="rtabmap_detectionRate"        default="1"/>
-  <arg name="rtabmap_workingDirectory"     default="~/.ros"/>
+  <arg name="queue_size_rgbd"              default="30" />
+  <arg name="queue_size_stereo"            default="30" />
+  <arg name="raytracing"                   default="false" />
+  <arg name="initial_pose"                 default="0 0 0 0 0 0" />         <!-- x y z roll pitch yaw -->
+  <arg name="time_threshold"               default="0" />
+  <arg name="memory_threshold"             default="0" />
+  <arg name="map_resolution"               default="0.05" />
+  <arg name="max_nodes"                    default="1000" /> <!--maximum number of nodes in octomap-->
+  <arg name="rtabmap_detectionRate"        default="1" />
+  <arg name="rtabmap_workingDirectory"     default="~/.ros" />
   <arg name="odom_info_topic"              default="odom_info" />
   <arg name="tf_delay"                     default="0.033" />
   <arg name="grid_rangeMax"                default="8.0"/>
@@ -412,9 +412,8 @@
       <param name="RGBD/LocalBundleOnLoopClosure"     type="string"   value="false"/>
       <param name="RGBD/MaxLocalRetrieved"            type="string"   value="2" />                        <!-- Maximum local locations retrieved (0=disabled) near the current pose in the local map -->
       <param name="RGBD/LocalImmunizationRatio"       type="string"   value="0.5" />
-      <param name="RGBD/SavedLocalizationIgnored"     type="string"   value="true" />                        <!-- If true, RTAB-Map won't assume it is restarting from the same place than where it shut down previously.-->
-                               <!-- Maximum neighbor nodes compared on each path. -->
-      <param name="RGBD/NeighborLinkRefining"         type="string"   value="false"/>                         <!-- Do odometry correction with consecutive laser scans -->
+      <param name="RGBD/SavedLocalizationIgnored"     type="string"   value="true" />                     <!-- If true, RTAB-Map won't assume it is restarting from the same place than where it shut down previously.-->                       
+      <param name="RGBD/NeighborLinkRefining"         type="string"   value="false"/>                     <!-- Do odometry correction with consecutive laser scans -->
 	    <param name="RGBD/OptimizeFromGraphEnd"         type="string"   value="false"/>                        <!-- Optimize graph from initial node so /map -> /odom transform will be generated -->
 	    <param name="RGBD/OptimizeMaxError"             type="string"   value="$(arg rgbd_optimizeMaxError)"/> <!-- Reject any loop closure causing large errors (>3x link's covariance) in the map -->
       <param name="RGBD/MaxOdomCacheSize"             type="string"   value="$(arg rgbd_maxOdomCacheSize)"/>
@@ -422,15 +421,15 @@
       <!-- Local/Proximity loop closure detection -->
       <param name="RGBD/ProximityMaxPaths"            type="string"   value="5" />
       <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="0.5" />
-      <param name="RGBD/ProximityPathMaxNeighbors"    type="string"   value="10"/>  
+      <param name="RGBD/ProximityPathMaxNeighbors"    type="string"   value="10"/>                      <!-- Maximum neighbor nodes compared on each path. -->
       <param name="RGBD/ProximityOdomGuess"           type="string"   value="true" />
       <param name="RGBD/ProximityBySpace"             type="string"   value="true"/>                         <!-- Local loop closure detection (using estimated position) with locations in WM -->
 	    <param name="RGBD/ProximityByTime"              type="string"   value="$(arg rgbd_proximityByTime)"/>  <!-- Local loop closure detection with locations in STM -->
       
 
       <param name="Vis/FeatureType"     type="string" value="8" />
-      <param name="Vis/MaxDepth"        type="string" value="10" />
-      <param name="Vis/MinInliers"      type="string" value="20" />
+      <param name="Vis/MaxDepth"        type="string" value="10.0" />
+      <param name="Vis/MinInliers"      type="string" value="20.0" />
       <param name="Vis/CorGuessWinSize" type="string" value="30" />
       <param name="Vis/MaxFeatures"     type="string" value="1000" />
       

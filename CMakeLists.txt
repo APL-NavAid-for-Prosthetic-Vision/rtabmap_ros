@@ -198,7 +198,8 @@ SET(Libraries
 )
  
 SET(rtabmap_sync_lib_src
-   ${RTABMAP_ROS_PATH}/src/CommonDataSubscriber.cpp
+   #${RTABMAP_ROS_PATH}/src/CommonDataSubscriber.cpp
+   src/CommonDataSubscriber.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberDepth.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberStereo.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberRGB.cpp

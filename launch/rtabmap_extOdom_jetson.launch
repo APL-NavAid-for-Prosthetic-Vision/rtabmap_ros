@@ -1,7 +1,7 @@
 <launch>
     <!--APL RTABMap parameters configuration -->
-    <arg name="rtabmap_workingDirectory" default="~/APP_EXT/rtabmap_working_dir"/>
-    <arg name="database_path"            default="~/APP_EXT/rtabmap_working_dir/rtabmap.db"/>
+    <arg name="rtabmap_workingDirectory" default="~/user_workspace/.rtabmap"/>
+    <arg name="database_path"            default="~/user_workspace/rtabmap.db"/>
     <arg name="rtabmap_cfg"              default="" />
     <arg name="rtabmap_output"           default="screen"/> 
     <arg name="rtabmap_args"             default=""/>
@@ -29,8 +29,7 @@
     <arg name="rgbd_proximityByTime"        default="false"/>
     <arg name="bayes_fullPredictionUpdate"  default="false"/>
     <arg name="rgbd_maxOdomCacheSize"       default="0"/>
-    
-       
+     
     <!-- ********** RTABMAP LAUNCH ********** -->
     <!-- 
         publish_tf_map : this is argument "publish_tf" for rtabmap; It disables map->odom TF so Rtabmap can use external localization pkgs.
