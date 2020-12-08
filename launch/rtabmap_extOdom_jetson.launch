@@ -10,10 +10,10 @@
     <arg name="odom_topic"              default="/t265/odom/sample"/>
     <arg name="frame_id"                default="t265_link"/>
     <arg name="use_sim_time"            default="false"/>
-    <arg name="rgb_topic"               default="/d435/color/image_rect"/>
-    <arg name="camera_info_topic"       default="/d435/color/camera_info"/>
-    <arg name="depth_topic"             default="/d435/aligned_depth_to_color/image_rect"/>
-    <arg name="depth_camera_info_topic" default="/d435/aligned_depth_to_color/camera_info"/>
+    <arg name="rgb_topic"               default="/camera/color/image_rect"/>
+    <arg name="camera_info_topic"       default="/camera/color/camera_info"/>
+    <arg name="depth_topic"             default="/camera/aligned_depth_to_color/image_rect"/>
+    <arg name="depth_camera_info_topic" default="/camera/aligned_depth_to_color/camera_info"/>
     <arg name="imageAlreadyRectify"     default="true"/>   <!-- Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false -->
     <arg name="rectifyOnlyFeatures"     default="false"/>  <!-- the whole RGB image will not be rectified, only the features. If imageAlreadyRectify is false otherwise this must be set to true -->
     <arg name="map_frame_id"            default="world"/>
@@ -30,7 +30,7 @@
     <arg name="bayes_fullPredictionUpdate"  default="false"/>
     <arg name="rgbd_maxOdomCacheSize"       default="0"/>
      
-    <!-- ********** RTABMAP LAUNCH ********** -->
+    <!-- ********** RTABMAP ********** -->
     <!-- 
         publish_tf_map : this is argument "publish_tf" for rtabmap; It disables map->odom TF so Rtabmap can use external localization pkgs.
     -->
@@ -45,8 +45,9 @@
         <arg name="visual_odometry"         default="false"/>
         <arg name="odom_topic"              default="$(arg odom_topic)"/>   <!-- Odometry topic name -->  
         <arg name="frame_id"                default="$(arg frame_id)"/>  <!-- fixed body base_link -->
-        <arg name="extern_odom_info"        default="false" />
-        <arg name="rgbd_sync"               default="true"/>
+        <!-- <arg name="extern_odom_info"        default="false" /> -->
+        <!-- <arg name="rgbd_sync"               default="true"/> -->
+        <arg name="rgbd_semantic_detection_sync" default="true"/>
         <arg name="approx_rgbd_sync"        default="false"/>
         <arg name="rgbd_decimation"         default="1"/>
         

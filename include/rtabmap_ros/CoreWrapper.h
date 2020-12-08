@@ -98,6 +98,43 @@ private:
 	bool odomUpdate(const nav_msgs::OdometryConstPtr & odomMsg, ros::Time stamp);
 	bool odomTFUpdate(const ros::Time & stamp); // TF odom
 
+	/*
+	*	JHU APL functions
+	*/
+	virtual void commonDepthCallback(
+				const nav_msgs::OdometryConstPtr & odomMsg,
+				const rtabmap_ros::UserDataConstPtr & userDataMsg,
+				const std::vector<cv_bridge::CvImageConstPtr> & imageMsgs,
+				const std::vector<cv_bridge::CvImageConstPtr> & depthMsgs,
+				const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs,
+				const std::vector<sensor_msgs::CameraInfo> & cameraInfoMsgs,
+				const sensor_msgs::LaserScan& scanMsg,
+				const sensor_msgs::PointCloud2& scan3dMsg,
+				const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg,
+				const std::vector<rtabmap_ros::GlobalDescriptor> & globalDescriptorMsgs = std::vector<rtabmap_ros::GlobalDescriptor>(),
+				const std::vector<std::vector<rtabmap_ros::KeyPoint> > & localKeyPoints = std::vector<std::vector<rtabmap_ros::KeyPoint> >(),
+				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d = std::vector<std::vector<rtabmap_ros::Point3f> >(),
+				const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>());
+	void commonDepthCallbackImpl(
+				const std::string & odomFrameId,
+				const rtabmap_ros::UserDataConstPtr & userDataMsg,
+				const std::vector<cv_bridge::CvImageConstPtr> & imageMsgs,
+				const std::vector<cv_bridge::CvImageConstPtr> & depthMsgs,
+				const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs,
+				const std::vector<sensor_msgs::CameraInfo> & cameraInfoMsgs,
+				const sensor_msgs::LaserScan& scan2dMsg,
+				const sensor_msgs::PointCloud2& scan3dMsg,
+				const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg,
+				const std::vector<rtabmap_ros::GlobalDescriptor> & globalDescriptorMsgs,
+				const std::vector<std::vector<rtabmap_ros::KeyPoint> > & localKeyPoints,
+				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d,
+				const std::vector<cv::Mat> & localDescriptors);
+				
+	/*
+	*	JHU APL functions
+	*	  end of functions
+	*/
+
 	virtual void commonDepthCallback(
 				const nav_msgs::OdometryConstPtr & odomMsg,
 				const rtabmap_ros::UserDataConstPtr & userDataMsg,

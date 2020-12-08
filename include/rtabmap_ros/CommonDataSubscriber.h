@@ -1,5 +1,6 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Modified: 
+Original: Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -46,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <nav_msgs/Odometry.h>
 
 #include <rtabmap_ros/RGBDImage.h>
+#include <rtabmap_ros/RGBDSemanticDetectionImage.h>
 #include <rtabmap_ros/UserData.h>
 #include <rtabmap_ros/OdomInfo.h>
 #include <rtabmap_ros/ScanDescriptor.h>
@@ -65,6 +67,7 @@ public:
 	bool isSubscribedToRGB() const  {return subscribedToRGB_;}
 	bool isSubscribedToOdom() const  {return subscribedToOdom_;}
 	bool isSubscribedToRGBD() const   {return subscribedToRGBD_;}
+	bool subscribedToRGBDSemanticDetection() const {return subscribedToRGBDSemanticDetection_;}
 	bool isSubscribedToScan2d() const {return subscribedToScan2d_;}
 	bool isSubscribedToScan3d() const {return subscribedToScan3d_;}
 	bool isSubscribedToOdomInfo() const {return subscribedToOdomInfo_;}
@@ -132,6 +135,46 @@ protected:
 				const std::vector<rtabmap_ros::Point3f> & localPoints3d = std::vector<rtabmap_ros::Point3f>(),
 				const cv::Mat & localDescriptors = cv::Mat());
 
+	/*
+	*	JHU APL functions
+	*/
+
+	virtual void commonDepthCallback(
+				const nav_msgs::OdometryConstPtr & odomMsg,
+				const rtabmap_ros::UserDataConstPtr & userDataMsg,
+				const std::vector<cv_bridge::CvImageConstPtr> & imageMsgs,
+				const std::vector<cv_bridge::CvImageConstPtr> & depthMsgs,
+				const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs,
+				const std::vector<sensor_msgs::CameraInfo> & cameraInfoMsgs,
+				const sensor_msgs::LaserScan& scanMsg,
+				const sensor_msgs::PointCloud2& scan3dMsg,
+				const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg,
+				const std::vector<rtabmap_ros::GlobalDescriptor> & globalDescriptorMsgs = std::vector<rtabmap_ros::GlobalDescriptor>(),
+				const std::vector<std::vector<rtabmap_ros::KeyPoint> > & localKeyPoints = std::vector<std::vector<rtabmap_ros::KeyPoint> >(),
+				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d = std::vector<std::vector<rtabmap_ros::Point3f> >(),
+				const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>()) = 0;
+
+	void commonSingleDepthCallback(
+				const nav_msgs::OdometryConstPtr & odomMsg,
+				const rtabmap_ros::UserDataConstPtr & userDataMsg,
+				const cv_bridge::CvImageConstPtr & imageMsg,
+				const cv_bridge::CvImageConstPtr & depthMsg,
+				const cv_bridge::CvImageConstPtr & semanticMaskMsg,
+				const sensor_msgs::CameraInfo & rgbCameraInfoMsg,
+				const sensor_msgs::CameraInfo & depthCameraInfoMsg,
+				const sensor_msgs::LaserScan& scanMsg,
+				const sensor_msgs::PointCloud2& scan3dMsg,
+				const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg,
+				const std::vector<rtabmap_ros::GlobalDescriptor> & globalDescriptorMsgs = std::vector<rtabmap_ros::GlobalDescriptor>(),
+				const std::vector<rtabmap_ros::KeyPoint> & localKeyPoints = std::vector<rtabmap_ros::KeyPoint>(),
+				const std::vector<rtabmap_ros::Point3f> & localPoints3d = std::vector<rtabmap_ros::Point3f>(),
+				const cv::Mat & localDescriptors = cv::Mat());
+
+	/*
+	*	JHU APL functions
+	*	  end of functions
+	*/
+
 private:
 	void warningLoop();
 	void callbackCalled() {callbackCalled_ = true;}
@@ -165,6 +208,17 @@ private:
 			int queueSize,
 			bool approxSync);
 	void setupRGBDCallbacks(
+			ros::NodeHandle & nh,
+			ros::NodeHandle & pnh,
+			bool subscribeOdom,
+			bool subscribeUserData,
+			bool subscribeScan2d,
+			bool subscribeScan3d,
+			bool subscribeScanDesc,
+			bool subscribeOdomInfo,
+			int queueSize,
+			bool approxSync);
+	void setupRGBDSemanticDetectionCallbacks(
 			ros::NodeHandle & nh,
 			ros::NodeHandle & pnh,
 			bool subscribeOdom,
@@ -241,6 +295,7 @@ private:
 	bool subscribedToRGB_;
 	bool subscribedToOdom_;
 	bool subscribedToRGBD_;
+	bool subscribedToRGBDSemanticDetection_;
 	bool subscribedToScan2d_;
 	bool subscribedToScan3d_;
 	bool subscribedToScanDescriptor_;
@@ -255,6 +310,10 @@ private:
 	//for rgbd callback
 	ros::Subscriber rgbdSub_;
 	std::vector<message_filters::Subscriber<rtabmap_ros::RGBDImage>*> rgbdSubs_;
+
+	//rgbdSemanticDetection callback
+	ros::Subscriber rgbdSemanticDetectionSub_;
+	std::vector<message_filters::Subscriber<rtabmap_ros::RGBDSemanticDetectionImage>*> rgbdSemanticDetectionSubs_;
 
 	//stereo callback
 	image_transport::SubscriberFilter imageRectLeft_;
@@ -385,6 +444,10 @@ private:
 	DATA_SYNCS4(rgbdOdomScan2dInfo, nav_msgs::Odometry, rtabmap_ros::RGBDImage, sensor_msgs::LaserScan, rtabmap_ros::OdomInfo);
 	DATA_SYNCS4(rgbdOdomScan3dInfo, nav_msgs::Odometry, rtabmap_ros::RGBDImage, sensor_msgs::PointCloud2, rtabmap_ros::OdomInfo);
 	DATA_SYNCS4(rgbdOdomScanDescInfo, nav_msgs::Odometry, rtabmap_ros::RGBDImage, rtabmap_ros::ScanDescriptor, rtabmap_ros::OdomInfo);
+
+	// 1 RGBDSemanticDetection + Odom
+	DATA_SYNCS2(rgbdSemanticDetectionOdom, nav_msgs::Odometry, rtabmap_ros::RGBDSemanticDetectionImage);
+	DATA_SYNCS3(rgbdSemanticDetectionOdomInfo, nav_msgs::Odometry, rtabmap_ros::RGBDSemanticDetectionImage, rtabmap_ros::OdomInfo);
 
 #ifdef RTABMAP_SYNC_USER_DATA
 	// 1 RGBD + User Data

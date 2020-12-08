@@ -45,9 +45,9 @@
    
   <!-- RGB-D related topics -->
   <arg name="rgb_topic"               default="/camera/rgb/image_rect_color" />
-  <arg name="depth_topic"             default="/camera/depth_registered/image_raw" />
+  <arg name="depth_topic"             default="/camera/aligned_depth_to_color/image_raw" />
   <arg name="camera_info_topic"       default="/camera/rgb/camera_info" />
-  <arg name="depth_camera_info_topic" default="$(arg camera_info_topic)" />
+  <arg name="depth_camera_info_topic" default="/camera/aligned_depth_to_color/camera_info" />
   
   <!-- stereo related topics -->
   <arg name="stereo_namespace"        default="/stereo_camera"/>
@@ -64,7 +64,13 @@
   <arg name="depth_scale"             default="1.0" />         <!-- Deprecated, use rgbd_depth_scale instead -->
   <arg name="rgbd_depth_scale"        default="$(arg depth_scale)" />
   <arg name="rgbd_decimation"         default="1" />
-  
+
+  <!-- JHU APL -->
+  <arg name="rgbd_semantic_detection_sync"               default="false"/>         <!-- pre-sync ; if rgbd_sync is true, this should be false -->
+  <arg name="subscribe_rgbd_semantic_detection"          default="$(arg rgbd_semantic_detection_sync)"/> 
+
+  <!-- JHU APL : end -->
+
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
   <arg name="rgb_image_transport"     default="compressed"/>    <!-- Common types: compressed, theora (see "rosrun image_transport list_transports") -->
   <arg name="depth_image_transport"   default="compressedDepth"/>  <!-- Depth compatible types: compressedDepth (see "rosrun image_transport list_transports") -->
@@ -185,6 +191,20 @@
           <param name="decimation"      type="double" value="$(arg rgbd_decimation)"/>
         </node>
       </group>
+      <group if="$(arg rgbd_semantic_detection_sync)">
+        <node if="$(arg compressed)" name="republish_rgb" type="republish" pkg="image_transport" args="$(arg rgb_image_transport) in:=$(arg rgb_topic) raw out:=$(arg rgb_topic_relay)" />
+        <node if="$(arg compressed)" name="republish_depth" type="republish" pkg="image_transport" args="$(arg depth_image_transport) in:=$(arg depth_topic) raw out:=$(arg depth_topic_relay)" />
+        <node pkg="nodelet" type="nodelet" name="rgbd_semantic_detection_sync" args="standalone rtabmap_ros/rgbd_semantic_detection_sync" output="$(arg output)">
+          <remap from="rgb/image"       to="$(arg rgb_topic_relay)"/>
+          <remap from="depth/image"     to="$(arg depth_topic_relay)"/>
+          <remap from="rgb/camera_info" to="$(arg camera_info_topic)"/>
+          <!-- <remap from="rgbd_semantic_detection_image"      to="$(arg rgbd_semantic_detection_image_topic)"/> -->
+          <param name="approx_sync"     type="bool"   value="$(arg approx_rgbd_sync)"/>
+          <param name="queue_size"      type="int"    value="$(arg queue_size_rgbd)"/>
+          <param name="depth_scale"     type="double" value="$(arg rgbd_depth_scale)"/>
+          <param name="decimation"      type="double" value="$(arg rgbd_decimation)"/>
+        </node>
+      </group>
     </group>
     <group if="$(arg stereo)">
       <group unless="$(arg subscribe_rgbd)">
@@ -222,7 +242,6 @@
       <node unless="$(arg visual_odometry)" pkg="nodelet" type="nodelet" name="extern_odom_info" args="standalone rtabmap_ros/extern_odom_info" output="$(arg output)">
         <remap from="odom_in"             to="$(arg odom_topic)"/>
       </node>
-
     </group>
   
 
@@ -330,6 +349,7 @@
       <param unless="$(arg stereo)" name="subscribe_depth"  type="bool" value="$(arg depth)"/>
       <param name="subscribe_rgb"        type="bool"   value="$(arg depth)"/>
       <param name="subscribe_rgbd"       type="bool"   value="$(arg subscribe_rgbd)"/>
+      <param name="subscribe_rgbd_semantic_detection"  type="bool"   value="$(arg subscribe_rgbd_semantic_detection)"/>
       <param name="subscribe_stereo"     type="bool"   value="$(arg stereo)"/>
       <param name="subscribe_scan"       type="bool"   value="$(arg subscribe_scan)"/>
       <param name="subscribe_scan_cloud" type="bool"   value="$(arg subscribe_scan_cloud)"/>
@@ -361,7 +381,7 @@
       <remap from="rgb/camera_info" to="$(arg camera_info_topic)"/>
 
       <remap from="rgbd_image"      to="$(arg rgbd_topic_relay)"/>
-	
+      
       <remap from="left/image_rect"        to="$(arg left_image_topic_relay)"/>
       <remap from="right/image_rect"       to="$(arg right_image_topic_relay)"/>
       <remap from="left/camera_info"       to="$(arg left_camera_info_topic)"/>

@@ -113,6 +113,12 @@ add_message_files(
    Path.msg
 )
 
+add_message_files(
+   DIRECTORY msg
+   FILES
+   RGBDSemanticDetectionImage.msg
+)
+
 ## Generate services in the 'srv' folder
  add_service_files(
    DIRECTORY ${RTABMAP_ROS_PATH}/srv
@@ -206,6 +212,7 @@ SET(rtabmap_sync_lib_src
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberRGBD.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberScan.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberOdom.cpp
+   src/impl/CommonDataSubscriberRGBDSemanticDetection.cpp
    #${RTABMAP_ROS_PATH}/src/CoreWrapper.cpp # we put CoreWrapper here instead of plugins lib to avoid long compilation time on plugins lib
    src/CoreWrapper.cpp
 )
@@ -219,8 +226,9 @@ IF(RTABMAP_SYNC_MULTI_RGBD)
 ENDIF(RTABMAP_SYNC_MULTI_RGBD)
   
 SET(rtabmap_ros_lib_src
-   ${RTABMAP_ROS_PATH}/src/MsgConversion.cpp
+   #${RTABMAP_ROS_PATH}/src/MsgConversion.cpp
    #${RTABMAP_ROS_PATH}/src/MapsManager.cpp
+   src/MsgConversion.cpp
    src/MapsManager.cpp
    ${RTABMAP_ROS_PATH}/src/OdometryROS.cpp
    ${RTABMAP_ROS_PATH}/src/PluginInterface.cpp
@@ -252,7 +260,9 @@ IF(${cv_bridge_VERSION_MAJOR} GREATER 1 OR ${cv_bridge_VERSION_MINOR} GREATER 10
    ${rtabmap_plugins_lib_src} 
    ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_sync.cpp 
    ${RTABMAP_ROS_PATH}/src/nodelets/stereo_sync.cpp 
-   ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_relay.cpp)
+   ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_relay.cpp
+   # ---- APL plugins lib ----
+   src/nodelets/rgbd_semantic_detection_sync.cpp)
 ELSE()
    ADD_DEFINITIONS("-DCV_BRIDGE_HYDRO")
 ENDIF()   

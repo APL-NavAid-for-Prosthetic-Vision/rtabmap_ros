@@ -39,6 +39,7 @@ CommonDataSubscriber::CommonDataSubscriber(bool gui) :
 		subscribedToRGB_(!gui),
 		subscribedToOdom_(false),
 		subscribedToRGBD_(false),
+		subscribedToRGBDSemanticDetection_(false),
 		subscribedToScan2d_(false),
 		subscribedToScan3d_(false),
 		subscribedToScanDescriptor_(false),
@@ -153,6 +154,10 @@ CommonDataSubscriber::CommonDataSubscriber(bool gui) :
 		SYNC_INIT(rgbdOdomScan2dInfo),
 		SYNC_INIT(rgbdOdomScan3dInfo),
 		SYNC_INIT(rgbdOdomScanDescInfo),
+
+		// 1 RGBDSemanticDetection + Odom
+		SYNC_INIT(rgbdSemanticDetectionOdom),
+		SYNC_INIT(rgbdSemanticDetectionOdomInfo),
 
 #ifdef RTABMAP_SYNC_USER_DATA
 		// 1 RGBD + User Data
@@ -373,6 +378,7 @@ void CommonDataSubscriber::setupCallbacks(
 	pnh.param("subscribe_scan_descriptor", subscribeScanDesc, subscribeScanDesc);
 	pnh.param("subscribe_stereo",    subscribedToStereo_, subscribedToStereo_);
 	pnh.param("subscribe_rgbd",      subscribedToRGBD_, subscribedToRGBD_);
+	pnh.param("subscribe_rgbd_semantic_detection", subscribedToRGBDSemanticDetection_, subscribedToRGBDSemanticDetection_);
 	pnh.param("subscribe_odom_info", subscribeOdomInfo, subscribeOdomInfo);
 	pnh.param("subscribe_user_data", subscribeUserData, subscribeUserData);
 	pnh.param("subscribe_odom",      subscribeOdom, subscribeOdom);
@@ -395,6 +401,17 @@ void CommonDataSubscriber::setupCallbacks(
 	{
 		ROS_WARN("rtabmap: Parameters subscribe_stereo and subscribe_rgb cannot be true at the same time. Parameter subscribe_rgb is set to false.");
 		subscribedToRGB_ = false;
+	}
+	if(subscribedToDepth_ && subscribedToRGBDSemanticDetection_)
+	{
+		ROS_WARN("rtabmap: Parameters subscribe_depth and subscribedToRGBDSemanticDetection_ cannot be true at the same time. Parameter subscribe_depth is set to false.");
+		subscribedToRGB_ = false;
+		subscribedToDepth_ = false;
+	}
+	if(subscribedToRGBD_ && subscribedToRGBDSemanticDetection_)
+	{
+		ROS_WARN("rtabmap: Parameters subscribe_rgbd and subscribedToRGBDSemanticDetection_ cannot be true at the same time. Parameter subscribe_rgbd is set to false.");
+		subscribedToRGBD_ = false;
 	}
 	if(subscribedToDepth_ && subscribedToRGBD_)
 	{
@@ -468,6 +485,7 @@ void CommonDataSubscriber::setupCallbacks(
 	ROS_INFO("%s: subscribe_rgb = %s", name.c_str(), subscribedToRGB_?"true":"false");
 	ROS_INFO("%s: subscribe_stereo = %s", name.c_str(), subscribedToStereo_?"true":"false");
 	ROS_INFO("%s: subscribe_rgbd = %s (rgbd_cameras=%d)", name.c_str(), subscribedToRGBD_?"true":"false", rgbdCameras);
+	ROS_INFO("%s: subscribe_rgbd_semantic_detection = %s (rgbd_cameras=%d)", name.c_str(), subscribedToRGBDSemanticDetection_?"true":"false", rgbdCameras);
 	ROS_INFO("%s: subscribe_odom_info = %s", name.c_str(), subscribeOdomInfo?"true":"false");
 	ROS_INFO("%s: subscribe_user_data = %s", name.c_str(), subscribeUserData?"true":"false");
 	ROS_INFO("%s: subscribe_scan = %s", name.c_str(), subscribeScan2d?"true":"false");
@@ -581,6 +599,20 @@ void CommonDataSubscriber::setupCallbacks(
 					approxSync_);
 		}
 	}
+	else if(subscribedToRGBDSemanticDetection_)
+	{
+		setupRGBDSemanticDetectionCallbacks(
+					nh,
+					pnh,
+					subscribedToOdom_,
+					subscribeUserData,
+					subscribeScan2d,
+					subscribeScan3d,
+					subscribeScanDesc,
+					subscribeOdomInfo,
+					queueSize_,
+					approxSync_);
+	}
 	else if(subscribeScan2d || subscribeScan3d || subscribeScanDesc)
 	{
 		setupScanCallbacks(
@@ -605,7 +637,7 @@ void CommonDataSubscriber::setupCallbacks(
 					approxSync_);
 	}
 
-	if(subscribedToDepth_ || subscribedToStereo_ || subscribedToRGBD_ || subscribedToScan2d_ || subscribedToScan3d_ || subscribedToScanDescriptor_ || subscribedToRGB_ || subscribedToOdom_)
+	if(subscribedToDepth_ || subscribedToStereo_ || subscribedToRGBD_ || subscribedToRGBDSemanticDetection_ || subscribedToScan2d_ || subscribedToScan3d_ || subscribedToScanDescriptor_ || subscribedToRGB_ || subscribedToOdom_)
 	{
 		warningThread_ = new boost::thread(boost::bind(&CommonDataSubscriber::warningLoop, this));
 		ROS_INFO("%s", subscribedTopicsMsg_.c_str());
@@ -731,6 +763,10 @@ CommonDataSubscriber::~CommonDataSubscriber()
 	SYNC_DEL(rgbdOdomScan2dInfo);
 	SYNC_DEL(rgbdOdomScan3dInfo);
 	SYNC_DEL(rgbdOdomScanDescInfo);
+
+	// 1 RGBDSemanticDetection + Odom
+	SYNC_DEL(rgbdSemanticDetectionOdom);
+	SYNC_DEL(rgbdSemanticDetectionOdomInfo);
 
 #ifdef RTABMAP_SYNC_USER_DATA
 	// 1 RGBD + User Data
@@ -936,6 +972,7 @@ CommonDataSubscriber::~CommonDataSubscriber()
 	pnh.deleteParam("subscribe_stereo");
 	pnh.deleteParam("subscribe_rgb");
 	pnh.deleteParam("subscribe_rgbd");
+	pnh.deleteParam("subscribe_rgbd_semantic_detection");
 	pnh.deleteParam("subscribe_odom_info");
 	pnh.deleteParam("subscribe_user_data");
 	pnh.deleteParam("odom_frame_id");
@@ -1040,5 +1077,73 @@ void CommonDataSubscriber::commonSingleDepthCallback(
 				localDescriptorsMsgs);
 	}
 }
+
+/*
+*	JHU APL function 
+*/
+void CommonDataSubscriber::commonSingleDepthCallback(
+		const nav_msgs::OdometryConstPtr & odomMsg,
+		const rtabmap_ros::UserDataConstPtr & userDataMsg,
+		const cv_bridge::CvImageConstPtr & imageMsg,
+		const cv_bridge::CvImageConstPtr & depthMsg,
+		const cv_bridge::CvImageConstPtr & semanticMaskMsg,
+		const sensor_msgs::CameraInfo & rgbCameraInfoMsg,
+		const sensor_msgs::CameraInfo & depthCameraInfoMsg,
+		const sensor_msgs::LaserScan& scanMsg,
+		const sensor_msgs::PointCloud2& scan3dMsg,
+		const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg,
+		const std::vector<rtabmap_ros::GlobalDescriptor> & globalDescriptorMsgs,
+		const std::vector<rtabmap_ros::KeyPoint> & localKeyPoints,
+		const std::vector<rtabmap_ros::Point3f> & localPoints3d,
+		const cv::Mat & localDescriptors)
+{
+	callbackCalled();
+
+	std::vector<std::vector<rtabmap_ros::KeyPoint> > localKeyPointsMsgs;
+	localKeyPointsMsgs.push_back(localKeyPoints);
+	std::vector<std::vector<rtabmap_ros::Point3f> > localPoints3dMsgs;
+	localPoints3dMsgs.push_back(localPoints3d);
+	std::vector<cv::Mat> localDescriptorsMsgs;
+	localDescriptorsMsgs.push_back(localDescriptors);
+
+	if(depthMsg.get() == 0 ||
+	   depthMsg->encoding.compare(sensor_msgs::image_encodings::TYPE_16UC1) == 0 ||
+	   depthMsg->encoding.compare(sensor_msgs::image_encodings::TYPE_32FC1) == 0 ||
+	   depthMsg->encoding.compare(sensor_msgs::image_encodings::MONO16) == 0)
+	{
+		std::vector<cv_bridge::CvImageConstPtr> imageMsgs;
+		std::vector<cv_bridge::CvImageConstPtr> depthMsgs;
+		std::vector<cv_bridge::CvImageConstPtr> semanticMaskMsgs;
+		std::vector<sensor_msgs::CameraInfo> cameraInfoMsgs;
+		if(imageMsg.get())
+		{
+			imageMsgs.push_back(imageMsg);
+		}
+		if(depthMsg.get())
+		{
+			depthMsgs.push_back(depthMsg);
+		}
+		if(semanticMaskMsg.get())
+		{
+			semanticMaskMsgs.push_back(semanticMaskMsg);
+		}
+		cameraInfoMsgs.push_back(rgbCameraInfoMsg);
+		commonDepthCallback(
+				odomMsg,
+				userDataMsg,
+				imageMsgs,
+				depthMsgs,
+				semanticMaskMsgs,
+				cameraInfoMsgs,
+				scanMsg,
+				scan3dMsg,
+				odomInfoMsg,
+				globalDescriptorMsgs,
+				localKeyPointsMsgs,
+				localPoints3dMsgs,
+				localDescriptorsMsgs);
+	}
+}
+
 
 } /* namespace rtabmap_ros */

@@ -85,9 +85,7 @@
   <run_depend>costmap_2d</run_depend>
   <run_depend>find_object_2d</run_depend>
 
-  <!-- particular configuration -->
-  <run_depend>navmap_sensors</run_depend>
-  
+    
   <export>
 	<nodelet plugin="${prefix}/nodelet_plugins.xml" />
 	<rviz plugin="${prefix}/repository/rtabmap_ros/rviz_plugins.xml"/>

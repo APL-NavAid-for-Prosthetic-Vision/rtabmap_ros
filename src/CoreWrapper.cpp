@@ -1047,6 +1047,240 @@ bool CoreWrapper::odomTFUpdate(const ros::Time & stamp)
 	return false;
 }
 
+/****************************
+*	JHU APL function
+*****************************/
+
+void CoreWrapper::commonDepthCallback(
+		const nav_msgs::OdometryConstPtr & odomMsg,
+		const rtabmap_ros::UserDataConstPtr & userDataMsg,
+		const std::vector<cv_bridge::CvImageConstPtr> & imageMsgs,
+		const std::vector<cv_bridge::CvImageConstPtr> & depthMsgs,
+		const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs,
+		const std::vector<sensor_msgs::CameraInfo> & cameraInfoMsgs,
+		const sensor_msgs::LaserScan& scan2dMsg,
+		const sensor_msgs::PointCloud2& scan3dMsg,
+		const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg,
+		const std::vector<rtabmap_ros::GlobalDescriptor> & globalDescriptorMsgs,
+		const std::vector<std::vector<rtabmap_ros::KeyPoint> > & localKeyPoints,
+		const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d,
+		const std::vector<cv::Mat> & localDescriptors)
+{
+	std::string odomFrameId = odomFrameId_;
+	if(odomMsg.get())
+	{
+		odomFrameId = odomMsg->header.frame_id;
+		if(!scan2dMsg.ranges.empty())
+		{
+			if(!odomUpdate(odomMsg, scan2dMsg.header.stamp))
+			{
+				return;
+			}
+		}
+		else if(!scan3dMsg.data.empty())
+		{
+			if(!odomUpdate(odomMsg, scan3dMsg.header.stamp))
+			{
+				return;
+			}
+		}
+		else if(imageMsgs.size() == 0 || imageMsgs[0].get() == 0 || !odomUpdate(odomMsg, imageMsgs[0]->header.stamp))
+		{
+			return;
+		}
+	}
+	else if(!scan2dMsg.ranges.empty())
+	{
+		if(!odomTFUpdate(scan2dMsg.header.stamp))
+		{
+			return;
+		}
+	}
+	else if(!scan3dMsg.data.empty())
+	{
+		if(!odomTFUpdate(scan3dMsg.header.stamp))
+		{
+			return;
+		}
+	}
+	else if(imageMsgs.size() == 0 || imageMsgs[0].get() == 0 || !odomTFUpdate(imageMsgs[0]->header.stamp))
+	{
+		return;
+	}
+
+	commonDepthCallbackImpl(odomFrameId,
+			userDataMsg,
+			imageMsgs,
+			depthMsgs,
+			semanticMaskMsgs,
+			cameraInfoMsgs,
+			scan2dMsg,
+			scan3dMsg,
+			odomInfoMsg,
+			globalDescriptorMsgs,
+			localKeyPoints,
+			localPoints3d,
+			localDescriptors);
+}
+
+void CoreWrapper::commonDepthCallbackImpl(
+		const std::string & odomFrameId,
+		const rtabmap_ros::UserDataConstPtr & userDataMsg,
+		const std::vector<cv_bridge::CvImageConstPtr> & imageMsgs,
+		const std::vector<cv_bridge::CvImageConstPtr> & depthMsgs,
+		const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs,
+		const std::vector<sensor_msgs::CameraInfo> & cameraInfoMsgs,
+		const sensor_msgs::LaserScan& scan2dMsg,
+		const sensor_msgs::PointCloud2& scan3dMsg,
+		const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg,
+		const std::vector<rtabmap_ros::GlobalDescriptor> & globalDescriptorMsgs,
+		const std::vector<std::vector<rtabmap_ros::KeyPoint> > & localKeyPoints,
+		const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d,
+		const std::vector<cv::Mat> & localDescriptors)
+{
+	cv::Mat rgb;
+	cv::Mat depth;
+	std::vector<rtabmap::CameraModel> cameraModels;
+	if(!rtabmap_ros::convertRGBDMsgs(
+			imageMsgs,
+			depthMsgs,
+			cameraInfoMsgs,
+			frameId_,
+			odomSensorSync_?odomFrameId:"",
+			lastPoseStamp_,
+			rgb,
+			depth,
+			cameraModels,
+			tfListener_,
+			waitForTransform_?waitForTransformDuration_:0.0))
+	{
+		NODELET_ERROR("Could not convert rgb/depth msgs! Aborting rtabmap update...");
+		return;
+	}
+
+	cv::Mat semanticMask;
+	if(!rtabmap_ros::convertSemanticMaskMsgs(semanticMaskMsgs, semanticMask))
+	{
+		NODELET_ERROR("Could not convert semantic mask msgs! Aborting rtabmap update...");
+		return;
+	}
+
+	UASSERT(uContains(parameters_, rtabmap::Parameters::kMemSaveDepth16Format()));
+	if(!depth.empty() && depth.type() == CV_32FC1 && uStr2Bool(parameters_.at(Parameters::kMemSaveDepth16Format())))
+	{
+		depth = rtabmap::util2d::cvtDepthFromFloat(depth);
+		static bool shown = false;
+		if(!shown)
+		{
+			NODELET_WARN("Save depth data to 16 bits format: depth type detected is "
+				  "32FC1, use 16UC1 depth format to avoid this conversion "
+				  "(or set parameter \"Mem/SaveDepth16Format=false\" to use "
+				  "32bits format). This message is only printed once...");
+			shown = true;
+		}
+	}
+
+	LaserScan scan;
+	bool genMaxScanPts = 0;
+	if(!scan2dMsg.ranges.empty() && !scan3dMsg.data.empty() && !depth.empty() && genScan_)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr scanCloud2d(new pcl::PointCloud<pcl::PointXYZ>);
+		*scanCloud2d = util3d::laserScanFromDepthImages(
+				depth,
+				cameraModels,
+				genScanMaxDepth_,
+				genScanMinDepth_);
+		genMaxScanPts += depth.cols;
+		scan = LaserScan(rtabmap::util3d::laserScan2dFromPointCloud(*scanCloud2d), 0, genScanMaxDepth_, LaserScan::kXY);
+	}
+	else if(!scan2dMsg.ranges.empty())
+	{
+		if(!rtabmap_ros::convertScanMsg(
+				scan2dMsg,
+				frameId_,
+				odomSensorSync_?odomFrameId:"",
+				lastPoseStamp_,
+				scan,
+				tfListener_,
+				waitForTransform_?waitForTransformDuration_:0,
+				// backward compatibility, project 2D scan in /base_link frame
+				rtabmap_.getMemory() && uStrNumCmp(rtabmap_.getMemory()->getDatabaseVersion(), "0.11.10") < 0))
+		{
+			NODELET_ERROR("Could not convert laser scan msg! Aborting rtabmap update...");
+			return;
+		}
+	}
+	else if(!scan3dMsg.data.empty())
+	{
+		if(!rtabmap_ros::convertScan3dMsg(
+				scan3dMsg,
+				frameId_,
+				odomSensorSync_?odomFrameId:"",
+				lastPoseStamp_,
+				scan,
+				tfListener_,
+				waitForTransform_?waitForTransformDuration_:0,
+				scanCloudMaxPoints_))
+		{
+			NODELET_ERROR("Could not convert 3d laser scan msg! Aborting rtabmap update...");
+			return;
+		}
+	}
+
+	cv::Mat userData;
+	if(userDataMsg.get())
+	{
+		userData = rtabmap_ros::userDataFromROS(*userDataMsg);
+		UScopeMutex lock(userDataMutex_);
+		if(!userData_.empty())
+		{
+			NODELET_WARN("Synchronized and asynchronized user data topics cannot be used at the same time. Async user data dropped!");
+			userData_ = cv::Mat();
+		}
+	}
+	else
+	{
+		UScopeMutex lock(userDataMutex_);
+		userData = userData_;
+		userData_ = cv::Mat();
+	}
+
+	SensorData data(
+			scan,
+			rgb,
+			depth,
+			cameraModels,
+			lastPoseIntermediate_?-1:imageMsgs[0]->header.seq,
+			rtabmap_ros::timestampFromROS(lastPoseStamp_),
+			userData);
+
+	OdometryInfo odomInfo;
+	if(odomInfoMsg.get())
+	{
+		odomInfo = odomInfoFromROS(*odomInfoMsg);
+	}
+
+	if(!globalDescriptorMsgs.empty())
+	{
+		data.setGlobalDescriptors(rtabmap_ros::globalDescriptorsFromROS(globalDescriptorMsgs));
+	}
+
+	process(lastPoseStamp_,
+			data,
+			lastPose_,
+			odomFrameId,
+			covariance_,
+			odomInfo);
+	covariance_ = cv::Mat();
+}
+
+
+/****************************
+*	JHU APL function
+*		end function
+*****************************/
+
+
 void CoreWrapper::commonDepthCallback(
 		const nav_msgs::OdometryConstPtr & odomMsg,
 		const rtabmap_ros::UserDataConstPtr & userDataMsg,
