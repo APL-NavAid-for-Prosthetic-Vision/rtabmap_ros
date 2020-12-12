@@ -22,6 +22,8 @@ find_package(catkin REQUIRED COMPONENTS
              genmsg stereo_msgs move_base_msgs image_geometry pluginlib 
 )
 
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /usr/local/rtabmap_apl/lib/cmake/rtabmap_apl)
+
 # Optional components
 find_package(costmap_2d)
 find_package(octomap_msgs)

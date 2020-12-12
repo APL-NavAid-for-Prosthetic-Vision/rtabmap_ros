@@ -1,4 +1,7 @@
 /*
+Modified by: Johns Hopkins University Applied Physics Laboratory
+			> added support for RGBDSemanticDetection msg input
+Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -1048,7 +1051,7 @@ bool CoreWrapper::odomTFUpdate(const ros::Time & stamp)
 }
 
 /****************************
-*	JHU APL function
+*	JHUAPL section
 *****************************/
 
 void CoreWrapper::commonDepthCallback(
@@ -1250,6 +1253,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 			rgb,
 			depth,
 			cameraModels,
+			semanticMask,
 			lastPoseIntermediate_?-1:imageMsgs[0]->header.seq,
 			rtabmap_ros::timestampFromROS(lastPoseStamp_),
 			userData);
@@ -1276,8 +1280,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 
 
 /****************************
-*	JHU APL function
-*		end function
+*	JHUAPL end of section 
 *****************************/
 
 
