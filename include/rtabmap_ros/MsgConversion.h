@@ -1,4 +1,7 @@
 /*
+Modified by: Johns Hopkins University Applied Physics Laboratory
+			> added support for RGBDSemanticDetection msg input
+Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -60,7 +63,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap_ros/Info.h>
 #include <rtabmap_ros/RGBDImage.h>
 #include <rtabmap_ros/UserData.h>
-#include <rtabmap_ros/RGBDSemanticDetectionImage.h>
+#include <rtabmap_ros/RGBDSemanticDetection.h>
 
 namespace rtabmap_ros {
 
@@ -82,7 +85,7 @@ rtabmap::SensorData rgbdImageFromROS(const rtabmap_ros::RGBDImageConstPtr & imag
 */
 
 bool convertSemanticMaskMsgs(const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs, cv::Mat & semanticMask);
-void toCvShare(const rtabmap_ros::RGBDSemanticDetectionImageConstPtr & image, cv_bridge::CvImageConstPtr & rgb, cv_bridge::CvImageConstPtr & depth, cv_bridge::CvImageConstPtr & semanticMask);
+void toCvShare(const rtabmap_ros::RGBDSemanticDetectionConstPtr & image, cv_bridge::CvImageConstPtr & rgb, cv_bridge::CvImageConstPtr & depth, cv_bridge::CvImageConstPtr & semanticMask);
 
 /*
 *	JHU APL functions : end section

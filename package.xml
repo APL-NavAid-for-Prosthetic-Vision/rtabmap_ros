@@ -83,6 +83,12 @@
 
   <build_depend>libpcl-all-dev</build_depend>
 
+  <!-- added by APL -->
+  <build_depend>objectrecognition</build_depend>
+
+  <run_depend>objectrecognition</run_depend>
+
+
   <export>
 	<nodelet plugin="${prefix}/nodelet_plugins.xml" />
 	<rviz plugin="${prefix}/repository/rtabmap_ros/rviz_plugins.xml"/>

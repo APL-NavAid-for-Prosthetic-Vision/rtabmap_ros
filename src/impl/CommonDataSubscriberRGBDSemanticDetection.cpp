@@ -30,8 +30,8 @@ void CommonDataSubscriber::setupRGBDSemanticDetectionCallbacks(
 	if(subscribeOdom || subscribeUserData || subscribeScan2d || subscribeScan3d || subscribeOdomInfo)
 	{
 		rgbdSemanticDetectionSubs_.resize(1);
-		rgbdSemanticDetectionSubs_[0] = new message_filters::Subscriber<rtabmap_ros::RGBDSemanticDetectionImage>;
-		rgbdSemanticDetectionSubs_[0]->subscribe(nh, "rgbd_semantic_detection_image", 1);
+		rgbdSemanticDetectionSubs_[0] = new message_filters::Subscriber<rtabmap_ros::RGBDSemanticDetection>;
+		rgbdSemanticDetectionSubs_[0]->subscribe(nh, "rgbd_semantic_detection", 1);
 #ifdef RTABMAP_SYNC_USER_DATA
 		if(subscribeOdom && subscribeUserData)
 		{
@@ -79,7 +79,7 @@ void CommonDataSubscriber::setupRGBDSemanticDetectionCallbacks(
 // 1 RGBDSemanticDetection + Odom  
 void CommonDataSubscriber::rgbdSemanticDetectionOdomCallback(
 		const nav_msgs::OdometryConstPtr & odomMsg,
-		const rtabmap_ros::RGBDSemanticDetectionImageConstPtr& image1Msg)
+		const rtabmap_ros::RGBDSemanticDetectionConstPtr& image1Msg)
 {
     cv_bridge::CvImageConstPtr rgb, depth, semantic_mask;
 	rtabmap_ros::toCvShare(image1Msg, rgb, depth, semantic_mask);
@@ -104,7 +104,7 @@ void CommonDataSubscriber::rgbdSemanticDetectionOdomCallback(
 
 void CommonDataSubscriber::rgbdSemanticDetectionOdomInfoCallback(
 		const nav_msgs::OdometryConstPtr & odomMsg,
-		const rtabmap_ros::RGBDSemanticDetectionImageConstPtr& image1Msg,
+		const rtabmap_ros::RGBDSemanticDetectionConstPtr& image1Msg,
 		const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg)
 {
     cv_bridge::CvImageConstPtr rgb, depth, semantic_mask;

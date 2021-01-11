@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
              cv_bridge roscpp rospy sensor_msgs std_msgs std_srvs nav_msgs geometry_msgs visualization_msgs
              image_transport tf tf_conversions tf2_ros eigen_conversions laser_geometry pcl_conversions 
              pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs
-             genmsg stereo_msgs move_base_msgs image_geometry pluginlib 
+             genmsg stereo_msgs move_base_msgs image_geometry pluginlib objectrecognition
 )
 
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /usr/local/rtabmap_apl/lib/cmake/rtabmap_apl)
@@ -118,7 +118,7 @@ add_message_files(
 add_message_files(
    DIRECTORY msg
    FILES
-   RGBDSemanticDetectionImage.msg
+   RGBDSemanticDetection.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -177,7 +177,7 @@ catkin_package(
   CATKIN_DEPENDS cv_bridge roscpp rospy sensor_msgs std_msgs std_srvs nav_msgs geometry_msgs visualization_msgs
                  image_transport tf tf_conversions tf2_ros eigen_conversions laser_geometry pcl_conversions 
                  pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs 
-                 stereo_msgs move_base_msgs image_geometry ${optional_dependencies} 
+                 stereo_msgs move_base_msgs image_geometry ${optional_dependencies} objectrecognition
   DEPENDS rtabmap_apl OpenCV
 )
 

@@ -50,12 +50,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/thread.hpp>
 
-#include <rtabmap_ros/RGBDSemanticDetectionImage.h>
+#include <rtabmap_ros/RGBDSemanticDetection.h>
 #include <rtabmap_ros/MsgConversion.h>
 
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/UConversion.h>
+
+#include <objectrecognition/SegmentImage.h>
 
 namespace rtabmap_ros
 {
@@ -66,7 +68,7 @@ public:
 	RGBDSemanticDetectionSync() :
 		depthScale_(1.0),
 		decimation_(1),
-		compressedRate_(0),
+		//compressedRate_(0),
 		warningThread_(0),
 		callbackCalled_(false),
 		approxSyncDepth_(0),
@@ -100,7 +102,7 @@ private:
 		pnh.param("queue_size", queueSize, queueSize);
 		pnh.param("depth_scale", depthScale_, depthScale_);
 		pnh.param("decimation", decimation_, decimation_);
-		pnh.param("compressed_rate", compressedRate_, compressedRate_);
+		//pnh.param("compressed_rate", compressedRate_, compressedRate_);
 
 		if(decimation_<1)
 		{
@@ -111,10 +113,9 @@ private:
 		NODELET_INFO("%s: queue_size  = %d", getName().c_str(), queueSize);
 		NODELET_INFO("%s: depth_scale = %f", getName().c_str(), depthScale_);
 		NODELET_INFO("%s: decimation = %d", getName().c_str(), decimation_);
-		NODELET_INFO("%s: compressed_rate = %f", getName().c_str(), compressedRate_);
+		//NODELET_INFO("%s: compressed_rate = %f", getName().c_str(), compressedRate_);
 
-		rgbdSemanticImagePub_ = nh.advertise<rtabmap_ros::RGBDSemanticDetectionImage>("rgbd_semantic_detection_image", 1);
-		rgbdSemanticImageCompressedPub_ = nh.advertise<rtabmap_ros::RGBDSemanticDetectionImage>("rgbd_semantic_detection_image/compressed", 1);
+		rgbdSemanticDetectionPub_ = nh.advertise<rtabmap_ros::RGBDSemanticDetection>("rgbd_semantic_detection", 1);
 
 		if(approxSync)
 		{
@@ -147,6 +148,8 @@ private:
 							imageDepthSub_.getTopic().c_str(),
 							cameraInfoSub_.getTopic().c_str());
 
+		objRecognitionSemanticDetectionClient_ = nh.serviceClient<objectrecognition::SegmentImage>("/objectrecognition/segmentation");
+
 		warningThread_ = new boost::thread(boost::bind(&RGBDSemanticDetectionSync::warningLoop, this, subscribedTopicsMsg, approxSync));
 		NODELET_INFO("%s", subscribedTopicsMsg.c_str());
 	}
@@ -176,13 +179,13 @@ private:
 			  const sensor_msgs::CameraInfoConstPtr& cameraInfo)
 	{
 		callbackCalled_ = true;
-		if(rgbdSemanticImagePub_.getNumSubscribers() || rgbdSemanticImageCompressedPub_.getNumSubscribers())
+		if(rgbdSemanticDetectionPub_.getNumSubscribers())
 		{
 			double rgbStamp = image->header.stamp.toSec();
 			double depthStamp = depth->header.stamp.toSec();
 			double infoStamp = cameraInfo->header.stamp.toSec();
 
-			rtabmap_ros::RGBDSemanticDetectionImage msg;
+			rtabmap_ros::RGBDSemanticDetection msg;
 			msg.header.frame_id = cameraInfo->header.frame_id;
 			msg.header.stamp = image->header.stamp>depth->header.stamp?image->header.stamp:depth->header.stamp;
 			if(decimation_>1 && !(depth->width % decimation_ == 0 && depth->height % decimation_ == 0))
@@ -211,11 +214,8 @@ private:
 			cv::Mat semanticMaskMat;
 			cv_bridge::CvImageConstPtr imagePtr = cv_bridge::toCvShare(image);
 			cv_bridge::CvImageConstPtr imageDepthPtr = cv_bridge::toCvShare(depth);
-			// mock for semantic image :: TODO REMOVE :: replace with semantic segmentation inference lib 
-			cv_bridge::CvImageConstPtr imageSemanticMaskPtr = cv_bridge::toCvShare(image);
 			rgbMat = imagePtr->image;
 			depthMat = imageDepthPtr->image;
-			semanticMaskMat = imageSemanticMaskPtr->image;
 
 			if(decimation_>1)
 			{
@@ -228,50 +228,7 @@ private:
 				depthMat*=depthScale_;
 			}
 
-			if(rgbdSemanticImageCompressedPub_.getNumSubscribers())
-			{
-				bool publishCompressed = true;
-				if (compressedRate_ > 0.0)
-				{
-					if ( lastCompressedPublished_ + ros::Duration(1.0/compressedRate_) > ros::Time::now())
-					{
-						NODELET_DEBUG("throttle last update at %f skipping", lastCompressedPublished_.toSec());
-						publishCompressed = false;
-					}
-				}
-
-				if(publishCompressed)
-				{
-					lastCompressedPublished_ = ros::Time::now();
-
-					rtabmap_ros::RGBDSemanticDetectionImage msgCompressed;
-					msgCompressed.header = msg.header;
-					msgCompressed.rgb_camera_info = msg.rgb_camera_info;
-					msgCompressed.depth_camera_info = msg.depth_camera_info;
-
-					cv_bridge::CvImage cvImg;
-					cvImg.header = image->header;
-					cvImg.image = rgbMat;
-					cvImg.encoding = image->encoding;
-					cvImg.toCompressedImageMsg(msgCompressed.rgb_compressed, cv_bridge::JPG);
-
-					msgCompressed.depth_compressed.header = imageDepthPtr->header;
-					msgCompressed.depth_compressed.data = rtabmap::compressImage(depthMat, ".png");
-
-					msgCompressed.depth_compressed.format = "png";
-
-					// TODO: this section would need to update "image" for correct implementation
-					cv_bridge::CvImage cvSemanticImg;
-					cvSemanticImg.header = image->header;
-					cvSemanticImg.image = semanticMaskMat;
-					cvSemanticImg.encoding = image->encoding;
-					cvSemanticImg.toCompressedImageMsg(msgCompressed.semantic_mask_compressed, cv_bridge::JPG);
-
-					rgbdSemanticImageCompressedPub_.publish(msgCompressed);
-				}
-			}
-
-			if(rgbdSemanticImagePub_.getNumSubscribers())
+			if(rgbdSemanticDetectionPub_.getNumSubscribers())
 			{
 				cv_bridge::CvImage cvImg;
 				cvImg.header = image->header;
@@ -285,18 +242,29 @@ private:
 				cvDepth.encoding = depth->encoding;
 				cvDepth.toImageMsg(msg.depth);
 
-				// TODO: this section would need to update "image" for correct implementation
-				cv_bridge::CvImage cvSemanticImg;
-				cvImg.header = image->header;
-				cvImg.image = semanticMaskMat;
-				cvImg.encoding = image->encoding;
-				cvImg.toImageMsg(msg.semantic_mask);
-
-				rgbdSemanticImagePub_.publish(msg);
+				// object recognition processes the input RGB 
+				objectrecognition::SegmentImage objRecognSegImgMsg;
+				cvImg.toImageMsg(objRecognSegImgMsg.request.image);
+				ros::Time start_time = ros::Time::now();
+				// request server in object recognition node for the semantic segmentation mask
+				objRecognitionSemanticDetectionClient_.call(objRecognSegImgMsg);
+				
+				double elapse_time = ros::Time::now().toSec() - start_time.toSec();
+				ROS_DEBUG("object recognition client: elapse_time= %f", elapse_time);
+				if (objRecognSegImgMsg.response.output.data.empty())
+				{
+					ROS_WARN(" rgbd_semantic_detection-sync.cpp :: Failed to recieve the semantic segmentation from object recognition node");
+				}
+				else
+				{
+					msg.semantic_mask = objRecognSegImgMsg.response.output;
+				
+					// public RGBDSemanticDetection
+					rgbdSemanticDetectionPub_.publish(msg);
+				}	
 			}
 
-			if( rgbStamp != image->header.stamp.toSec() ||
-				depthStamp != depth->header.stamp.toSec())
+			if( rgbStamp != image->header.stamp.toSec() || depthStamp != depth->header.stamp.toSec())
 			{
 				NODELET_ERROR("Input stamps changed between the beginning and the end of the callback! Make "
 						"sure the node publishing the topics doesn't override the same data after publishing them. A "
@@ -311,14 +279,14 @@ private:
 private:
 	double depthScale_;
 	int decimation_;
-	double compressedRate_;
+	//double compressedRate_;
 	boost::thread * warningThread_;
 	bool callbackCalled_;
 
 	ros::Time lastCompressedPublished_;
 
-	ros::Publisher rgbdSemanticImagePub_;
-	ros::Publisher rgbdSemanticImageCompressedPub_;
+	ros::Publisher rgbdSemanticDetectionPub_;
+	ros::ServiceClient objRecognitionSemanticDetectionClient_;
 
 	image_transport::SubscriberFilter imageSub_;
 	image_transport::SubscriberFilter imageDepthSub_;

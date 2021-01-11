@@ -47,7 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <nav_msgs/Odometry.h>
 
 #include <rtabmap_ros/RGBDImage.h>
-#include <rtabmap_ros/RGBDSemanticDetectionImage.h>
+#include <rtabmap_ros/RGBDSemanticDetection.h>
 #include <rtabmap_ros/UserData.h>
 #include <rtabmap_ros/OdomInfo.h>
 #include <rtabmap_ros/ScanDescriptor.h>
@@ -67,7 +67,7 @@ public:
 	bool isSubscribedToRGB() const  {return subscribedToRGB_;}
 	bool isSubscribedToOdom() const  {return subscribedToOdom_;}
 	bool isSubscribedToRGBD() const   {return subscribedToRGBD_;}
-	bool subscribedToRGBDSemanticDetection() const {return subscribedToRGBDSemanticDetection_;}
+	bool isSubscribedToRGBDSemanticDetection() const {return subscribedToRGBDSemanticDetection_;}
 	bool isSubscribedToScan2d() const {return subscribedToScan2d_;}
 	bool isSubscribedToScan3d() const {return subscribedToScan3d_;}
 	bool isSubscribedToOdomInfo() const {return subscribedToOdomInfo_;}
@@ -313,7 +313,7 @@ private:
 
 	//rgbdSemanticDetection callback
 	ros::Subscriber rgbdSemanticDetectionSub_;
-	std::vector<message_filters::Subscriber<rtabmap_ros::RGBDSemanticDetectionImage>*> rgbdSemanticDetectionSubs_;
+	std::vector<message_filters::Subscriber<rtabmap_ros::RGBDSemanticDetection>*> rgbdSemanticDetectionSubs_;
 
 	//stereo callback
 	image_transport::SubscriberFilter imageRectLeft_;
@@ -446,8 +446,8 @@ private:
 	DATA_SYNCS4(rgbdOdomScanDescInfo, nav_msgs::Odometry, rtabmap_ros::RGBDImage, rtabmap_ros::ScanDescriptor, rtabmap_ros::OdomInfo);
 
 	// 1 RGBDSemanticDetection + Odom
-	DATA_SYNCS2(rgbdSemanticDetectionOdom, nav_msgs::Odometry, rtabmap_ros::RGBDSemanticDetectionImage);
-	DATA_SYNCS3(rgbdSemanticDetectionOdomInfo, nav_msgs::Odometry, rtabmap_ros::RGBDSemanticDetectionImage, rtabmap_ros::OdomInfo);
+	DATA_SYNCS2(rgbdSemanticDetectionOdom, nav_msgs::Odometry, rtabmap_ros::RGBDSemanticDetection);
+	DATA_SYNCS3(rgbdSemanticDetectionOdomInfo, nav_msgs::Odometry, rtabmap_ros::RGBDSemanticDetection, rtabmap_ros::OdomInfo);
 
 #ifdef RTABMAP_SYNC_USER_DATA
 	// 1 RGBD + User Data

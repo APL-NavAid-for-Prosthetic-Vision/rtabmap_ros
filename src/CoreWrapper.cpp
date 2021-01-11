@@ -659,7 +659,8 @@ void CoreWrapper::onInit()
 
 		NODELET_INFO("\n%s subscribed to:\n   %s", getName().c_str(), defaultSub_.getTopic().c_str());
 	}
-	else if(!this->isSubscribedToDepth() &&
+	else if(!this->isSubscribedToRGBDSemanticDetection() &&
+			!this->isSubscribedToDepth() &&
 			!this->isSubscribedToStereo() &&
 			!this->isSubscribedToRGBD() &&
 			!this->isSubscribedToRGB() &&

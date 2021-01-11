@@ -1,5 +1,7 @@
 /*
-
+Modified by: Johns Hopkins University Applied Physics Laboratory
+			> added support for RGBDSemanticDetection msg input
+Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -287,7 +289,7 @@ bool convertSemanticMaskMsgs(const std::vector<cv_bridge::CvImageConstPtr> & sem
 }
 
 
-void toCvShare(const rtabmap_ros::RGBDSemanticDetectionImageConstPtr & image, cv_bridge::CvImageConstPtr & rgb, cv_bridge::CvImageConstPtr & depth, cv_bridge::CvImageConstPtr & semanticMask)
+void toCvShare(const rtabmap_ros::RGBDSemanticDetectionConstPtr & image, cv_bridge::CvImageConstPtr & rgb, cv_bridge::CvImageConstPtr & depth, cv_bridge::CvImageConstPtr & semanticMask)
 {
 	if(!image->rgb.data.empty())
 	{
