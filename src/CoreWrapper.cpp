@@ -64,6 +64,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Registration.h>
 #include <rtabmap/core/Graph.h>
 
+#include <image_transport/image_transport.h>
+#include <opencv2/imgproc/types_c.h>
+
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
 #include <octomap_msgs/conversions.h>
@@ -72,6 +75,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #define BAD_COVARIANCE 9999
+
+#ifdef OPENCV_CUDA
+#include <opencv2/core/cuda.hpp>
+#include <opencv2/cudawarping.hpp>
+#endif
 
 //msgs
 #include "rtabmap_ros/Info.h"
@@ -215,6 +223,14 @@ void CoreWrapper::onInit()
 	{
 		NODELET_INFO("rtabmap: stereo_to_depth = %s", stereoToDepth_?"true":"false");
 	}
+
+	// JHUAPL section
+#ifdef OPENCV_CUDA
+	NODELET_INFO("rtabmap: OPENCV_CUDA: Enabled");
+#else	
+	NODELET_INFO("rtabmap: OPENCV_CUDA: Disabled");	
+#endif
+	// JHUAPL section end
 
 	infoPub_ = nh.advertise<rtabmap_ros::Info>("info", 1);
 	mapDataPub_ = nh.advertise<rtabmap_ros::MapData>("mapData", 1);
@@ -1162,13 +1178,24 @@ void CoreWrapper::commonDepthCallbackImpl(
 		return;
 	}
 
-	cv::Mat semanticMask;
-	if(!rtabmap_ros::convertSemanticMaskMsgs(semanticMaskMsgs, semanticMask))
+	// semantic mask matrix (8UC1) corresponds to the class number identifier
+	// it assumes that the size does not reflect rgb image size 
+	// it assumes the input rgb has been rectified 
+	cv::Mat semanticMask, semanticMaskResized;
+	if(!rtabmap_ros::cvImageConstPtrToCvMat(semanticMaskMsgs, semanticMask))
 	{
 		NODELET_ERROR("Could not convert semantic mask msgs! Aborting rtabmap update...");
 		return;
 	}
-
+	// resizing the semantic mask to correspond the rgb input image size 
+#ifdef OPENCV_CUDA
+	cv::cuda::GpuMat semanticMaskGpu(semanticMask), semanticMaskResizedGpu;
+	cv::cuda::resize(semanticMaskGpu, semanticMaskResizedGpu, cv::Size(rgb.cols, rgb.rows));
+	semanticMaskResizedGpu.download(semanticMaskResized);
+#else
+	cv::resize(semanticMask, semanticMaskResized, cv::Size(rgb.cols, rgb.rows));
+#endif
+		
 	UASSERT(uContains(parameters_, rtabmap::Parameters::kMemSaveDepth16Format()));
 	if(!depth.empty() && depth.type() == CV_32FC1 && uStr2Bool(parameters_.at(Parameters::kMemSaveDepth16Format())))
 	{
@@ -1254,7 +1281,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 			rgb,
 			depth,
 			cameraModels,
-			semanticMask,
+			semanticMaskResized,
 			lastPoseIntermediate_?-1:imageMsgs[0]->header.seq,
 			rtabmap_ros::timestampFromROS(lastPoseStamp_),
 			userData);

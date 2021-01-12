@@ -59,6 +59,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <objectrecognition/SegmentImage.h>
 
+#include <opencv2/imgcodecs.hpp>
+
 namespace rtabmap_ros
 {
 
@@ -211,7 +213,6 @@ private:
 
 			cv::Mat rgbMat;
 			cv::Mat depthMat;
-			cv::Mat semanticMaskMat;
 			cv_bridge::CvImageConstPtr imagePtr = cv_bridge::toCvShare(image);
 			cv_bridge::CvImageConstPtr imageDepthPtr = cv_bridge::toCvShare(depth);
 			rgbMat = imagePtr->image;
@@ -242,7 +243,8 @@ private:
 				cvDepth.encoding = depth->encoding;
 				cvDepth.toImageMsg(msg.depth);
 
-				// object recognition processes the input RGB 
+				// object recognition processes call sending  
+				//  an RGB image 
 				objectrecognition::SegmentImage objRecognSegImgMsg;
 				cvImg.toImageMsg(objRecognSegImgMsg.request.image);
 				ros::Time start_time = ros::Time::now();
@@ -253,13 +255,21 @@ private:
 				ROS_DEBUG("object recognition client: elapse_time= %f", elapse_time);
 				if (objRecognSegImgMsg.response.output.data.empty())
 				{
-					ROS_WARN(" rgbd_semantic_detection-sync.cpp :: Failed to recieve the semantic segmentation from object recognition node");
+					NODELET_WARN(" rgbd_semantic_detection-sync.cpp :: Failed to recieve the semantic segmentation from object recognition node");
 				}
 				else
 				{
-					msg.semantic_mask = objRecognSegImgMsg.response.output;
-				
-					// public RGBDSemanticDetection
+					cv::Mat semanticMaskMat;
+					cv_bridge::CvImageConstPtr cvSemanticMaskPtr = cv_bridge::toCvCopy(objRecognSegImgMsg.response.output);
+					semanticMaskMat = cvSemanticMaskPtr->image;				
+
+					cv_bridge::CvImage cvSemanticImg;
+					cvSemanticImg.header = image->header;
+					cvSemanticImg.image = semanticMaskMat;
+					cvSemanticImg.encoding = objRecognSegImgMsg.response.output.encoding;
+					cvSemanticImg.toImageMsg(msg.semantic_mask);
+										 
+					// publish RGBDSemanticDetection
 					rgbdSemanticDetectionPub_.publish(msg);
 				}	
 			}

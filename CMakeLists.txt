@@ -63,6 +63,11 @@ IF(RTABMAP_SYNC_USER_DATA)
 add_definitions("-DRTABMAP_SYNC_USER_DATA")
 ENDIF(RTABMAP_SYNC_USER_DATA)
 
+option(OPENCV_CUDA "Build with OPENCV CUDA support" ON)
+IF(OPENCV_CUDA)
+add_definitions("-DOPENCV_CUDA")
+ENDIF(OPENCV_CUDA)
+
 #Qt stuff
 # If librtabmap_gui.so is found, rtabmapviz will be built
 # If rviz is found, plugins will be built

@@ -84,7 +84,7 @@ rtabmap::SensorData rgbdImageFromROS(const rtabmap_ros::RGBDImageConstPtr & imag
 *	JHU APL functions 
 */
 
-bool convertSemanticMaskMsgs(const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs, cv::Mat & semanticMask);
+bool cvImageConstPtrToCvMat(const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs, cv::Mat & semanticMask);
 void toCvShare(const rtabmap_ros::RGBDSemanticDetectionConstPtr & image, cv_bridge::CvImageConstPtr & rgb, cv_bridge::CvImageConstPtr & depth, cv_bridge::CvImageConstPtr & semanticMask);
 
 /*

@@ -230,57 +230,57 @@ void toCvShare(const rtabmap_ros::RGBDImageConstPtr & image, cv_bridge::CvImageC
 *      Section begins
 ****************************/
 
-bool convertSemanticMaskMsgs(const std::vector<cv_bridge::CvImageConstPtr> & semanticMaskMsgs, cv::Mat & semanticMask)
+bool cvImageConstPtrToCvMat(const std::vector<cv_bridge::CvImageConstPtr> & cvBridgeImageMsgs, cv::Mat & image)
 {
-	int imageWidth = semanticMaskMsgs[0]->image.cols;
-	int imageHeight = semanticMaskMsgs[0]->image.rows;
+	int imageWidth = cvBridgeImageMsgs[0]->image.cols;
+	int imageHeight = cvBridgeImageMsgs[0]->image.rows;
 
-	int cameraCount = semanticMaskMsgs.size();
-	for(unsigned int i=0; i<semanticMaskMsgs.size(); ++i)
+	int cameraCount = cvBridgeImageMsgs.size();
+	for(unsigned int i=0; i<cvBridgeImageMsgs.size(); ++i)
 	{
-		if(!(semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) == 0 ||
-			 semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
-			 semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO16) ==0 ||
-			 semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0 ||
-			 semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::RGB8) == 0 ||
-			 semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGRA8) == 0 ||
-			 semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::RGBA8) == 0 ||
-			 semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BAYER_GRBG8) == 0))
+		if(!(cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) == 0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO16) ==0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::RGB8) == 0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGRA8) == 0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::RGBA8) == 0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BAYER_GRBG8) == 0))
 		{
 
 			ROS_ERROR("Input rgb type must be image=mono8,mono16,rgb8,bgr8,bgra8,rgba8. Current rgb=%s",
-					semanticMaskMsgs[i]->encoding.c_str());
+					cvBridgeImageMsgs[i]->encoding.c_str());
 			return false;
 		}
 
-		cv_bridge::CvImageConstPtr ptrImage = semanticMaskMsgs[i];
-		if(semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1)==0 ||
-		   semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO8) == 0 ||
-		   semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0)
+		cv_bridge::CvImageConstPtr ptrImage = cvBridgeImageMsgs[i];
+		if(cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1)==0 ||
+		   cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO8) == 0 ||
+		   cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0)
 		{
 			// do nothing
 		}
-		else if(semanticMaskMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO16) == 0)
+		else if(cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO16) == 0)
 		{
-			ptrImage = cv_bridge::cvtColor(semanticMaskMsgs[i], "mono8");
+			ptrImage = cv_bridge::cvtColor(cvBridgeImageMsgs[i], "mono8");
 		}
 		else
 		{
-			ptrImage = cv_bridge::cvtColor(semanticMaskMsgs[i], "bgr8");
+			ptrImage = cv_bridge::cvtColor(cvBridgeImageMsgs[i], "bgr8");
 		}
 
 		// initialize
-		if(semanticMask.empty())
+		if(image.empty())
 		{
-			semanticMask = cv::Mat(imageHeight, imageWidth*cameraCount, ptrImage->image.type());
+			image = cv::Mat(imageHeight, imageWidth*cameraCount, ptrImage->image.type());
 		}
-		if(ptrImage->image.type() == semanticMask.type())
+		if(ptrImage->image.type() == image.type())
 		{
-			ptrImage->image.copyTo(cv::Mat(semanticMask, cv::Rect(i*imageWidth, 0, imageWidth, imageHeight)));
+			ptrImage->image.copyTo(cv::Mat(image, cv::Rect(i*imageWidth, 0, imageWidth, imageHeight)));
 		}
 		else
 		{
-			ROS_ERROR("Some semantic mask images are not the same type!");
+			ROS_ERROR("images are not the same type!");
 			return false;
 		}
 	}

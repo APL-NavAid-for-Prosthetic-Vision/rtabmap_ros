@@ -396,6 +396,10 @@ private:
 	bool createIntermediateNodes_;
 	int maxMappingNodes_;
 	ros::Time previousStamp_;
+
+	//  JHUAPL section
+
+	//  JHUAPL section end
 };
 
 }

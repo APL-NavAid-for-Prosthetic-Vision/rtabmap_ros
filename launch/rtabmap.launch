@@ -188,7 +188,7 @@
           <param name="approx_sync"     type="bool"   value="$(arg approx_rgbd_sync)"/>
           <param name="queue_size"      type="int"    value="$(arg queue_size_rgbd)"/>
           <param name="depth_scale"     type="double" value="$(arg rgbd_depth_scale)"/>
-          <param name="decimation"      type="double" value="$(arg rgbd_decimation)"/>
+          <param name="decimation"      type="int"    value="$(arg rgbd_decimation)"/>
         </node>
       </group>
       <group if="$(arg rgbd_semantic_detection_sync)">
@@ -202,7 +202,7 @@
           <param name="approx_sync"     type="bool"   value="$(arg approx_rgbd_sync)"/>
           <param name="queue_size"      type="int"    value="$(arg queue_size_rgbd)"/>
           <param name="depth_scale"     type="double" value="$(arg rgbd_depth_scale)"/>
-          <param name="decimation"      type="double" value="$(arg rgbd_decimation)"/>
+          <param name="decimation"      type="int"    value="$(arg rgbd_decimation)"/>
         </node>
       </group>
     </group>
