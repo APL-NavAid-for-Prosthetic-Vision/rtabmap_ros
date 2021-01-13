@@ -21,8 +21,9 @@
     <arg name="raytracing"              default="false"/>
 
     <!-- mapping configuration -->
-    <arg name="rtabmap_detectionRate"   default="2"/>
-
+    <arg name="rtabmap_detectionRate"          default="2"/>
+    <arg name="rgbd_semantic_detection_sync"   default="true"/>
+    
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
     <arg name="map_always_update"           default="false"/>
@@ -46,8 +47,8 @@
         <arg name="odom_topic"              default="$(arg odom_topic)"/>   <!-- Odometry topic name -->  
         <arg name="frame_id"                default="$(arg frame_id)"/>  <!-- fixed body base_link -->
         <!-- <arg name="extern_odom_info"        default="false" /> -->
-        <!-- <arg name="rgbd_sync"               default="true"/> -->
-        <arg name="rgbd_semantic_detection_sync" default="true"/>
+        <arg name="rgbd_semantic_detection_sync" default="$(arg rgbd_semantic_detection_sync)"/>
+        <arg unless="$(arg rgbd_semantic_detection_sync)" name="rgbd_sync" default="true" />
         <arg name="approx_rgbd_sync"        default="false"/>
         <arg name="rgbd_decimation"         default="1"/>
         
