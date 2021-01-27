@@ -585,6 +585,17 @@ void CoreWrapper::onInit()
 		NODELET_INFO("rtabmap: database_path parameter not set, the map will not be saved.");
 	}
 
+	// JHUAPL section
+	
+	if(parameters_.find(Parameters::kGridEnableSemanticSegmentation()) != parameters_.end())
+	{
+		bool enableSemanticSegmentation = false;
+		Parameters::parse(parameters_, Parameters::kGridEnableSemanticSegmentation(), enableSemanticSegmentation);
+		NODELET_INFO("rtabmap: parameter EnableSemanticSegmentation: %s", enableSemanticSegmentation?"true":"false");
+	}
+
+	// JHUAPL section end
+
 	mapsManager_.setParameters(parameters_);
 
 	// Init RTAB-Map
