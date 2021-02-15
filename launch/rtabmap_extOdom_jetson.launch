@@ -5,7 +5,8 @@
     <arg name="rtabmap_cfg"              default="" />
     <arg name="rtabmap_output"           default="screen"/> 
     <arg name="rtabmap_args"             default=""/>
-
+    <arg name="launch_prefix"            default=""/>
+    
     <!-- sensors input parameters --> 
     <arg name="odom_topic"              default="/t265/odom/sample"/>
     <arg name="frame_id"                default="t265_link"/>
@@ -22,7 +23,7 @@
 
     <!-- mapping configuration -->
     <arg name="rtabmap_detectionRate"          default="2"/>
-    <arg name="rgbd_semantic_detection_sync"   default="true"/>
+    <arg name="rgbd_semantic_detection_sync"   default="false"/>
     
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -39,6 +40,7 @@
         <arg name="output"                  default="$(arg rtabmap_output)"/>
         <arg name="cfg"                     default="$(arg rtabmap_cfg)"/>
         <arg name="rtabmap_args"            value="$(arg rtabmap_args)"/>
+        <arg name="launch_prefix"           default="$(arg launch_prefix)"/>
         <arg name="use_sim_time"            default="$(arg use_sim_time)"/>
         <arg name="map_frame_id"            default="$(arg map_frame_id)" />
 

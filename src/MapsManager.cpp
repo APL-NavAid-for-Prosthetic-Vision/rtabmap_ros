@@ -1,4 +1,7 @@
 /*
+Modified by: Johns Hopkins University Applied Physics Laboratory
+			> added support for semantic segmentation map
+Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -51,6 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <octomap_msgs/conversions.h>
 #include <octomap/ColorOcTree.h>
 #include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/SemanticOctoMap.h>
 #endif
 #endif
 
@@ -70,9 +74,11 @@ MapsManager::MapsManager() :
 		occupancyGrid_(new OccupancyGrid),
 		gridUpdated_(true),
 		octomap_(0),
+		semanticOctomap_(0),
 		octomapTreeDepth_(16),
 		octomapUpdated_(true),
-		latching_(true)
+		latching_(true),
+		semanticSegmentationEnable_(false)
 {
 }
 
@@ -128,10 +134,22 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	ROS_INFO("%s(maps): cloud_output_voxelized     = %s", name.c_str(), cloudOutputVoxelized_?"true":"false");
 	ROS_INFO("%s(maps): cloud_subtract_filtering   = %s", name.c_str(), cloudSubtractFiltering_?"true":"false");
 	ROS_INFO("%s(maps): cloud_subtract_filtering_min_neighbors = %d", name.c_str(), cloudSubtractFilteringMinNeighbors_);
+	
+	// JHUAPL section
+	pnh.param("Grid/EnableSemanticSegmentation", semanticSegmentationEnable_, semanticSegmentationEnable_);
+	ROS_INFO("%s(maps): Grid/EnableSemanticSegmentation = %s", name.c_str(), semanticSegmentationEnable_?"true":"false");
+	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-	octomap_ = new OctoMap(occupancyGrid_->getCellSize(), 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
+	if(semanticSegmentationEnable_)
+	{
+		semanticOctomap_ = new SemanticOctoMap(occupancyGrid_->getCellSize(), 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
+	}
+	else
+	{
+		octomap_ = new OctoMap(occupancyGrid_->getCellSize(), 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
+	}
 	pnh.param("octomap_tree_depth", octomapTreeDepth_, octomapTreeDepth_);
 	if(octomapTreeDepth_ > 16)
 	{
@@ -186,7 +204,7 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	latched_.insert(std::make_pair((void*)&octoMapPubBin_, false));
 	octoMapPubFull_ = nht->advertise<octomap_msgs::Octomap>("octomap_full", 1, latching_);
 	latched_.insert(std::make_pair((void*)&octoMapPubFull_, false));
-	octoMapCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_occupied_space", 1, latching_);
+	octoMapCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_occupied_space_cloud", 1, latching_);
 	latched_.insert(std::make_pair((void*)&octoMapCloud_, false));
 	octoMapFrontierCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_global_frontier_space", 1, latching_);
 	latched_.insert(std::make_pair((void*)&octoMapFrontierCloud_, false));
@@ -209,6 +227,11 @@ MapsManager::~MapsManager() {
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
+	if(semanticOctomap_)
+	{
+		delete semanticOctomap_;
+		semanticOctomap_ = 0;
+	}
 	if(octomap_)
 	{
 		delete octomap_;
@@ -316,17 +339,34 @@ void MapsManager::backwardCompatibilityParameters(ros::NodeHandle & pnh, Paramet
 
 void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 {
+	// JHUAPL section
+	Parameters::parse(parameters, Parameters::kGridEnableSemanticSegmentation(), semanticSegmentationEnable_);
+	//JHUAPL section end
+
 	parameters_ = parameters;
 	occupancyGrid_->parseParameters(parameters_);
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
+	if(semanticOctomap_)
+	{
+		delete semanticOctomap_;
+		semanticOctomap_ = 0;
+	}
 	if(octomap_)
 	{
 		delete octomap_;
 		octomap_ = 0;
 	}
-	octomap_ = new OctoMap(parameters_);
+
+	if(semanticSegmentationEnable_)
+	{
+		semanticOctomap_ = new SemanticOctoMap(parameters_);
+	}
+	else
+	{
+		octomap_ = new OctoMap(parameters_);
+	}
 #endif
 #endif
 }
@@ -381,6 +421,7 @@ void MapsManager::set2DMap(
 
 void MapsManager::clear()
 {
+	gridAPLMaps_.clear();
 	gridMaps_.clear();
 	gridMapsViewpoints_.clear();
 	assembledGround_->clear();
@@ -394,7 +435,14 @@ void MapsManager::clear()
 	occupancyGrid_->clear();
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-	octomap_->clear();
+	if(semanticOctomap_)
+	{
+		semanticOctomap_->clear();
+	}
+	if(octomap_)
+	{
+		octomap_->clear();
+	}
 #endif
 #endif
 	for(std::map<void*, bool>::iterator iter=latched_.begin(); iter!=latched_.end(); ++iter)
@@ -483,7 +531,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		ROS_ERROR("Memory and signatures should not be both null!?");
 		return std::map<int, rtabmap::Transform>();
 	}
-
+	
 	// process only nodes (exclude landmarks)
 	std::map<int, rtabmap::Transform> poses;
 	if(posesIn.begin()->first < 0)
@@ -495,7 +543,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		poses = posesIn;
 	}
 	std::map<int, rtabmap::Transform> filteredPoses;
-
+	
 	// update cache
 	if(updateGridCache)
 	{
@@ -515,7 +563,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		{
 			filteredPoses = poses;
 		}
-
+		
 		if(!alwaysUpdateMap_)
 		{
 			filteredPoses.erase(0);
@@ -525,22 +573,33 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		UTimer longUpdateTimer;
 		if(filteredPoses.size() > 20)
 		{
-			if(updateGridCache && gridMaps_.size() < 5)
+			if(updateGridCache && !semanticSegmentationEnable_ && gridMaps_.size() < 5)
 			{
 				ROS_WARN("Many occupancy grids should be loaded (~%d), this may take a while to update the map(s)...", int(filteredPoses.size()-gridMaps_.size()));
 				longUpdate = true;
 			}
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-			if(updateOctomap && octomap_->addedNodes().size() < 5)
+			if(semanticSegmentationEnable_)
 			{
-				ROS_WARN("Many clouds should be added to octomap (~%d), this may take a while to update the map(s)...", int(filteredPoses.size()-octomap_->addedNodes().size()));
-				longUpdate = true;
+				if(updateOctomap && semanticOctomap_ && semanticOctomap_->addedNodes().size() < 5)
+				{
+					ROS_WARN("Many clouds should be added to octomap (~%d), this may take a while to update the map(s)...", int(filteredPoses.size()-semanticOctomap_->addedNodes().size()));
+					longUpdate = true;
+				}
+			}
+			else
+			{
+				if(updateOctomap && octomap_ && octomap_->addedNodes().size() < 5)
+				{
+					ROS_WARN("Many clouds should be added to octomap (~%d), this may take a while to update the map(s)...", int(filteredPoses.size()-octomap_->addedNodes().size()));
+					longUpdate = true;
+				}
 			}
 #endif
 #endif
 		}
-
+		
 		bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
 
 		for(std::map<int, rtabmap::Transform>::iterator iter=filteredPoses.begin(); iter!=filteredPoses.end(); ++iter)
@@ -548,9 +607,119 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			if(!iter->second.isNull())
 			{
 				rtabmap::SensorData data;
-				if(updateGridCache && (iter->first == 0 || !uContains(gridMaps_, iter->first)))
+				// when gridAPLMaps_ doesnt contain the pose
+				if(updateGridCache && semanticSegmentationEnable_ && (iter->first == 0 || !uContains(gridAPLMaps_, iter->first)))
 				{
 					UDEBUG("Data required for %d", iter->first);
+					std::map<int, rtabmap::Signature>::const_iterator findIter = signatures.find(iter->first);
+					if(findIter != signatures.end())
+					{
+						data = findIter->second.sensorData();
+					}
+					else if(memory)
+					{
+						data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+					}
+
+					UDEBUG("Adding grid map %d to cache...", iter->first);
+					cv::Point3f viewPoint;
+					cv::Mat emptyCells;
+					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
+					if(iter->first > 0)
+					{
+						cv::Mat rgb, depth;
+						bool generateGrid = data.gridCellSize() == 0.0f;
+						static bool warningShown = false;
+						if(occupancySavedInDB && generateGrid && !warningShown)
+						{
+							warningShown = true;
+							UWARN("Occupancy grid for location %d should be added to global map (e..g, a ROS node is subscribed to "
+									"any occupancy grid output) but it cannot be found "
+									"in memory. For convenience, the occupancy "
+									"grid is regenerated. Make sure parameter \"%s\" is true to "
+									"avoid this warning for the next locations added to map. For older "
+									"locations already in database without an occupancy grid map, you can use the "
+									"\"rtabmap-databaseViewer\" to regenerate the missing occupancy grid maps and "
+									"save them back in the database for next sessions. This warning is only shown once.",
+									data.id(), Parameters::kRGBDCreateOccupancyGrid().c_str());
+						}
+						if(memory && occupancySavedInDB && generateGrid)
+						{
+							// if we are here, it is because we loaded a database with old nodes not having occupancy grid set
+							// try reload again
+							data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth(), !occupancyGrid_->isGridFromDepth(), false, false);
+						}
+						data.uncompressData(
+								occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
+								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
+								generateGrid?0:&obstaclesCellsMap,
+								generateGrid?0:&emptyCells);
+												
+						if(generateGrid)
+						{
+							Signature tmp(data);
+							tmp.setPose(iter->second);
+							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
+						}
+						else
+						{
+							viewPoint = data.gridViewPoint();
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
+						}
+					}
+					else
+					{
+						// generate tmp occupancy grid for latest id (assuming data is already uncompressed)
+						// For negative laser scans, fill empty space?
+						bool unknownSpaceFilled = Parameters::defaultGridScan2dUnknownSpaceFilled();
+						Parameters::parse(parameters_, Parameters::kGridScan2dUnknownSpaceFilled(), unknownSpaceFilled);
+
+						if(unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_)
+						{
+							ParametersMap parameters;
+							parameters.insert(ParametersPair(Parameters::kGridScan2dUnknownSpaceFilled(), uBool2Str(scanEmptyRayTracing_)));
+							occupancyGrid_->parseParameters(parameters);
+						}
+
+						cv::Mat rgb, depth;
+						bool generateGrid = data.gridCellSize() == 0.0f || (unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_);
+						
+						data.uncompressData(
+								occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
+								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
+								generateGrid?0:&obstaclesCellsMap,
+								generateGrid?0:&emptyCells);
+						
+						if(generateGrid)
+						{
+							Signature tmp(data);
+							tmp.setPose(iter->second);
+							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
+						}
+						else
+						{
+							viewPoint = data.gridViewPoint();
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
+						}
+
+						// put back
+						if(unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_)
+						{
+							ParametersMap parameters;
+							parameters.insert(ParametersPair(Parameters::kGridScan2dUnknownSpaceFilled(), uBool2Str(unknownSpaceFilled)));
+							occupancyGrid_->parseParameters(parameters);
+						}
+					}
+				}
+				else if(updateGridCache && !semanticSegmentationEnable_ && (iter->first == 0 || !uContains(gridMaps_, iter->first)))
+				{
+					UDEBUG("( Default MODE) Data required for %d", iter->first);
 					std::map<int, rtabmap::Signature>::const_iterator findIter = signatures.find(iter->first);
 					if(findIter != signatures.end())
 					{
@@ -664,7 +833,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 				}
 
-				if(updateGrid &&
+				if(updateGrid && !semanticSegmentationEnable_ &&
 						(iter->first == 0 ||
 						  occupancyGrid_->addedNodes().find(iter->first) == occupancyGrid_->addedNodes().end()))
 				{
@@ -680,9 +849,24 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-				if(updateOctomap &&
-						(iter->first == 0 ||
-						  octomap_->addedNodes().find(iter->first) == octomap_->addedNodes().end()))
+				if(updateOctomap && semanticSegmentationEnable_ &&
+					(iter->first == 0 || 
+						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
+				{
+					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> >::iterator mter = gridAPLMaps_.find(iter->first);
+					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
+					if(mter != gridAPLMaps_.end() && pter!=gridMapsViewpoints_.end())
+					{
+						if(mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2 &&
+						   (mter->second.second.empty() || mter->second.second.channels() > 2))
+						{
+							semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
+						}
+					}
+				}
+				else if(updateOctomap && !semanticSegmentationEnable_ &&
+							(iter->first == 0 ||
+						  		octomap_->addedNodes().find(iter->first) == octomap_->addedNodes().end()))
 				{
 					std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator mter = gridMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
@@ -712,14 +896,20 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			}
 		}
 
-		if(updateGrid)
+		if(updateGrid && !semanticSegmentationEnable_)
 		{
 			gridUpdated_ = occupancyGrid_->update(filteredPoses);
 		}
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-		if(updateOctomap)
+		if(updateOctomap && semanticSegmentationEnable_)
+		{
+			UTimer time;
+			octomapUpdated_ = semanticOctomap_->update(filteredPoses);
+			ROS_INFO("SemanticOctomap update time = %fs", time.ticks());
+		}
+		else if(updateOctomap)
 		{
 			UTimer time;
 			octomapUpdated_ = octomap_->update(filteredPoses);
@@ -727,46 +917,68 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		}
 #endif
 #endif
-		for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=gridMaps_.begin();
+
+		if(!semanticSegmentationEnable_)
+		{
+			for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=gridMaps_.begin();
 			iter!=gridMaps_.end();)
-		{
-			if(!uContains(poses, iter->first))
 			{
-				UASSERT(gridMapsViewpoints_.erase(iter->first) != 0);
-				gridMaps_.erase(iter++);
+				if(!uContains(poses, iter->first))
+				{
+					UASSERT(gridMapsViewpoints_.erase(iter->first) != 0);
+					gridMaps_.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
 			}
-			else
-			{
-				++iter;
-			}
-		}
 
-		for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >::iterator iter=groundClouds_.begin();
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >::iterator iter=groundClouds_.begin();
 			iter!=groundClouds_.end();)
-		{
-			if(!uContains(poses, iter->first))
 			{
-				groundClouds_.erase(iter++);
+				if(!uContains(poses, iter->first))
+				{
+					groundClouds_.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
 			}
-			else
-			{
-				++iter;
-			}
-		}
 
-		for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >::iterator iter=obstacleClouds_.begin();
+			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >::iterator iter=obstacleClouds_.begin();
 			iter!=obstacleClouds_.end();)
-		{
-			if(!uContains(poses, iter->first))
 			{
-				obstacleClouds_.erase(iter++);
-			}
-			else
-			{
-				++iter;
+				if(!uContains(poses, iter->first))
+				{
+					obstacleClouds_.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
 			}
 		}
+		else
+		{
+			// In Semantic Segmentation Mode
+			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat>>::iterator iter=gridAPLMaps_.begin();
+			iter!=gridAPLMaps_.end();)
+			{
+				if(!uContains(poses, iter->first))
+				{
+					UASSERT(gridMapsViewpoints_.erase(iter->first) != 0);
+					gridAPLMaps_.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
+			}
 
+		}
+		
 		if(longUpdate)
 		{
 			ROS_WARN("Map(s) updated! (%f s)", longUpdateTimer.ticks());
@@ -1207,10 +1419,10 @@ void MapsManager::publishMaps(
 			latched_.at(&octoMapPubFull_) = true;
 		}
 		if(octoMapCloud_.getNumSubscribers() ||
-			octoMapFrontierCloud_.getNumSubscribers() ||
-			octoMapObstacleCloud_.getNumSubscribers() ||
-			octoMapGroundCloud_.getNumSubscribers() ||
-			octoMapEmptySpace_.getNumSubscribers())
+		octoMapFrontierCloud_.getNumSubscribers() ||
+		octoMapObstacleCloud_.getNumSubscribers() ||
+		octoMapGroundCloud_.getNumSubscribers() ||
+		octoMapEmptySpace_.getNumSubscribers())
 		{
 			sensor_msgs::PointCloud2 msg;
 			pcl::IndicesPtr obstacleIndices(new std::vector<int>);
@@ -1270,6 +1482,7 @@ void MapsManager::publishMaps(
 				octoMapEmptySpace_.publish(msg);
 				latched_.at(&octoMapEmptySpace_) = true;
 			}
+			
 		}
 		if(octoMapProj_.getNumSubscribers())
 		{
@@ -1513,3 +1726,123 @@ cv::Mat MapsManager::getGridProbMap(
 	return occupancyGrid_->getProbMap(xMin, yMin);
 }
 
+// JHUAPL section
+
+void MapsManager::publishAPLMaps(
+		const std::map<int, rtabmap::Transform> & poses,
+		const ros::Time & stamp,
+		const std::string & mapFrameId)
+{
+	UDEBUG("Publishing APL maps...");
+
+	if(!semanticSegmentationEnable_)
+	{
+		UERROR("THIS FUNCTION SHOULD HAVE \"semanticSegmentationEnable_\" SET TO TRUE !!!");
+	}
+
+#ifdef WITH_OCTOMAP_MSGS
+#ifdef RTABMAP_OCTOMAP
+
+	if( octomapUpdated_ || 
+		!latching_ ||
+		(octoMapPubBin_.getNumSubscribers() && !latched_.at(&octoMapPubBin_)) ||
+		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)) )
+	{
+		if(octoMapPubBin_.getNumSubscribers())
+		{	
+			octomap_msgs::Octomap msg;
+			octomap_msgs::binaryMapToMsg(*semanticOctomap_->octree(), msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubBin_.publish(msg);
+			latched_.at(&octoMapPubBin_) = true;
+		}
+
+		if(octoMapCloud_.getNumSubscribers())
+		{
+			sensor_msgs::PointCloud2 msg;
+			pcl::IndicesPtr staticIndices(new std::vector<int>);
+			pcl::IndicesPtr movableIndices(new std::vector<int>);
+			pcl::IndicesPtr emptyIndices(new std::vector<int>);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = semanticOctomap_->createCloud(octomapTreeDepth_, staticIndices.get(), movableIndices.get(), 
+																					emptyIndices.get(), true);
+
+			if(octoMapCloud_.getNumSubscribers())
+			{
+				pcl::PointCloud<pcl::PointXYZRGB> cloudOccupiedSpace;
+				pcl::IndicesPtr indices = util3d::concatenate(staticIndices, movableIndices);
+				pcl::copyPointCloud(*cloud, *indices, cloudOccupiedSpace);
+				pcl::toROSMsg(cloudOccupiedSpace, msg);
+				msg.header.frame_id = mapFrameId;
+				msg.header.stamp = stamp;
+				octoMapCloud_.publish(msg);
+				latched_.at(&octoMapCloud_) = true;
+			}
+		}
+	}
+
+	if( mapCacheCleanup_ &&
+		octoMapPubBin_.getNumSubscribers() == 0 &&
+		octoMapCloud_.getNumSubscribers() == 0)
+		/*
+		octoMapPubFull_.getNumSubscribers() == 0 &&
+		octoMapCloud_.getNumSubscribers() == 0 &&
+		octoMapFrontierCloud_.getNumSubscribers() == 0 &&
+		octoMapObstacleCloud_.getNumSubscribers() == 0 &&
+		octoMapGroundCloud_.getNumSubscribers() == 0 &&
+		octoMapEmptySpace_.getNumSubscribers() == 0 &&
+		octoMapProj_.getNumSubscribers() == 0)*/
+	{
+		semanticOctomap_->clear();
+	}
+
+	if(octoMapPubBin_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapPubBin_) = false;
+	}
+	if(octoMapCloud_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapCloud_) = false;
+	}
+
+	/*
+	if(octoMapPubFull_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapPubFull_) = false;
+	}
+	
+	if(octoMapFrontierCloud_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapFrontierCloud_) = false;
+	}
+	if(octoMapObstacleCloud_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapObstacleCloud_) = false;
+	}
+	if(octoMapGroundCloud_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapGroundCloud_) = false;
+	}
+	if(octoMapEmptySpace_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapEmptySpace_) = false;
+	}
+	if(octoMapProj_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapProj_) = false;
+	}
+	*/
+
+#endif
+#endif
+
+	if(!this->hasSubscribers() && mapCacheCleanup_)
+	{
+		gridAPLMaps_.clear();
+		gridMapsViewpoints_.clear();
+	}
+
+}
+
+
+// JHUAPL section end

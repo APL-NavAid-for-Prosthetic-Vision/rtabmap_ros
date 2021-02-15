@@ -586,7 +586,7 @@ void CoreWrapper::onInit()
 	}
 
 	// JHUAPL section
-	
+
 	if(parameters_.find(Parameters::kGridEnableSemanticSegmentation()) != parameters_.end())
 	{
 		bool enableSemanticSegmentation = false;
@@ -2298,11 +2298,19 @@ void CoreWrapper::process(
 						false,
 						false,
 						tmpSignature);
-
+				
 				timeUpdateMaps = timer.ticks();
 
-				mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId_);
-
+				if(!mapsManager_.isSemanticSegmentationEnabled())
+				{
+					mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId_);
+				}
+				else
+				{
+					// publish maps in semantic segmentation mode
+					mapsManager_.publishAPLMaps(filteredPoses, stamp, mapFrameId_);	
+				}
+				
 				// update goal if planning is enabled
 				if(!currentMetricGoal_.isNull())
 				{

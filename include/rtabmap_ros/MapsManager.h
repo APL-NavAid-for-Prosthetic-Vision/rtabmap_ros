@@ -1,4 +1,7 @@
 /*
+Modified by: Johns Hopkins University Applied Physics Laboratory
+			> added support for segmantic segmentation map
+Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -38,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 class OctoMap;
+class SemanticOctoMap;
 class Memory;
 class OccupancyGrid;
 
@@ -80,7 +84,17 @@ public:
 			float & gridCellSize);
 
 	const rtabmap::OctoMap * getOctomap() const {return octomap_;}
+	const rtabmap::SemanticOctoMap * getSemanticOctomap() const {return semanticOctomap_;}
 	const rtabmap::OccupancyGrid * getOccupancyGrid() const {return occupancyGrid_;}
+
+	// JHUAPL section
+	bool isSemanticSegmentationEnabled() { return semanticSegmentationEnable_; }
+
+	void publishAPLMaps(const std::map<int, rtabmap::Transform> & poses,
+						const ros::Time & stamp,
+						const std::string & mapFrameId);
+	
+	// JHUAPL section end
 
 private:
 	// mapping stuff
@@ -134,6 +148,14 @@ private:
 
 	bool latching_;
 	std::map<void*, bool> latched_;
+
+	// JHUAPL section
+
+	rtabmap::SemanticOctoMap * semanticOctomap_;
+	bool semanticSegmentationEnable_;
+	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> > gridAPLMaps_; // < map<class label, obstacle>, empty cells >
+	
+	// JHUAPL section end
 };
 
 #endif /* MAPSMANAGER_H_ */
