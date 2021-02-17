@@ -63,7 +63,7 @@ IF(RTABMAP_SYNC_USER_DATA)
 add_definitions("-DRTABMAP_SYNC_USER_DATA")
 ENDIF(RTABMAP_SYNC_USER_DATA)
 
-option(OPENCV_CUDA "Build with OPENCV CUDA support" ON)
+option(OPENCV_CUDA "Build with OPENCV CUDA support" OFF)
 IF(OPENCV_CUDA)
 add_definitions("-DOPENCV_CUDA")
 ENDIF(OPENCV_CUDA)
@@ -496,18 +496,45 @@ IF(rviz_FOUND)
 	    ${SRC_FILES} 
        ${RTABMAP_ROS_PATH}/src/rviz/OrbitOrientedViewController.cpp
 	  )
-	ENDIF(NOT WIN32)
-    add_library(rtabmap_rviz_plugins
-       ${SRC_FILES}
-    )
-    target_link_libraries(rtabmap_rviz_plugins
+   ENDIF(NOT WIN32)
+   
+   IF(octomap_msgs_FOUND)
+   IF(QT4_FOUND)
+      qt4_wrap_cpp(MOC_FILES_APL
+         include/rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h 
+         OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED -DBOOST_LEXICAL_CAST_INCLUDED 
+      )
+   ELSE()
+      qt5_wrap_cpp(MOC_FILES_APL
+         include/rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h
+         OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED -DBOOST_LEXICAL_CAST_INCLUDED 
+      )
+   ENDIF(QT4_FOUND)
+
+   set_property(
+      SOURCE  src/rviz/ObjectLabelOccupancyGridDisplay.cpp
+      PROPERTY COMPILE_DEFINITIONS QT_NO_KEYWORDS
+   )
+
+   SET(SRC_FILES
+      ${SRC_FILES}
+      src/rviz/ObjectLabelOccupancyGridDisplay.cpp
+      ${MOC_FILES_APL}
+   )
+   ENDIF(octomap_msgs_FOUND)
+
+   add_library(rtabmap_rviz_plugins
+      ${SRC_FILES}
+   )
+   target_link_libraries(rtabmap_rviz_plugins
       rtabmap_ros
-	  ${Libraries}
-    )
-    IF(Qt5_FOUND)
-        QT5_USE_MODULES(rtabmap_rviz_plugins Widgets Core Gui)
-    ENDIF(Qt5_FOUND)
-    add_dependencies(rtabmap_rviz_plugins ${${PROJECT_NAME}_EXPORTED_TARGETS})
+      ${Libraries}
+   )
+
+   IF(Qt5_FOUND)
+      QT5_USE_MODULES(rtabmap_rviz_plugins Widgets Core Gui)
+   ENDIF(Qt5_FOUND)
+   add_dependencies(rtabmap_rviz_plugins ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 ENDIF(rviz_FOUND)
 
