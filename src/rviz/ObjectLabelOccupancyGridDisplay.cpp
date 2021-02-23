@@ -42,6 +42,8 @@
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <opencv2/core/types.hpp>
+
 #include <OGRE/OgreSceneNode.h>
 #include <OGRE/OgreSceneManager.h>
 
@@ -421,6 +423,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::s
                                                                                 double minZ, double maxZ)
 {
     float cell_probability;
+    cv::Point3f maskColor;
     OctreeVoxelColorMode octree_color_mode = static_cast<OctreeVoxelColorMode>(octree_coloring_property_->getOptionInt());
     switch (octree_color_mode)
     {
@@ -439,8 +442,8 @@ void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::s
             newPoint.setColor((1.0f-cell_probability), cell_probability, 0.0);
             break;
         case OCTOMAP_CELL_CLASS_MASK_COLOR:
-            //TODO - geting mask color from node
-            ROS_INFO("OCTOMAP_CELL_CLASS_MASK_COLOR");
+            maskColor = node.getMaskColor();
+            newPoint.setColor(maskColor.x, maskColor.y, maskColor.z);
             break;
         default:
             break;

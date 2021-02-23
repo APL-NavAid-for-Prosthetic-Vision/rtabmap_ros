@@ -8,7 +8,6 @@ Panels:
         - /Odometry1/Covariance1/Position1
         - /Mapped_Pose1/Covariance1/Position1
         - /Mapped_Pose1/Covariance1/Orientation1
-        - /rtabmapColorOccupancyGrid1
       Splitter Ratio: 0.5887096524238586
     Tree Height: 247
   - Class: rviz/Selection
@@ -325,17 +324,29 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
+    - Class: octomap_rviz_plugin/ColorOccupancyGrid
+      Enabled: false
+      Max. Height Display: 3.4028234663852886e+38
+      Max. Octree Depth: 16
+      Min. Height Display: -3.4028234663852886e+38
+      Name: ColorOccupancyGrid
+      Octomap Topic: /rtabmap/octomap_binary
+      Queue Size: 5
+      Value: false
+      Voxel Alpha: 1
+      Voxel Coloring: Z-Axis
+      Voxel Rendering: Occupied Voxels
     - Class: rtabmap_ros/rtabmapColorOccupancyGrid
-      Enabled: true
+      Enabled: false
       Max. Height Display: inf
       Max. Octree Depth: 16
       Min. Height Display: -inf
       Name: rtabmapColorOccupancyGrid
       Octomap Topic: /rtabmap/octomap_binary
       Queue Size: 5
-      Value: true
+      Value: false
       Voxel Alpha: 1
-      Voxel Coloring: Z-Axis
+      Voxel Coloring: Semantic Mask
       Voxel Rendering: Occupied Voxels
   Enabled: true
   Global Options:
@@ -376,10 +387,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6847970485687256
+      Pitch: 0.9197967052459717
       Target Frame: t265_link
       Value: OrbitOriented (rtabmap_ros)
-      Yaw: 3.106015920639038
+      Yaw: 3.2660253047943115
     Saved: ~
 Window Geometry:
   Camera:
