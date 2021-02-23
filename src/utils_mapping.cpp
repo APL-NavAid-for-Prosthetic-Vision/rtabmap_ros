@@ -6,9 +6,11 @@
 
 #include <ros/ros.h>
 
-#ifdef WITH_YAMLCPP
+// system
 #include <fstream>
 #include <iostream>
+
+#ifdef WITH_YAMLCPP
 #include <yaml-cpp/yaml.h> 
 #endif
 
