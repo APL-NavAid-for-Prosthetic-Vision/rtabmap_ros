@@ -68,6 +68,19 @@ IF(OPENCV_CUDA)
 add_definitions("-DOPENCV_CUDA")
 ENDIF(OPENCV_CUDA)
 
+option(WITH_YAMLCPP "Include Yaml-cpp for parsing model file class architecture"  OFF)
+
+if(WITH_YAMLCPP)
+   find_package(yaml-cpp QUIET)  
+   if(yaml-cpp_FOUND)
+      find_library(YAML_CPP_LIBRARIES_PATH
+         ${YAML_CPP_LIBRARIES}
+      )
+      message(STATUS "FOUND yaml-cpp: ${YAML_CPP_LIBRARIES_PATH}")
+      add_definitions("-DWITH_YAMLCPP")
+   endif(yaml-cpp_FOUND)
+endif(WITH_YAMLCPP)
+
 #Qt stuff
 # If librtabmap_gui.so is found, rtabmapviz will be built
 # If rviz is found, plugins will be built
@@ -239,6 +252,7 @@ SET(rtabmap_ros_lib_src
    src/MapsManager.cpp
    ${RTABMAP_ROS_PATH}/src/OdometryROS.cpp
    ${RTABMAP_ROS_PATH}/src/PluginInterface.cpp
+   src/utils_mapping.cpp
 )
   
 SET(rtabmap_plugins_lib_src
@@ -268,7 +282,6 @@ IF(${cv_bridge_VERSION_MAJOR} GREATER 1 OR ${cv_bridge_VERSION_MINOR} GREATER 10
    ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_sync.cpp 
    ${RTABMAP_ROS_PATH}/src/nodelets/stereo_sync.cpp 
    ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_relay.cpp
-   # ---- APL plugins lib ----
    src/nodelets/rgbd_semantic_detection_sync.cpp)
 ELSE()
    ADD_DEFINITIONS("-DCV_BRIDGE_HYDRO")
@@ -299,6 +312,16 @@ SET(Libraries
 )
 ADD_DEFINITIONS("-DWITH_APRILTAG_ROS")
 ENDIF(apriltag_ros_FOUND)
+
+if(yaml-cpp_FOUND)
+   include_directories(
+      ${YAML_CPP_INCLUDE_DIR}
+   )
+   set(Libraries
+      ${YAML_CPP_LIBRARIES}
+      ${Libraries}
+   )
+endif(yaml-cpp_FOUND)
 
 ############################
 ## Declare a cpp library

@@ -154,7 +154,7 @@ private:
 	rtabmap::SemanticOctoMap * semanticOctomap_;
 	bool semanticSegmentationEnable_;
 	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> > gridAPLMaps_; // < map<class label, obstacle>, empty cells >
-	
+	std::string semanticSegmentationModelFilePath_;
 	// JHUAPL section end
 };
 

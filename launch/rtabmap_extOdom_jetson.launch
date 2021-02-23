@@ -24,6 +24,7 @@
     <!-- mapping configuration -->
     <arg name="rtabmap_detectionRate"          default="2"/>
     <arg name="rgbd_semantic_detection_sync"   default="false"/>
+    <arg name="model_classes_file_path"        default="" />
     
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -85,6 +86,7 @@
         <arg name="rgbd_maxOdomCacheSize"       default="$(arg rgbd_maxOdomCacheSize)"/>
         <arg name="rgbd_optimizeMaxError"       default="3"/>
         <!-- <arg name="optimizer_robust"            default="true"/> -->
+        <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
     </include>
 
 </launch>

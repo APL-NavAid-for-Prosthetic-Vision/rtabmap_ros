@@ -58,6 +58,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+#include <rtabmap_ros/utils_mapping.h>
+
 using namespace rtabmap;
 
 MapsManager::MapsManager() :
@@ -137,15 +139,37 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	
 	// JHUAPL section
 	pnh.param("Grid/EnableSemanticSegmentation", semanticSegmentationEnable_, semanticSegmentationEnable_);
+	pnh.param("model_classes_file_path", semanticSegmentationModelFilePath_, semanticSegmentationModelFilePath_);
 	ROS_INFO("%s(maps): Grid/EnableSemanticSegmentation = %s", name.c_str(), semanticSegmentationEnable_?"true":"false");
+	ROS_INFO("%s(maps): model_classes_file_path = %s", name.c_str(), semanticSegmentationModelFilePath_.empty()?"NOT_PATH":
+				semanticSegmentationModelFilePath_.c_str());
 	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
+	// JHUAPL section
 	if(semanticSegmentationEnable_)
 	{
 		semanticOctomap_ = new SemanticOctoMap(occupancyGrid_->getCellSize(), 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
+	
+		// set the model class map if available
+		if(!semanticSegmentationModelFilePath_.empty())
+		{
+#ifdef WITH_YAMLCPP
+			std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
+			
+			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap))
+			{
+				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
+			}
+
+			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
+			semanticOctomap_->updateObjectTypeMap();
+			semanticOctomap_->generateMaskIdColorMap();
+#endif
+		}
 	}
+	// JHUAPL section end
 	else
 	{
 		octomap_ = new OctoMap(occupancyGrid_->getCellSize(), 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
@@ -358,11 +382,29 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 		delete octomap_;
 		octomap_ = 0;
 	}
-
+	// JHUAPL section
 	if(semanticSegmentationEnable_)
 	{
 		semanticOctomap_ = new SemanticOctoMap(parameters_);
+
+		// set the model class map if available
+		if(!semanticSegmentationModelFilePath_.empty())
+		{
+#ifdef WITH_YAMLCPP
+			std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
+			
+			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap))
+			{
+				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
+			}
+
+			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
+			semanticOctomap_->updateObjectTypeMap();
+			semanticOctomap_->generateMaskIdColorMap();
+#endif
+		}
 	}
+	// JHUAPL section end
 	else
 	{
 		octomap_ = new OctoMap(parameters_);
