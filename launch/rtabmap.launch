@@ -69,6 +69,7 @@
   <arg name="rgbd_semantic_detection_sync"               default="false"/>         <!-- pre-sync ; if rgbd_sync is true, this should be false -->
   <arg name="subscribe_rgbd_semantic_detection"          default="$(arg rgbd_semantic_detection_sync)"/> 
   <arg name="model_classes_file_path"                    default="" />
+  <arg name="orb_cuda"                                   default="true" />
   <!-- JHU APL : end -->
 
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
@@ -475,7 +476,7 @@
       <param name="GFTT/MinDistance"    type="string" value="10"/>
       <param name="GFTT/QualityLevel"   type="string" value="0.00001"/>
 
-      <param name="ORB/Gpu"             type="string" value="true" />
+      <param name="ORB/Gpu"             type="string" value="$(arg orb_cuda)" />
 
       <param name="Optimizer/GravitySigma"  type="string" value="0.3" />
       <param name="Optimizer/Iterations"    type="string" value="30" />
