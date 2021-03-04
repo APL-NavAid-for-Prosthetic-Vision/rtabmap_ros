@@ -1788,6 +1788,7 @@ void MapsManager::publishAPLMaps(
 	if( octomapUpdated_ || 
 		!latching_ ||
 		(octoMapPubBin_.getNumSubscribers() && !latched_.at(&octoMapPubBin_)) ||
+		(octoMapPubFull_.getNumSubscribers() && !latched_.at(&octoMapPubFull_)) ||
 		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)) )
 	{
 		if(octoMapPubBin_.getNumSubscribers())
@@ -1799,7 +1800,15 @@ void MapsManager::publishAPLMaps(
 			octoMapPubBin_.publish(msg);
 			latched_.at(&octoMapPubBin_) = true;
 		}
-
+		if(octoMapPubFull_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+			octomap_msgs::fullMapToMsg(*semanticOctomap_->octree(), msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubFull_.publish(msg);
+			latched_.at(&octoMapPubFull_) = true;
+		}
 		if(octoMapCloud_.getNumSubscribers())
 		{
 			sensor_msgs::PointCloud2 msg;
@@ -1822,12 +1831,15 @@ void MapsManager::publishAPLMaps(
 			}
 		}
 	}
+	
 
 	if( mapCacheCleanup_ &&
 		octoMapPubBin_.getNumSubscribers() == 0 &&
-		octoMapCloud_.getNumSubscribers() == 0)
-		/*
 		octoMapPubFull_.getNumSubscribers() == 0 &&
+		octoMapCloud_.getNumSubscribers() == 0)
+
+		/*
+		
 		octoMapCloud_.getNumSubscribers() == 0 &&
 		octoMapFrontierCloud_.getNumSubscribers() == 0 &&
 		octoMapObstacleCloud_.getNumSubscribers() == 0 &&
@@ -1842,16 +1854,16 @@ void MapsManager::publishAPLMaps(
 	{
 		latched_.at(&octoMapPubBin_) = false;
 	}
+	if(octoMapPubFull_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapPubFull_) = false;
+	}
 	if(octoMapCloud_.getNumSubscribers() == 0)
 	{
 		latched_.at(&octoMapCloud_) = false;
 	}
 
 	/*
-	if(octoMapPubFull_.getNumSubscribers() == 0)
-	{
-		latched_.at(&octoMapPubFull_) = false;
-	}
 	
 	if(octoMapFrontierCloud_.getNumSubscribers() == 0)
 	{
