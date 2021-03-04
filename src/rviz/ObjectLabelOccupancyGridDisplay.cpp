@@ -55,7 +55,6 @@
 #include <rviz/properties/float_property.h>
 
 #include <octomap/octomap.h>
-#include <octomap/ColorOcTree.h>
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/conversions.h>
 
