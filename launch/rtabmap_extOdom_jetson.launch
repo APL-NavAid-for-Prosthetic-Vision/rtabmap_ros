@@ -72,10 +72,10 @@
         <arg name="time_threshold"              default="700"/>   <!-- "Rtabmap/TimeThr" : If the map takes longer than this threshold in milliseconds to update then it is moved to long term storage (does not impact octomap) -->
         <arg name="memory_threshold"            default="1000"/>  <!--  "Rtabmap/MemoryThr" : number of nodes in octomap before moved to long-term storage-->
         <arg name="map_resolution"              default="0.05"/>  <!-- "Grid/CellSize": resolution in m of grid/octomap-->
-        <arg name="max_nodes"                   default="2500"/>  <!--  "GridGlobal/MaxNodes:" : Maximum nodes assembled in the map starting from the last node (octomap)-->
+        <arg name="max_nodes"                   default="1000"/>  <!--  "GridGlobal/MaxNodes:" : Maximum nodes assembled in the map starting from the last node (octomap)-->
         <arg name="queue_size"                  default="200"/>
         <arg name="rtabmap_detectionRate"       default="$(arg rtabmap_detectionRate)"/>      <!-- "Rtabmap/DetectionRate" : [Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.] --> 
-        <arg name="tf_delay"                    default="0.0334"/>  <!-- (30 Hz) in order to keep up with the odometry time update-->
+        <arg name="tf_delay"                    default="0.0667"/>  <!-- (15 Hz: 0.0667 sec) (30 Hz: 0.0334 sec) in order to keep up with the odometry time update-->
         <arg name="grid_rangeMax"               default="10.0"/>
         <arg name="queue_size_rgbd"             default="15"/>
         <arg name="mem_STMSize"                 default="20"/>

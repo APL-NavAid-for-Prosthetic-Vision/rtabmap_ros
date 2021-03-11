@@ -53,6 +53,8 @@
 #include <rviz/display.h>
 #include <rviz/ogre_helpers/point_cloud.h>
 
+#include <rtabmap/core/SemanticOctoMap.h>
+
 #endif
 
 namespace rviz 
@@ -130,6 +132,7 @@ protected:
   rviz::FloatProperty* alpha_property_;
   rviz::FloatProperty* max_height_property_;
   rviz::FloatProperty* min_height_property_;
+  rviz::EnumProperty* octomap_mode_property_;
 
   u_int32_t queue_size_;
   uint32_t messages_received_;

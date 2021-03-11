@@ -83,6 +83,12 @@ enum OctreeVoxelColorMode
   OCTOMAP_CELL_CLASS_MASK_COLOR
 };
 
+enum OctoMapMSGMode
+{
+    Full_Map_Mode,
+    Binary_Map_Mode
+};
+
 ObjectLabelOccupancyGridDisplay::ObjectLabelOccupancyGridDisplay() :
     rviz::Display(),
     new_points_received_(false),
@@ -90,6 +96,15 @@ ObjectLabelOccupancyGridDisplay::ObjectLabelOccupancyGridDisplay() :
     queue_size_(5),
     color_factor_(0.8)
 {
+    octomap_mode_property_ = new rviz::EnumProperty( "OctoMap Msg Mode", "FullMap",
+                                                    "Select Octomap mode",
+                                                    this,
+                                                    SLOT( updateOctreeColorMode() ) );
+
+    octomap_mode_property_->addOption( "FullMap_Mode",  Full_Map_Mode);
+    octomap_mode_property_->addOption( "BinaryMap_Mode",  Binary_Map_Mode);
+    
+
     octomap_topic_property_ = new RosTopicProperty( "Octomap Topic",
                                                   "",
                                                   QString::fromStdString(ros::message_traits::datatype<octomap_msgs::Octomap>()),
@@ -182,7 +197,7 @@ ObjectLabelOccupancyGridDisplay::~ObjectLabelOccupancyGridDisplay()
     }
 
     if (scene_node_)
-    scene_node_->detachAllObjects();
+        scene_node_->detachAllObjects();
 }
 
 
@@ -387,8 +402,14 @@ bool TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::checkType(std::string
 template <>
 bool TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::checkType(std::string type_id)
 {
-    if(type_id == "RtabmapAPLColorOcTree") return true;
-    else return false;
+    if(type_id == "RtabmapAPLColorOcTree")
+    {
+        return true;
+    }
+    else 
+    {
+        return false;
+    }
 }
 
 template <typename OcTreeType>
@@ -477,6 +498,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
     }
 
     ROS_DEBUG("Received OctomapBinary message (size: %d bytes)", (int)msg->data.size());
+    //ROS_INFO("Received OctomapBinary message (size: %d bytes)", (int)msg->data.size());
 
     header_ = msg->header;
     if (!updateFromTF()) 
@@ -489,25 +511,51 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
     }
 
     // creating octree
-    OcTreeType* octomap = NULL;
+    //OcTreeType* octomap = NULL;
+    rtabmap::RtabmapAPLColorOcTree* octomap = NULL;
 
-    octomap::AbstractOcTree* tree;
-    rtabmap::RtabmapAPLColorOcTree* octree = new rtabmap::RtabmapAPLColorOcTree(msg->resolution);
-    octomap_msgs::readTree(octree, *msg);
-    tree = octree;
-    if (tree)
+    if(octomap_mode_property_->getOptionInt() == OctoMapMSGMode::Full_Map_Mode)
     {
-        octomap = dynamic_cast<OcTreeType*>(tree);
-        if (!octomap)
-        { 
-            ROS_ERROR("octomap: Wrong octomap type. Use a different display type ....");
-            setStatusStd(StatusProperty::Error, "Message", "Wrong octomap type. Use a different display type.");
+        ROS_INFO(" OctoMap Msg Mode: Full_Map_Mode");
+        octomap = new rtabmap::RtabmapAPLColorOcTree(msg->resolution);
+
+        if(octomap)
+        {
+            std::stringstream datastream;
+            if (msg->data.size() > 0)
+            {
+                datastream.write((const char*) &(msg->data[0]), msg->data.size());
+                octomap->readData(datastream);
+            }
         }
+
+        // TODO check octomap read the correct data
     }
     else
     {
-        setStatusStd(StatusProperty::Error, "Message", "Failed to deserialize octree message.");
-        return;
+        ROS_INFO(" OctoMap Msg Mode: Binary_Map_Mode");
+        // Binary Octomap
+        octomap::AbstractOcTree* tree;
+        rtabmap::RtabmapAPLColorOcTree* octree = new rtabmap::RtabmapAPLColorOcTree(msg->resolution);
+        octomap_msgs::readTree(octree, *msg);
+        tree = octree;
+
+        if(tree)
+        {
+            octomap = dynamic_cast<rtabmap::RtabmapAPLColorOcTree*>(tree);
+            if (!octomap)
+            { 
+                ROS_ERROR("octomap: Wrong octomap type. Use a different display type ....");
+                setStatusStd(StatusProperty::Error, "Message", "Wrong octomap type. Use a different display type.");
+                return;
+            }
+        }
+        else
+        {
+            ROS_ERROR("Failed to deserialize octree message. tree pointer was not returned");
+            setStatusStd(StatusProperty::Error, "Message", "Failed to deserialize octree message.");
+            return;
+        }
     }
 
     tree_depth_property_->setMax(octomap->getTreeDepth());
@@ -515,7 +563,9 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
     // get dimensions of octree
     double minX, minY, minZ, maxX, maxY, maxZ;
     octomap->getMetricMin(minX, minY, minZ);
+    //ROS_INFO_STREAM("Metric min: "<< minX <<","<< minY <<","<< minZ );
     octomap->getMetricMax(maxX, maxY, maxZ);
+    //ROS_INFO_STREAM("Metric max: "<< maxX <<","<< maxY <<","<< maxZ );
     
     // reset rviz pointcloud classes
     for (std::size_t i = 0; i < max_octree_depth_; ++i)
