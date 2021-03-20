@@ -30,7 +30,6 @@
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
     <arg name="map_always_update"           default="false"/>
-    <arg name="rgbd_proximityByTime"        default="false"/>
     <arg name="bayes_fullPredictionUpdate"  default="false"/>
     <arg name="rgbd_maxOdomCacheSize"       default="0"/>
      
@@ -82,7 +81,6 @@
         <arg name="bayes_fullPredictionUpdate"  default="$(arg bayes_fullPredictionUpdate)"/>
         <arg name="imageAlreadyRectify"         default="$(arg imageAlreadyRectify)"/>  <!-- /color/image_raw has not been rectified -->
         <arg name="rectifyOnlyFeatures"         default="$(arg rectifyOnlyFeatures)"/>  <!-- projection of RGB-D image to point cloud is assuming that images are rectified, so needs to be true -->
-        <arg name="rgbd_proximityByTime"        default="$(arg rgbd_proximityByTime)"/>
         <arg name="grid_maxObstacleHeight"      default="$(arg grid_maxObstacleHeight)"/>
         <arg name="rgbd_maxOdomCacheSize"       default="$(arg rgbd_maxOdomCacheSize)"/>
         <arg name="rgbd_optimizeMaxError"       default="3"/>
