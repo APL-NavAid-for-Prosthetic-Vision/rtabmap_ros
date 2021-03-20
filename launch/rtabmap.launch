@@ -138,7 +138,6 @@
   <arg name="grid_maxObstacleHeight"       default="2.0"/>
   <arg name="map_always_update"            default="false"/>
   <arg name="mem_STMSize"                  default="10"/>
-  <arg name="rgbd_proximityByTime"         default="false"/>
   <arg name="rgbd_optimizeMaxError"        default="3"/> <!-- should be 0 if RGBD/OptimizeRobust is true --> 
   <arg name="rgbd_maxOdomCacheSize"        default="0"/>
   <arg name="optimizer_robust"             default="false"/> <!-- Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies) -->
@@ -442,14 +441,14 @@
       <param name="RGBD/MaxLoopClosureDistance"       type="string"   value="0.0" />                         <!-- Reject loop closures/localizations if the distance from the map is over this distance (0=disabled) -->
 
       <!-- Local/Proximity loop closure detection -->
-      <param name="RGBD/ProximityAngle"               type="string"   value="65" />                    <!-- maximum angle (degrees) for visual proximity detection.-->
-      <param name="RGBD/ProximityMaxPaths"            type="string"   value="5" />                      <!-- Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit -->
-      <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="1" />                      <!-- path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection -->
-      <param name="RGBD/ProximityPathMaxNeighbors"    type="string"   value="50"/>                      <!-- Maximum neighbor nodes compared on each path. -->
+      <param name="RGBD/ProximityAngle"               type="string"   value="65" />      <!-- maximum angle (degrees) for visual proximity detection.-->
+      <param name="RGBD/ProximityMaxPaths"            type="string"   value="5" />       <!-- Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit -->
+      <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="1" />       <!-- path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection -->
+      <param name="RGBD/ProximityPathMaxNeighbors"    type="string"   value="50"/>       <!-- Maximum neighbor nodes compared on each path. -->
       <param name="RGBD/ProximityOdomGuess"           type="string"   value="true" />
-      <param name="RGBD/ProximityBySpace"             type="string"   value="true"/>                         <!-- Local loop closure detection (using estimated position) with locations in WM -->
-	    <param name="RGBD/ProximityByTime"              type="string"   value="$(arg rgbd_proximityByTime)"/>  <!-- Local loop closure detection with locations in STM -->
-      <param name="RGBD/ProximityMaxGraphDepth"       type="string"   value="50" />                        <!-- Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore-->
+      <param name="RGBD/ProximityBySpace"             type="string"   value="true"/>     <!-- Local loop closure detection (using estimated position) with locations in WM -->
+	    <param name="RGBD/ProximityByTime"              type="string"   value="false"/>    <!-- Local loop closure detection with locations in STM -->
+      <param name="RGBD/ProximityMaxGraphDepth"       type="string"   value="50" />      <!-- Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore-->
 
       <param name="Vis/FeatureType"     type="string" value="8" />
       <param name="Vis/MaxDepth"        type="string" value="10.0" />
