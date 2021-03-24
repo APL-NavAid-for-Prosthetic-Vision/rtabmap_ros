@@ -398,7 +398,7 @@ private:
 	ros::Time previousStamp_;
 
 	//  JHUAPL section
-
+	bool depthFilters_;
 	//  JHUAPL section end
 };
 

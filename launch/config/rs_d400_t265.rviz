@@ -333,14 +333,14 @@ Visualization Manager:
       Octomap Topic: /rtabmap/octomap_binary
       Queue Size: 5
       Value: false
-      Voxel Alpha: 0.800000011920929
+      Voxel Alpha: 1
       Voxel Coloring: Z-Axis
       Voxel Rendering: Occupied Voxels
     - Class: rtabmap_ros/rtabmapColorOccupancyGrid
       Enabled: false
-      Max. Height Display: inf
+      Max. Height Display: 3.4028234663852886e+38
       Max. Octree Depth: 16
-      Min. Height Display: -inf
+      Min. Height Display: -3.4028234663852886e+38
       Name: rtabmapColorOccupancyGrid
       OctoMap Msg Mode: FullMap_Mode
       Octomap Topic: /rtabmap/octomap_full
@@ -373,25 +373,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 6.920926094055176
+      Distance: 5.410800933837891
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.059099555015563965
-        Y: -0.5580868721008301
-        Z: 4.76837158203125e-7
+        X: -0.3279827833175659
+        Y: 0.29652321338653564
+        Z: 1.0927499261015328e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6953980922698975
+      Pitch: 0.6503984928131104
       Target Frame: t265_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.250404119491577
+      Yaw: 3.2004103660583496
     Saved: ~
 Window Geometry:
   Camera:
@@ -413,5 +413,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1657
-  X: 175
-  Y: 27
+  X: 203
+  Y: 71

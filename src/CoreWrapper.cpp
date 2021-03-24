@@ -91,9 +91,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap_ros/MsgConversion.h"
 
+//APL
+#include "rtabmap_ros/utils_mapping.h"
+
 using namespace rtabmap;
 
-namespace rtabmap_ros {
+namespace rtabmap_ros 
+{
 
 CoreWrapper::CoreWrapper() :
 		CommonDataSubscriber(false),
@@ -129,7 +133,8 @@ CoreWrapper::CoreWrapper() :
 		createIntermediateNodes_(Parameters::defaultRtabmapCreateIntermediateNodes()),
 		maxMappingNodes_(Parameters::defaultGridGlobalMaxNodes()),
 		previousStamp_(0),
-		mbClient_(0)
+		mbClient_(0),
+		depthFilters_(false)
 {
 	char * rosHomePath = getenv("ROS_HOME");
 	std::string workingDir = rosHomePath?rosHomePath:UDirectory::homeDir()+"/.ros";
@@ -230,6 +235,8 @@ void CoreWrapper::onInit()
 #else	
 	NODELET_INFO("rtabmap: OPENCV_CUDA: Disabled");	
 #endif
+
+	pnh.param("depth_Filters", depthFilters_, depthFilters_);
 	// JHUAPL section end
 
 	infoPub_ = nh.advertise<rtabmap_ros::Info>("info", 1);
@@ -1222,6 +1229,12 @@ void CoreWrapper::commonDepthCallbackImpl(
 		}
 	}
 
+	// depth post processing 
+	if(depthFilters_)
+	{
+		utils::depthEdgeFilter(depth);
+	}
+
 	LaserScan scan;
 	bool genMaxScanPts = 0;
 	if(!scan2dMsg.ranges.empty() && !scan3dMsg.data.empty() && !depth.empty() && genScan_)
@@ -1441,6 +1454,16 @@ void CoreWrapper::commonDepthCallbackImpl(
 			shown = true;
 		}
 	}
+
+	// JHUAPL section
+
+	// depth post processing 
+	if(depthFilters_)
+	{
+		utils::depthEdgeFilter(depth);
+	}
+
+	// JHUAPL section end
 
 	LaserScan scan;
 	bool genMaxScanPts = 0;

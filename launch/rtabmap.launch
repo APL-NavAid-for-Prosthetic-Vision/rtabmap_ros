@@ -70,6 +70,7 @@
   <arg name="subscribe_rgbd_semantic_detection"          default="$(arg rgbd_semantic_detection_sync)"/> 
   <arg name="model_classes_file_path"                    default="" />
   <arg name="orb_cuda"                                   default="true" />
+  <arg name="depth_Filters"                              default="true"/>
   <!-- JHU APL : end -->
 
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
@@ -443,7 +444,7 @@
       <!-- Local/Proximity loop closure detection -->
       <param name="RGBD/ProximityAngle"               type="string"   value="65" />      <!-- maximum angle (degrees) for visual proximity detection.-->
       <param name="RGBD/ProximityMaxPaths"            type="string"   value="5" />       <!-- Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit -->
-      <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="1" />       <!-- path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection -->
+      <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="0.5" />       <!-- path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection -->
       <param name="RGBD/ProximityPathMaxNeighbors"    type="string"   value="50"/>       <!-- Maximum neighbor nodes compared on each path. -->
       <param name="RGBD/ProximityOdomGuess"           type="string"   value="true" />
       <param name="RGBD/ProximityBySpace"             type="string"   value="true"/>     <!-- Local loop closure detection (using estimated position) with locations in WM -->
@@ -491,6 +492,7 @@
       <param name="GTSAM/Optimizer"    type="string" value="0" />
 
       <!-- APL: added Rtabmap ros configuration parameters -->   
+      <param name="depth_Filters"             type="bool" value="$(arg depth_Filters)"/>  
       <param name="tf_delay"                  type="double" value="$(arg tf_delay)"/>  
       <param name="map_always_update"         type="bool"   value="$(arg map_always_update)"/>
 
