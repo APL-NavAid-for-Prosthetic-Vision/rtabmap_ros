@@ -444,7 +444,7 @@
       <!-- Local/Proximity loop closure detection -->
       <param name="RGBD/ProximityAngle"               type="string"   value="65" />      <!-- maximum angle (degrees) for visual proximity detection.-->
       <param name="RGBD/ProximityMaxPaths"            type="string"   value="5" />       <!-- Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit -->
-      <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="0.5" />       <!-- path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection -->
+      <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="0.05" />       <!-- path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection -->
       <param name="RGBD/ProximityPathMaxNeighbors"    type="string"   value="50"/>       <!-- Maximum neighbor nodes compared on each path. -->
       <param name="RGBD/ProximityOdomGuess"           type="string"   value="true" />
       <param name="RGBD/ProximityBySpace"             type="string"   value="true"/>     <!-- Local loop closure detection (using estimated position) with locations in WM -->
@@ -453,12 +453,13 @@
 
       <param name="Vis/FeatureType"     type="string" value="8" />
       <param name="Vis/MaxDepth"        type="string" value="10.0" />
-      <param name="Vis/MinInliers"      type="string" value="20.0" />
+      <param name="Vis/MinInliers"      type="string" value="20" />
       <param name="Vis/CorGuessWinSize" type="string" value="30" />
       <param name="Vis/MaxFeatures"     type="string" value="1000" />
       
       <param name="GridGlobal/MaxNodes"       type="string" value="$(arg max_nodes)"/>
-
+      <!-- <param name="GridGlobal/FullUpdate"     type="string"  value="true" /> -->
+      
       <param if="$(arg subscribe_rgbd_semantic_detection)" name="Grid/EnableSemanticSegmentation" type="bool" value="true"/>
       <param name="Grid/FromDepth"                  type="string"   value="true"/> <!-- Create occupancy grid from depth image(s) -->
       <param name="Grid/3D"                         type="string"   value="true"/>
