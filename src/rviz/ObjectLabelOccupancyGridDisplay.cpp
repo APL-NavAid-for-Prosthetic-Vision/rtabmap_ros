@@ -37,7 +37,7 @@
 
 #include <QObject>
 
-#include <rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h>
+#include "rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h"
 
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -198,6 +198,16 @@ ObjectLabelOccupancyGridDisplay::~ObjectLabelOccupancyGridDisplay()
 
     if (scene_node_)
         scene_node_->detachAllObjects();
+
+    delete queue_size_property_;
+    delete octomap_topic_property_;
+    delete octree_render_property_;
+    delete octree_coloring_property_;
+    delete tree_depth_property_;
+    delete alpha_property_;
+    delete max_height_property_;
+    delete min_height_property_;
+    delete octomap_mode_property_;
 }
 
 
@@ -498,7 +508,6 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
     }
 
     ROS_DEBUG("Received OctomapBinary message (size: %d bytes)", (int)msg->data.size());
-    //ROS_INFO("Received OctomapBinary message (size: %d bytes)", (int)msg->data.size());
 
     header_ = msg->header;
     if (!updateFromTF()) 
@@ -511,12 +520,11 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
     }
 
     // creating octree
-    //OcTreeType* octomap = NULL;
     rtabmap::RtabmapAPLColorOcTree* octomap = NULL;
 
     if(octomap_mode_property_->getOptionInt() == OctoMapMSGMode::Full_Map_Mode)
     {
-        ROS_INFO(" OctoMap Msg Mode: Full_Map_Mode");
+        //ROS_INFO(" OctoMap Msg Mode: Full_Map_Mode");
         octomap = new rtabmap::RtabmapAPLColorOcTree(msg->resolution);
 
         if(octomap)
@@ -528,12 +536,10 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
                 octomap->readData(datastream);
             }
         }
-
-        // TODO check octomap read the correct data
     }
     else
     {
-        ROS_INFO(" OctoMap Msg Mode: Binary_Map_Mode");
+        //ROS_INFO(" OctoMap Msg Mode: Binary_Map_Mode");
         // Binary Octomap
         octomap::AbstractOcTree* tree;
         rtabmap::RtabmapAPLColorOcTree* octree = new rtabmap::RtabmapAPLColorOcTree(msg->resolution);

@@ -76,7 +76,6 @@
   <run_depend>move_base_msgs</run_depend>
   <run_depend>costmap_2d</run_depend>
   <run_depend>octomap_msgs</run_depend>
-  <run_depend>octomap_rviz_plugins</run_depend>
   <run_depend>image_geometry</run_depend>
   <run_depend>find_object_2d</run_depend>
   <run_depend>message_runtime</run_depend>
@@ -91,10 +90,9 @@
 
 
   <export>
-	<nodelet plugin="${prefix}/nodelet_plugins.xml" />
-	<rviz plugin="${prefix}/repository/rtabmap_ros/rviz_plugins.xml"/>
-  <rviz plugin="${prefix}/rviz_plugins.xml"/>
-	<costmap_2d plugin="${prefix}/repository/rtabmap_ros/costmap_plugins.xml"/>
+	  <nodelet plugin="${prefix}/nodelet_plugins.xml" />
+    <rviz plugin="${prefix}/rviz_plugins.xml"/>
+	  <costmap_2d plugin="${prefix}/repository/rtabmap_ros/costmap_plugins.xml"/>
   </export>
   
 </package>

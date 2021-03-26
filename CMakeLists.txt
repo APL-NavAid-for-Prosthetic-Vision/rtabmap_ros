@@ -38,6 +38,8 @@ message(STATUS "rtabmap_apl_INCLUDE_DIRS=${rtabmap_apl_INCLUDE_DIRS}")
 message(STATUS "rtabmap_apl_LIBRARIES=${rtabmap_apl_LIBRARIES}")
 
 find_package(OpenCV 3.4.10 REQUIRED)
+message(STATUS "OpenCV_INCLUDE_DIRS=${OpenCV_INCLUDE_DIRS}")
+message(STATUS "OpenCV_LIBRARIES=${OpenCV_LIBRARIES}")
 
 option(RTABMAP_GUI "rtabmap_apl library librtabmap_gui.so" OFF)
 
@@ -190,12 +192,12 @@ IF(find_object_2d_FOUND)
 ENDIF(find_object_2d_FOUND)
 
 catkin_package(
-  INCLUDE_DIRS ${RTABMAP_ROS_PATH}/include
+  INCLUDE_DIRS ${RTABMAP_ROS_PATH}/include include
   LIBRARIES rtabmap_ros rtabmap_sync rtabmap_plugins
   CATKIN_DEPENDS cv_bridge roscpp rospy sensor_msgs std_msgs std_srvs nav_msgs geometry_msgs visualization_msgs
                  image_transport tf tf_conversions tf2_ros eigen_conversions laser_geometry pcl_conversions 
-                 pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs 
-                 stereo_msgs move_base_msgs image_geometry ${optional_dependencies} objectrecognition
+                 pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs pluginlib
+                 stereo_msgs move_base_msgs image_geometry ${optional_dependencies} objectrecognition 
   DEPENDS rtabmap_apl OpenCV
 )
 
@@ -525,23 +527,24 @@ IF(rviz_FOUND)
    IF(QT4_FOUND)
       qt4_wrap_cpp(MOC_FILES_APL
          include/rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h 
-         OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED -DBOOST_LEXICAL_CAST_INCLUDED 
+         include/rtabmap_ros/rviz/TableSemanticsPanel.h 
       )
    ELSE()
       qt5_wrap_cpp(MOC_FILES_APL
          include/rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h
-         OPTIONS -DBOOST_TT_HAS_OPERATOR_HPP_INCLUDED -DBOOST_LEXICAL_CAST_INCLUDED 
+         include/rtabmap_ros/rviz/TableSemanticsPanel.h  
       )
-   ENDIF(QT4_FOUND)
+   ENDIF()
 
    set_property(
-      SOURCE  src/rviz/ObjectLabelOccupancyGridDisplay.cpp
+      SOURCE  src/rviz/ObjectLabelOccupancyGridDisplay.cpp src/rviz/TablePanel.cpp 
       PROPERTY COMPILE_DEFINITIONS QT_NO_KEYWORDS
    )
 
    SET(SRC_FILES
       ${SRC_FILES}
       src/rviz/ObjectLabelOccupancyGridDisplay.cpp
+      src/rviz/TableSemanticsPanel.cpp
       ${MOC_FILES_APL}
    )
    ENDIF(octomap_msgs_FOUND)
@@ -630,7 +633,7 @@ IF(RTABMAP_GUI)
 ENDIF(RTABMAP_GUI)
 
 ## Mark cpp header files for installation
-install(DIRECTORY ${RTABMAP_ROS_PATH}/include/${PROJECT_NAME}/
+install(DIRECTORY ${RTABMAP_ROS_PATH}/include/${PROJECT_NAME} include/${PROJECT_NAME}
    DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
    FILES_MATCHING PATTERN "*.h"
    PATTERN ".svn" EXCLUDE
@@ -638,17 +641,17 @@ install(DIRECTORY ${RTABMAP_ROS_PATH}/include/${PROJECT_NAME}/
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
-   ${RTABMAP_ROS_PATH}/launch/rtabmap.launch
-   ${RTABMAP_ROS_PATH}/launch/rgbd_mapping.launch
-   ${RTABMAP_ROS_PATH}/launch/stereo_mapping.launch
-   ${RTABMAP_ROS_PATH}/launch/data_recorder.launch
-   ${RTABMAP_ROS_PATH}/launch/rgbd_mapping_kinect2.launch
+   launch/rtabmap.launch
+   #${RTABMAP_ROS_PATH}/launch/rgbd_mapping.launch
+   #${RTABMAP_ROS_PATH}/launch/stereo_mapping.launch
+   #${RTABMAP_ROS_PATH}/launch/data_recorder.launch
+   #${RTABMAP_ROS_PATH}/launch/rgbd_mapping_kinect2.launch
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 install(DIRECTORY 
-   ${RTABMAP_ROS_PATH}/launch/config
-   ${RTABMAP_ROS_PATH}/launch/data
-   ${RTABMAP_ROS_PATH}/launch/demo
+   launch/config
+   #${RTABMAP_ROS_PATH}/launch/data
+   #${RTABMAP_ROS_PATH}/launch/demo
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
@@ -665,7 +668,7 @@ IF(rviz_FOUND)
        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
      )
     install(FILES
-      ${RTABMAP_ROS_PATH}/rviz_plugins.xml
+      rviz_plugins.xml
       DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
     )
 ENDIF(rviz_FOUND)
