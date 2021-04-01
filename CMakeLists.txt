@@ -139,6 +139,8 @@ add_message_files(
    DIRECTORY msg
    FILES
    RGBDSemanticDetection.msg
+   SemanticClassIdElement.msg 
+   SemanticClassIdMap.msg
 )
 
 ## Generate services in the 'srv' folder

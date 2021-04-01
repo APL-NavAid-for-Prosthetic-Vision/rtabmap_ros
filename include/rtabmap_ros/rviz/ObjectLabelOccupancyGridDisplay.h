@@ -53,7 +53,10 @@
 #include <rviz/display.h>
 #include <rviz/ogre_helpers/point_cloud.h>
 
-#include <rtabmap/core/SemanticOctoMap.h>
+#include <opencv2/core/types.hpp>
+
+#include <map>
+#include <utility>
 
 #endif
 
@@ -110,6 +113,7 @@ protected:
   typedef std::vector<VPoint> VVPoint;
 
   boost::shared_ptr<message_filters::Subscriber<octomap_msgs::Octomap> > sub_;
+  ros::Publisher semanticClassIdMap_pub_;
 
   boost::mutex mutex_;
   
@@ -147,7 +151,12 @@ protected:
   void setVoxelColor(rviz::PointCloud::Point& newPoint, typename OcTreeType::NodeType& node, double minZ, double maxZ);
   ///Returns false, if the type_id (of the message) does not correspond to the template paramter
   ///of this class, true if correct or unknown (i.e., no specialized method for that template).
-  bool checkType(std::string type_id);    
+  bool checkType(std::string type_id);
+  void updateClassIdTable(typename OcTreeType::NodeType& node);
+  void publishMsgs();
+
+  std::map<unsigned int, std::pair< int, cv::Point3f> > semanticClassIdMap_; // [label id : {OccupancyType, maskColor}]
+
 };
 
 } // namespace rtabmap_ros

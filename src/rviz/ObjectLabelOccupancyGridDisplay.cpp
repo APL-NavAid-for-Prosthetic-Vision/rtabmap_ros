@@ -38,6 +38,8 @@
 #include <QObject>
 
 #include "rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h"
+#include <rtabmap_ros/SemanticClassIdElement.h>
+#include <rtabmap_ros/SemanticClassIdMap.h>
 
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -163,6 +165,11 @@ ObjectLabelOccupancyGridDisplay::ObjectLabelOccupancyGridDisplay() :
                                             "Defines the minimum height to display",
                                             this,
                                             SLOT (updateMinHeight() ));
+
+    // ros publisher (message to Rviz panel)
+    ros::NodeHandle panel_nh(update_nh_, "semantic_panel"); 
+    semanticClassIdMap_pub_ = panel_nh.advertise<rtabmap_ros::SemanticClassIdMap>("semantic_classid_map", 1);
+
 }
 
 void ObjectLabelOccupancyGridDisplay::onInitialize()
@@ -473,11 +480,34 @@ void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::s
             break;
         case OCTOMAP_CELL_CLASS_MASK_COLOR:
             maskColor = node.getMaskColor();
-            newPoint.setColor(maskColor.x, maskColor.y, maskColor.z);
+            newPoint.setColor(maskColor.x/255.0, maskColor.y/255.0, maskColor.z/255.0);
             break;
         default:
             break;
   }
+}
+
+template <>
+void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::updateClassIdTable(rtabmap::RtabmapAPLColorOcTree::NodeType& node)
+{
+    std::map<unsigned int, std::pair< int, cv::Point3f> >::iterator sematicClassIsMapIter; 
+    OctreeVoxelColorMode octree_color_mode = static_cast<OctreeVoxelColorMode>(octree_coloring_property_->getOptionInt());
+    switch (octree_color_mode)
+    {
+        case OCTOMAP_CELL_CLASS_MASK_COLOR:
+            
+            // update map by checking if it already in the map
+            sematicClassIsMapIter = semanticClassIdMap_.find(node.getClassLabel());
+            if (sematicClassIsMapIter == semanticClassIdMap_.end()) 
+            {
+                // class label id in map was not found, adding it to map
+                semanticClassIdMap_.insert({node.getClassLabel(), {node.getOccupancyType(), node.getMaskColor()}});
+            }
+            break;
+        default:
+            break;
+    }
+
 }
 
 bool ObjectLabelOccupancyGridDisplay::updateFromTF()
@@ -493,6 +523,29 @@ bool ObjectLabelOccupancyGridDisplay::updateFromTF()
     scene_node_->setOrientation(orient);
     scene_node_->setPosition(pos);
     return true;
+}
+
+template <>
+void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::publishMsgs() 
+{
+    if(semanticClassIdMap_pub_.getNumSubscribers())
+    {
+        rtabmap_ros::SemanticClassIdMap classIdMapMsg;
+
+        for(const auto& semanticClassIdElement : semanticClassIdMap_)
+        {
+            rtabmap_ros::SemanticClassIdElement classIdElementMsg;
+            classIdElementMsg.labelId = semanticClassIdElement.first;
+            classIdElementMsg.occupancyType = semanticClassIdElement.second.first;
+            classIdElementMsg.red = semanticClassIdElement.second.second.x;
+            classIdElementMsg.green = semanticClassIdElement.second.second.y;
+            classIdElementMsg.blue = semanticClassIdElement.second.second.z;
+
+            classIdMapMsg.classIdElements.push_back(classIdElementMsg);
+
+        }
+        semanticClassIdMap_pub_.publish(classIdMapMsg);
+    }
 }
 
 template <typename OcTreeType>
@@ -649,9 +702,8 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
                     newPoint.position.y = it.getY();
                     newPoint.position.z = it.getZ();
 
-
-
                     setVoxelColor(newPoint, *it, minZ, maxZ);
+                    updateClassIdTable(*it);
                     // push to point vectors
                     unsigned int depth = it.getDepth();
                     point_buf_[depth - 1].push_back(newPoint);
@@ -662,6 +714,10 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
             }
         }
     }
+
+    // publish internal message to panel
+    publishMsgs();
+    
 
     if (pointCount)
     {
