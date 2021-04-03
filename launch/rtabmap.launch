@@ -71,6 +71,7 @@
   <arg name="model_classes_file_path"                    default="" />
   <arg name="orb_cuda"                                   default="true" />
   <arg name="depth_Filters"                              default="true"/>
+  <arg name="publish_semantic_mask"                      default="true"/>
   <!-- JHU APL : end -->
 
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
@@ -498,9 +499,8 @@
       <param name="map_always_update"         type="bool"   value="$(arg map_always_update)"/>
 
       <param name="model_classes_file_path"  type="string" value="$(arg model_classes_file_path)" />
+      <param name="publish_semantic_mask"    type="bool"   value="$(arg publish_semantic_mask)" />
       
-
-
     </node>
   
     <!-- Visualisation RTAB-Map -->

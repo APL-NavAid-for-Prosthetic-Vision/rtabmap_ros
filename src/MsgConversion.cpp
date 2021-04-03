@@ -239,8 +239,8 @@ bool cvImageConstPtrToCvMat(const std::vector<cv_bridge::CvImageConstPtr> & cvBr
 	for(unsigned int i=0; i<cvBridgeImageMsgs.size(); ++i)
 	{
 		if(!(cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) == 0 ||
-			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO8) ==0 ||
-			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO16) ==0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO8) == 0 ||
+			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO16) == 0 ||
 			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0 ||
 			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::RGB8) == 0 ||
 			 cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGRA8) == 0 ||
@@ -254,7 +254,7 @@ bool cvImageConstPtrToCvMat(const std::vector<cv_bridge::CvImageConstPtr> & cvBr
 		}
 
 		cv_bridge::CvImageConstPtr ptrImage = cvBridgeImageMsgs[i];
-		if(cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1)==0 ||
+		if(cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::TYPE_8UC1) == 0 ||
 		   cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::MONO8) == 0 ||
 		   cvBridgeImageMsgs[i]->encoding.compare(sensor_msgs::image_encodings::BGR8) == 0)
 		{

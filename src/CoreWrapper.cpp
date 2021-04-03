@@ -66,6 +66,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <image_transport/image_transport.h>
 #include <opencv2/imgproc/types_c.h>
+#include <opencv2/imgproc.hpp>
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
@@ -1196,7 +1197,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 		return;
 	}
 
-	// semantic mask matrix (8UC1) corresponds to the class number identifier
+	// semantic mask matrix corresponds to the class number identifier
 	// it assumes that the size does not reflect rgb image size 
 	// it assumes the input rgb has been rectified 
 	cv::Mat semanticMask, semanticMaskResized;
@@ -1206,14 +1207,22 @@ void CoreWrapper::commonDepthCallbackImpl(
 		return;
 	}
 	// resizing the semantic mask to correspond the rgb input image size 
+	if(semanticMask.rows != rgb.rows ||
+		semanticMask.cols != rgb.cols ) 
+	{
 #ifdef OPENCV_CUDA
-	cv::cuda::GpuMat semanticMaskGpu(semanticMask), semanticMaskResizedGpu;
-	cv::cuda::resize(semanticMaskGpu, semanticMaskResizedGpu, cv::Size(rgb.cols, rgb.rows));
-	semanticMaskResizedGpu.download(semanticMaskResized);
+		cv::cuda::GpuMat semanticMaskGpu(semanticMask), semanticMaskResizedGpu;
+		cv::cuda::resize(semanticMaskGpu, semanticMaskResizedGpu, cv::Size(rgb.cols, rgb.rows), cv::INTER_NEAREST);
+		semanticMaskResizedGpu.download(semanticMaskResized);
 #else
-	cv::resize(semanticMask, semanticMaskResized, cv::Size(rgb.cols, rgb.rows));
+		cv::resize(semanticMask, semanticMaskResized, cv::Size(rgb.cols, rgb.rows), cv::INTER_NEAREST);
 #endif
-		
+	}
+	else 
+	{
+		semanticMaskResized = semanticMask;
+	}
+
 	UASSERT(uContains(parameters_, rtabmap::Parameters::kMemSaveDepth16Format()));
 	if(!depth.empty() && depth.type() == CV_32FC1 && uStr2Bool(parameters_.at(Parameters::kMemSaveDepth16Format())))
 	{
@@ -2332,6 +2341,8 @@ void CoreWrapper::process(
 				{
 					// publish maps in semantic segmentation mode
 					mapsManager_.publishAPLMaps(filteredPoses, stamp, mapFrameId_);	
+					// publish the newest semantic mask added to map
+					mapsManager_.publishSemanticMask(data);
 				}
 				
 				// update goal if planning is enabled

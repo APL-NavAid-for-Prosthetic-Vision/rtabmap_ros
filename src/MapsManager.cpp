@@ -46,6 +46,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <nav_msgs/OccupancyGrid.h>
 #include <ros/ros.h>
+#include <sensor_msgs/Image.h>
+#include <cv_bridge/cv_bridge.h>
 
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -80,7 +82,8 @@ MapsManager::MapsManager() :
 		octomapTreeDepth_(16),
 		octomapUpdated_(true),
 		latching_(true),
-		semanticSegmentationEnable_(false)
+		semanticSegmentationEnable_(false),
+		publishSemanticMask_(false)
 {
 }
 
@@ -143,6 +146,13 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	ROS_INFO("%s(maps): Grid/EnableSemanticSegmentation = %s", name.c_str(), semanticSegmentationEnable_?"true":"false");
 	ROS_INFO("%s(maps): model_classes_file_path = %s", name.c_str(), semanticSegmentationModelFilePath_.empty()?"NOT_PATH":
 				semanticSegmentationModelFilePath_.c_str());
+	pnh.param("publish_semantic_mask", publishSemanticMask_, publishSemanticMask_);
+	if(publishSemanticMask_)
+	{
+		ros::NodeHandle semantic_nh(nh, "semantic");
+		image_transport::ImageTransport semantic_it(semantic_nh);
+		semanticMaskPub_ = semantic_it.advertise("image_mask", 1);
+	}
 	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
@@ -669,7 +679,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
 					if(iter->first > 0)
 					{
-						cv::Mat rgb, depth;
+						cv::Mat rgb, depth, semanticMask;
 						bool generateGrid = data.gridCellSize() == 0.0f;
 						static bool warningShown = false;
 						if(occupancySavedInDB && generateGrid && !warningShown)
@@ -694,6 +704,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 						data.uncompressData(
 								occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
 								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
+								semanticSegmentationEnable_?&semanticMask:0,
 								generateGrid?0:&obstaclesCellsMap,
 								generateGrid?0:&emptyCells);
 												
@@ -726,12 +737,13 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 							occupancyGrid_->parseParameters(parameters);
 						}
 
-						cv::Mat rgb, depth;
+						cv::Mat rgb, depth, semanticMask;
 						bool generateGrid = data.gridCellSize() == 0.0f || (unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_);
 						
 						data.uncompressData(
 								occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
 								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
+								semanticSegmentationEnable_?&semanticMask:0,
 								generateGrid?0:&obstaclesCellsMap,
 								generateGrid?0:&emptyCells);
 						
@@ -1894,6 +1906,62 @@ void MapsManager::publishAPLMaps(
 	{
 		gridAPLMaps_.clear();
 		gridMapsViewpoints_.clear();
+	}
+
+}
+
+void MapsManager::publishSemanticMask(rtabmap::SensorData & data)
+{
+	if(semanticMaskPub_.getNumSubscribers())
+	{
+		cv::Mat semanticMask = data.imageSemanticMaskRaw();
+		if(semanticMask.empty()) 
+		{
+			ROS_ERROR("semantic mask is empty!! ");
+			return;
+		}
+
+		if(semanticMask.channels() != 1)
+		{
+			ROS_ERROR("semantic mask should have the label number in only one channel");
+			return;
+		}
+
+		std::vector<rtabmap::CameraModel> cameraModels = data.cameraModels();
+		// This function only supports for one camera model
+		if (cameraModels.size() > 1)
+		{
+			ROS_ERROR("publishing semantic mask only supports one camera model");
+			return;
+		}
+
+		std::map<unsigned int, cv::Point3f> classIDSemanticMaskMap;
+		semanticOctomap_->getMaskIdColorMap(classIDSemanticMaskMap);
+
+		// apply maskcolor to semantic mask image
+		cv::Mat semanticMaskImage = cv::Mat::zeros(semanticMask.rows, semanticMask.cols, CV_8UC3);
+		typedef cv::Point3_<uint8_t> Pixel;
+
+		// Enable TBB in OPENCV for multi-thread processing.
+		semanticMaskImage.forEach<Pixel>
+		(	[&classIDSemanticMaskMap, &semanticMask](Pixel & pixel, const int * position) -> void 
+			{
+				// x (rows)-> position[0] ; y (cols)-> position[1]
+				unsigned int classId = semanticMask.at<unsigned char>(position[0], position[1]);
+				std::map<unsigned int, cv::Point3f>::iterator classIDSemanticMaskMapIter = classIDSemanticMaskMap.find(classId);
+				if(classIDSemanticMaskMapIter != classIDSemanticMaskMap.end())
+				{
+					// classIDSemanticMaskMap is in RGB but ROS needs it in  BGR
+					// (b,g,r) = (r,g,b) <==> (z,y,x) <==> (x,y,z)
+					pixel.z = classIDSemanticMaskMapIter->second.x;
+					pixel.y = classIDSemanticMaskMapIter->second.y;
+					pixel.x = classIDSemanticMaskMapIter->second.z;
+				}
+			}
+		); 
+
+		sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", semanticMaskImage).toImageMsg();
+		semanticMaskPub_.publish(msg);
 	}
 
 }

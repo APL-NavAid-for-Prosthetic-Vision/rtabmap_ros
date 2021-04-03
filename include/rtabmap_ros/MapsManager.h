@@ -39,6 +39,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ros/time.h>
 #include <ros/publisher.h>
 
+#include <image_transport/image_transport.h>
+
 namespace rtabmap {
 class OctoMap;
 class SemanticOctoMap;
@@ -93,6 +95,8 @@ public:
 	void publishAPLMaps(const std::map<int, rtabmap::Transform> & poses,
 						const ros::Time & stamp,
 						const std::string & mapFrameId);
+
+	void publishSemanticMask(rtabmap::SensorData & data);
 	
 	// JHUAPL section end
 
@@ -155,6 +159,9 @@ private:
 	bool semanticSegmentationEnable_;
 	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> > gridAPLMaps_; // < map<class label, obstacle>, empty cells >
 	std::string semanticSegmentationModelFilePath_;
+	bool publishSemanticMask_;
+	image_transport::Publisher semanticMaskPub_;
+
 	// JHUAPL section end
 };
 
