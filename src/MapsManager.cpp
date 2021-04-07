@@ -1940,22 +1940,21 @@ void MapsManager::publishSemanticMask(rtabmap::SensorData & data)
 
 		// apply maskcolor to semantic mask image
 		cv::Mat semanticMaskImage = cv::Mat::zeros(semanticMask.rows, semanticMask.cols, CV_8UC3);
-		typedef cv::Point3_<uint8_t> Pixel;
 
 		// Enable TBB in OPENCV for multi-thread processing.
-		semanticMaskImage.forEach<Pixel>
-		(	[&classIDSemanticMaskMap, &semanticMask](Pixel & pixel, const int * position) -> void 
+		semanticMaskImage.forEach<cv::Vec3b>
+		(	[&classIDSemanticMaskMap, &semanticMask](cv::Vec3b & pixel, const int * position) -> void 
 			{
 				// x (rows)-> position[0] ; y (cols)-> position[1]
-				unsigned int classId = semanticMask.at<unsigned char>(position[0], position[1]);
+				unsigned int classId = semanticMask.at<uint8_t>(position[0], position[1]);
 				std::map<unsigned int, cv::Point3f>::iterator classIDSemanticMaskMapIter = classIDSemanticMaskMap.find(classId);
 				if(classIDSemanticMaskMapIter != classIDSemanticMaskMap.end())
 				{
 					// classIDSemanticMaskMap is in RGB but ROS needs it in  BGR
 					// (b,g,r) = (r,g,b) <==> (z,y,x) <==> (x,y,z)
-					pixel.z = classIDSemanticMaskMapIter->second.x;
-					pixel.y = classIDSemanticMaskMapIter->second.y;
-					pixel.x = classIDSemanticMaskMapIter->second.z;
+					pixel[0] = (uint8_t) classIDSemanticMaskMapIter->second.z; // blue
+					pixel[1] = (uint8_t) classIDSemanticMaskMapIter->second.y; // green
+					pixel[2] = (uint8_t) classIDSemanticMaskMapIter->second.x; // red
 				}
 			}
 		); 
