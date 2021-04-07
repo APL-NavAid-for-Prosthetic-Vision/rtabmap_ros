@@ -181,6 +181,11 @@ private:
 			  const sensor_msgs::CameraInfoConstPtr& cameraInfo)
 	{
 		callbackCalled_ = true;
+		if(timeLastPublished_.toSec() == 0.0)
+		{
+			timeLastPublished_ = ros::Time::now();
+		}
+
 		if(rgbdSemanticDetectionPub_.getNumSubscribers())
 		{
 			double rgbStamp = image->header.stamp.toSec();
@@ -252,7 +257,8 @@ private:
 				objRecognitionSemanticDetectionClient_.call(objRecognSegImgMsg);
 				
 				double elapse_time = ros::Time::now().toSec() - start_time.toSec();
-				ROS_DEBUG("object recognition client: elapse_time= %f", elapse_time);
+				ROS_DEBUG("object recognition client call: elapse_time= %f", elapse_time);
+
 				if (objRecognSegImgMsg.response.output.data.empty())
 				{
 					NODELET_WARN(" rgbd_semantic_detection-sync.cpp :: Failed to recieve the semantic segmentation from object recognition node");
@@ -271,6 +277,8 @@ private:
 										 
 					// publish RGBDSemanticDetection
 					rgbdSemanticDetectionPub_.publish(msg);
+					elapse_time = ros::Time::now().toSec() - timeLastPublished_.toSec();
+					ROS_INFO("RGBD semantic Msg: elapse_time= %f (frq:%.2f Hz)", elapse_time, 1/elapse_time);
 				}	
 			}
 
@@ -283,17 +291,18 @@ private:
 						rgbStamp, image->header.stamp.toSec(),
 						depthStamp, depth->header.stamp.toSec());
 			}
+
+			timeLastPublished_ = ros::Time::now();
 		}
 	}
 
 private:
 	double depthScale_;
 	int decimation_;
-	//double compressedRate_;
 	boost::thread * warningThread_;
 	bool callbackCalled_;
 
-	ros::Time lastCompressedPublished_;
+	ros::Time timeLastPublished_;
 
 	ros::Publisher rgbdSemanticDetectionPub_;
 	ros::ServiceClient objRecognitionSemanticDetectionClient_;
