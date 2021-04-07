@@ -127,6 +127,14 @@
       This is my nodelet.
     </description>
   </class>
+
+  <class name="rtabmap_ros/rgbd_semantic_detection_sync"
+         type="rtabmap_ros::RGBDSemanticDetectionSync" 
+         base_class_type="nodelet::Nodelet">
+    <description>
+      This is my nodelet.
+    </description>
+  </class>
   
   <class name="rtabmap_ros/rgbd_relay" 
          type="rtabmap_ros::RGBDRelay" 

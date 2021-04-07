@@ -19,8 +19,10 @@ find_package(catkin REQUIRED COMPONENTS
              cv_bridge roscpp rospy sensor_msgs std_msgs std_srvs nav_msgs geometry_msgs visualization_msgs
              image_transport tf tf_conversions tf2_ros eigen_conversions laser_geometry pcl_conversions 
              pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs
-             genmsg stereo_msgs move_base_msgs image_geometry pluginlib 
+             genmsg stereo_msgs move_base_msgs image_geometry pluginlib objectrecognition
 )
+
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /usr/local/rtabmap_apl/lib/cmake/rtabmap_apl)
 
 # Optional components
 find_package(costmap_2d)
@@ -36,6 +38,8 @@ message(STATUS "rtabmap_apl_INCLUDE_DIRS=${rtabmap_apl_INCLUDE_DIRS}")
 message(STATUS "rtabmap_apl_LIBRARIES=${rtabmap_apl_LIBRARIES}")
 
 find_package(OpenCV 3.4.10 REQUIRED)
+message(STATUS "OpenCV_INCLUDE_DIRS=${OpenCV_INCLUDE_DIRS}")
+message(STATUS "OpenCV_LIBRARIES=${OpenCV_LIBRARIES}")
 
 option(RTABMAP_GUI "rtabmap_apl library librtabmap_gui.so" OFF)
 
@@ -60,6 +64,24 @@ ENDIF(RTABMAP_SYNC_MULTI_RGBD)
 IF(RTABMAP_SYNC_USER_DATA)
 add_definitions("-DRTABMAP_SYNC_USER_DATA")
 ENDIF(RTABMAP_SYNC_USER_DATA)
+
+option(OPENCV_CUDA "Build with OPENCV CUDA support" OFF)
+IF(OPENCV_CUDA)
+add_definitions("-DOPENCV_CUDA")
+ENDIF(OPENCV_CUDA)
+
+option(WITH_YAMLCPP "Include Yaml-cpp for parsing model file class architecture"  OFF)
+
+if(WITH_YAMLCPP)
+   find_package(yaml-cpp QUIET)  
+   if(yaml-cpp_FOUND)
+      find_library(YAML_CPP_LIBRARIES_PATH
+         ${YAML_CPP_LIBRARIES}
+      )
+      message(STATUS "FOUND yaml-cpp: ${YAML_CPP_LIBRARIES_PATH}")
+      add_definitions("-DWITH_YAMLCPP")
+   endif(yaml-cpp_FOUND)
+endif(WITH_YAMLCPP)
 
 #Qt stuff
 # If librtabmap_gui.so is found, rtabmapviz will be built
@@ -113,6 +135,14 @@ add_message_files(
    Path.msg
 )
 
+add_message_files(
+   DIRECTORY msg
+   FILES
+   RGBDSemanticDetection.msg
+   SemanticClassIdElement.msg 
+   SemanticClassIdMap.msg
+)
+
 ## Generate services in the 'srv' folder
  add_service_files(
    DIRECTORY ${RTABMAP_ROS_PATH}/srv
@@ -164,12 +194,12 @@ IF(find_object_2d_FOUND)
 ENDIF(find_object_2d_FOUND)
 
 catkin_package(
-  INCLUDE_DIRS ${RTABMAP_ROS_PATH}/include
+  INCLUDE_DIRS ${RTABMAP_ROS_PATH}/include include
   LIBRARIES rtabmap_ros rtabmap_sync rtabmap_plugins
   CATKIN_DEPENDS cv_bridge roscpp rospy sensor_msgs std_msgs std_srvs nav_msgs geometry_msgs visualization_msgs
                  image_transport tf tf_conversions tf2_ros eigen_conversions laser_geometry pcl_conversions 
-                 pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs 
-                 stereo_msgs move_base_msgs image_geometry ${optional_dependencies} 
+                 pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs pluginlib
+                 stereo_msgs move_base_msgs image_geometry ${optional_dependencies} objectrecognition 
   DEPENDS rtabmap_apl OpenCV
 )
 
@@ -181,11 +211,12 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  ${RTABMAP_ROS_PATH}/include
-  ${rtabmap_apl_INCLUDE_DIRS}          
-  ${OpenCV_INCLUDE_DIRS}
-  ${PCL_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
+   include
+   ${RTABMAP_ROS_PATH}/include
+   ${rtabmap_apl_INCLUDE_DIRS}          
+   ${OpenCV_INCLUDE_DIRS}
+   ${PCL_INCLUDE_DIRS}
+   ${catkin_INCLUDE_DIRS}
 )
 
 # libraries
@@ -197,14 +228,17 @@ SET(Libraries
 )
  
 SET(rtabmap_sync_lib_src
-   ${RTABMAP_ROS_PATH}/src/CommonDataSubscriber.cpp
+   #${RTABMAP_ROS_PATH}/src/CommonDataSubscriber.cpp
+   src/CommonDataSubscriber.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberDepth.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberStereo.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberRGB.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberRGBD.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberScan.cpp
    ${RTABMAP_ROS_PATH}/src/impl/CommonDataSubscriberOdom.cpp
-   ${RTABMAP_ROS_PATH}/src/CoreWrapper.cpp # we put CoreWrapper here instead of plugins lib to avoid long compilation time on plugins lib
+   src/impl/CommonDataSubscriberRGBDSemanticDetection.cpp
+   #${RTABMAP_ROS_PATH}/src/CoreWrapper.cpp # we put CoreWrapper here instead of plugins lib to avoid long compilation time on plugins lib
+   src/CoreWrapper.cpp
 )
 IF(RTABMAP_SYNC_MULTI_RGBD)
   SET(rtabmap_sync_lib_src
@@ -216,10 +250,13 @@ IF(RTABMAP_SYNC_MULTI_RGBD)
 ENDIF(RTABMAP_SYNC_MULTI_RGBD)
   
 SET(rtabmap_ros_lib_src
-   ${RTABMAP_ROS_PATH}/src/MsgConversion.cpp
-   ${RTABMAP_ROS_PATH}/src/MapsManager.cpp
+   #${RTABMAP_ROS_PATH}/src/MsgConversion.cpp
+   #${RTABMAP_ROS_PATH}/src/MapsManager.cpp
+   src/MsgConversion.cpp
+   src/MapsManager.cpp
    ${RTABMAP_ROS_PATH}/src/OdometryROS.cpp
    ${RTABMAP_ROS_PATH}/src/PluginInterface.cpp
+   src/utils_mapping.cpp
 )
   
 SET(rtabmap_plugins_lib_src
@@ -248,7 +285,8 @@ IF(${cv_bridge_VERSION_MAJOR} GREATER 1 OR ${cv_bridge_VERSION_MINOR} GREATER 10
    ${rtabmap_plugins_lib_src} 
    ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_sync.cpp 
    ${RTABMAP_ROS_PATH}/src/nodelets/stereo_sync.cpp 
-   ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_relay.cpp)
+   ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_relay.cpp
+   src/nodelets/rgbd_semantic_detection_sync.cpp)
 ELSE()
    ADD_DEFINITIONS("-DCV_BRIDGE_HYDRO")
 ENDIF()   
@@ -278,6 +316,16 @@ SET(Libraries
 )
 ADD_DEFINITIONS("-DWITH_APRILTAG_ROS")
 ENDIF(apriltag_ros_FOUND)
+
+if(yaml-cpp_FOUND)
+   include_directories(
+      ${YAML_CPP_INCLUDE_DIR}
+   )
+   set(Libraries
+      ${YAML_CPP_LIBRARIES}
+      ${Libraries}
+   )
+endif(yaml-cpp_FOUND)
 
 ############################
 ## Declare a cpp library
@@ -475,18 +523,46 @@ IF(rviz_FOUND)
 	    ${SRC_FILES} 
        ${RTABMAP_ROS_PATH}/src/rviz/OrbitOrientedViewController.cpp
 	  )
-	ENDIF(NOT WIN32)
-    add_library(rtabmap_rviz_plugins
-       ${SRC_FILES}
-    )
-    target_link_libraries(rtabmap_rviz_plugins
+   ENDIF(NOT WIN32)
+   
+   IF(octomap_msgs_FOUND)
+   IF(QT4_FOUND)
+      qt4_wrap_cpp(MOC_FILES_APL
+         include/rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h 
+         include/rtabmap_ros/rviz/TableSemanticsPanel.h 
+      )
+   ELSE()
+      qt5_wrap_cpp(MOC_FILES_APL
+         include/rtabmap_ros/rviz/ObjectLabelOccupancyGridDisplay.h
+         include/rtabmap_ros/rviz/TableSemanticsPanel.h  
+      )
+   ENDIF()
+
+   set_property(
+      SOURCE  src/rviz/ObjectLabelOccupancyGridDisplay.cpp src/rviz/TablePanel.cpp 
+      PROPERTY COMPILE_DEFINITIONS QT_NO_KEYWORDS
+   )
+
+   SET(SRC_FILES
+      ${SRC_FILES}
+      src/rviz/ObjectLabelOccupancyGridDisplay.cpp
+      src/rviz/TableSemanticsPanel.cpp
+      ${MOC_FILES_APL}
+   )
+   ENDIF(octomap_msgs_FOUND)
+
+   add_library(rtabmap_rviz_plugins
+      ${SRC_FILES}
+   )
+   target_link_libraries(rtabmap_rviz_plugins
       rtabmap_ros
-	  ${Libraries}
-    )
-    IF(Qt5_FOUND)
-        QT5_USE_MODULES(rtabmap_rviz_plugins Widgets Core Gui)
-    ENDIF(Qt5_FOUND)
-    add_dependencies(rtabmap_rviz_plugins ${${PROJECT_NAME}_EXPORTED_TARGETS})
+      ${Libraries}
+   )
+
+   IF(Qt5_FOUND)
+      QT5_USE_MODULES(rtabmap_rviz_plugins Widgets Core Gui)
+   ENDIF(Qt5_FOUND)
+   add_dependencies(rtabmap_rviz_plugins ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 ENDIF(rviz_FOUND)
 
@@ -559,7 +635,7 @@ IF(RTABMAP_GUI)
 ENDIF(RTABMAP_GUI)
 
 ## Mark cpp header files for installation
-install(DIRECTORY ${RTABMAP_ROS_PATH}/include/${PROJECT_NAME}/
+install(DIRECTORY ${RTABMAP_ROS_PATH}/include/${PROJECT_NAME} include/${PROJECT_NAME}
    DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
    FILES_MATCHING PATTERN "*.h"
    PATTERN ".svn" EXCLUDE
@@ -567,17 +643,17 @@ install(DIRECTORY ${RTABMAP_ROS_PATH}/include/${PROJECT_NAME}/
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
-   ${RTABMAP_ROS_PATH}/launch/rtabmap.launch
-   ${RTABMAP_ROS_PATH}/launch/rgbd_mapping.launch
-   ${RTABMAP_ROS_PATH}/launch/stereo_mapping.launch
-   ${RTABMAP_ROS_PATH}/launch/data_recorder.launch
-   ${RTABMAP_ROS_PATH}/launch/rgbd_mapping_kinect2.launch
+   launch/rtabmap.launch
+   #${RTABMAP_ROS_PATH}/launch/rgbd_mapping.launch
+   #${RTABMAP_ROS_PATH}/launch/stereo_mapping.launch
+   #${RTABMAP_ROS_PATH}/launch/data_recorder.launch
+   #${RTABMAP_ROS_PATH}/launch/rgbd_mapping_kinect2.launch
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 install(DIRECTORY 
-   ${RTABMAP_ROS_PATH}/launch/config
-   ${RTABMAP_ROS_PATH}/launch/data
-   ${RTABMAP_ROS_PATH}/launch/demo
+   launch/config
+   #${RTABMAP_ROS_PATH}/launch/data
+   #${RTABMAP_ROS_PATH}/launch/demo
    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
@@ -594,7 +670,7 @@ IF(rviz_FOUND)
        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
      )
     install(FILES
-      ${RTABMAP_ROS_PATH}/rviz_plugins.xml
+      rviz_plugins.xml
       DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
     )
 ENDIF(rviz_FOUND)

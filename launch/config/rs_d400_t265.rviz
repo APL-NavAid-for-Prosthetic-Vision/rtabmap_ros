@@ -9,7 +9,7 @@ Panels:
         - /Mapped_Pose1/Covariance1/Position1
         - /Mapped_Pose1/Covariance1/Orientation1
       Splitter Ratio: 0.5887096524238586
-    Tree Height: 247
+    Tree Height: 425
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -29,6 +29,9 @@ Panels:
     Name: Time
     SyncMode: 0
     SyncSource: Depth_Image
+  - Class: rtabmap_ros/TableSemantics
+    Name: TableSemantics
+    classid_file_path: /home/norenn1/ws_ros1_py3_catkin/src/navmap/navmap_core/config/sceneParse150_class_name_architecture.yaml
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -59,51 +62,54 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        d435_aligned_depth_to_color_frame:
-          Value: false
-        d435_color_frame:
-          Value: false
-        d435_color_optical_frame:
-          Value: false
-        d435_depth_frame:
-          Value: false
-        d435_depth_optical_frame:
-          Value: false
-        d435_link:
+        base_link:
           Value: true
-        map:
-          Value: true
+        d400_aligned_depth_to_color_frame:
+          Value: false
+        d400_color_frame:
+          Value: false
+        d400_color_optical_frame:
+          Value: false
+        d400_depth_frame:
+          Value: false
+        d400_depth_optical_frame:
+          Value: false
+        d400_link:
+          Value: false
         t265_link:
           Value: false
         t265_odom_frame:
           Value: true
         t265_pose_frame:
           Value: true
-      Marker Scale: 0.30000001192092896
+        world:
+          Value: true
+      Marker Scale: 0.800000011920929
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        map:
+        world:
           t265_odom_frame:
             t265_pose_frame:
-              d435_link:
-                d435_aligned_depth_to_color_frame:
-                  d435_color_optical_frame:
-                    {}
-                d435_color_frame:
-                  {}
-                d435_depth_frame:
-                  d435_depth_optical_frame:
-                    {}
-              t265_link:
+              base_link:
                 {}
+              t265_link:
+                d400_link:
+                  d400_aligned_depth_to_color_frame:
+                    d400_color_optical_frame:
+                      {}
+                  d400_color_frame:
+                    {}
+                  d400_depth_frame:
+                    d400_depth_optical_frame:
+                      {}
       Update Interval: 0
       Value: true
     - Class: rviz/Image
-      Enabled: true
-      Image Topic: /d435/depth/image_rect_raw
+      Enabled: false
+      Image Topic: /d400/aligned_depth_to_color/image_rect
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -112,11 +118,11 @@ Visualization Manager:
       Queue Size: 2
       Transport Hint: raw
       Unreliable: false
-      Value: true
+      Value: false
     - Class: rviz/Camera
       Enabled: true
       Image Rendering: background and overlay
-      Image Topic: /d435/color/image_raw
+      Image Topic: /d400/color/image_rect
       Name: Camera
       Overlay Alpha: 0.5
       Queue Size: 2
@@ -131,11 +137,13 @@ Visualization Manager:
         MapCloud_data: false
         Mapped_Pose: false
         Odometry: false
+        SemanticMaskImage: true
         TF: false
         Value: true
         grid_Map: false
         mapCloud: false
         mapPath: false
+        rtabmapColorOccupancyGrid: true
       Zoom Factor: 1
     - Angle Tolerance: 0.10000000149011612
       Class: rviz/Odometry
@@ -154,7 +162,7 @@ Visualization Manager:
           Scale: 0.20000000298023224
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Keep: 4
       Name: Odometry
       Position Tolerance: 0.10000000149011612
@@ -170,18 +178,18 @@ Visualization Manager:
         Value: Arrow
       Topic: /t265/odom/sample
       Unreliable: false
-      Value: true
+      Value: false
     - Class: rtabmap_ros/Info
-      Enabled: true
+      Enabled: false
       Name: Info
       Topic: /rtabmap/info
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
       Class: rviz/PoseWithCovariance
-      Color: 115; 210; 22
+      Color: 206; 92; 0
       Covariance:
         Orientation:
           Alpha: 0.5
@@ -197,7 +205,7 @@ Visualization Manager:
           Scale: 0.15000000596046448
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Head Length: 0.03999999910593033
       Head Radius: 0.03999999910593033
       Name: Mapped_Pose
@@ -206,16 +214,16 @@ Visualization Manager:
       Shape: Arrow
       Topic: /rtabmap/localization_pose
       Unreliable: false
-      Value: true
+      Value: false
     - Class: octomap_rviz_plugin/ColorOccupancyGrid
-      Enabled: true
+      Enabled: false
       Max. Height Display: 1.399999976158142
       Max. Octree Depth: 16
       Min. Height Display: -1
       Name: ColorOccupancyGrid
       Octomap Topic: /rtabmap/octomap_binary
       Queue Size: 5
-      Value: true
+      Value: false
       Voxel Alpha: 1
       Voxel Coloring: Z-Axis
       Voxel Rendering: Occupied Voxels
@@ -223,17 +231,17 @@ Visualization Manager:
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: grid_Map
       Topic: /rtabmap/grid_map
       Unreliable: false
       Use Timestamp: true
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: true
+      Color: 204; 51; 204
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -251,7 +259,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /rtabmap/mapPath
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -320,11 +328,48 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
+    - Class: octomap_rviz_plugin/ColorOccupancyGrid
+      Enabled: false
+      Max. Height Display: 3.4028234663852886e+38
+      Max. Octree Depth: 16
+      Min. Height Display: -3.4028234663852886e+38
+      Name: ColorOccupancyGrid
+      Octomap Topic: /rtabmap/octomap_binary
+      Queue Size: 5
+      Value: false
+      Voxel Alpha: 1
+      Voxel Coloring: Z-Axis
+      Voxel Rendering: Occupied Voxels
+    - Class: rtabmap_ros/rtabmapColorOccupancyGrid
+      Enabled: false
+      Max. Height Display: 3.4028234663852886e+38
+      Max. Octree Depth: 16
+      Min. Height Display: -3.4028234663852886e+38
+      Name: rtabmapColorOccupancyGrid
+      OctoMap Msg Mode: FullMap_Mode
+      Octomap Topic: /rtabmap/octomap_full
+      Queue Size: 5
+      Value: false
+      Voxel Alpha: 1
+      Voxel Coloring: Semantic Mask
+      Voxel Rendering: Occupied Voxels
+    - Class: rviz/Image
+      Enabled: true
+      Image Topic: /rtabmap/semantic/image_mask
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: SemanticMaskImage
+      Normalize Range: true
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: map
+    Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
@@ -343,26 +388,26 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rtabmap_ros/OrbitOriented
-      Distance: 4.299513816833496
+      Class: rviz/ThirdPersonFollower
+      Distance: 3.098259925842285
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.6797151565551758
-        Y: 0.9008804559707642
-        Z: -1.2958056926727295
+        X: -0.1587129831314087
+        Y: -0.16621041297912598
+        Z: 1.0927499261015328e-6
       Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05999999865889549
+      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.2297964096069336
+      Pitch: 0.6403986215591431
       Target Frame: t265_link
-      Value: OrbitOriented (rtabmap_ros)
-      Yaw: 0.42601150274276733
+      Value: ThirdPersonFollower (rviz)
+      Yaw: 2.780405044555664
     Saved: ~
 Window Geometry:
   Camera:
@@ -371,11 +416,15 @@ Window Geometry:
     collapsed: false
   Displays:
     collapsed: false
-  Height: 907
+  Height: 957
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd00000004000000000000026e000002edfc020000000afb0000001200530065006c0065006300740069006f006e00000000160000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730200000439000001340000018500000109fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000182000000c900fffffffb0000000a0049006d00610067006501000001b3000000a00000000000000000fb0000000a0049006d00610067006501000001fd0000011d0000000000000000fb0000000c00430061006d00650072006101000001c5000000df0000001600fffffffb0000001600440065007000740068005f0049006d00610067006501000002aa000000800000001600fffffffb0000000c00430061006d0065007200610100000259000000c20000000000000000000000010000010f000002edfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000002ed000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000006790000003efc0100000002fb0000000800540069006d0065010000000000000679000002eb00fffffffb0000000800540069006d0065010000000000000450000000000000000000000405000002ed00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001a800000234fc0200000007fb0000001200530065006c0065006300740069006f006e00000000160000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730200000439000001340000018500000109fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000012800000234000000c900fffffffb0000000a0049006d00610067006501000001b3000000a00000000000000000fb0000000a0049006d00610067006501000001fd0000011d0000000000000000000000010000010f0000023efc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a0056006900650077007300000000ec0000023e000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000679000000e5fc0100000005fb0000000c00430061006d00650072006101000000000000022a0000006900fffffffb0000001c005400610062006c006500530065006d0061006e007400690063007301000002300000020c000000e000fffffffc0000044200000237000000c000fffffffa000000000200000002fb0000002200530065006d0061006e007400690063004d00610073006b0049006d0061006700650100000000ffffffff0000001600fffffffb0000001600440065007000740068005f0049006d006100670065010000003d000000cf0000001600fffffffb0000000c00430061006d0065007200610100000377000003020000000000000000fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000006790000003efc0100000002fb0000000800540069006d0065010000000000000679000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000004cb0000023400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
+    collapsed: false
+  SemanticMaskImage:
+    collapsed: false
+  TableSemantics:
     collapsed: false
   Time:
     collapsed: false
@@ -384,5 +433,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1657
-  X: 207
+  X: 203
   Y: 27
