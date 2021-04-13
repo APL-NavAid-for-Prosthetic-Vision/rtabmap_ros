@@ -93,7 +93,7 @@ void TableSemanticsPanel::setTable( const QString& new_file )
 		if( classID_file_path_ != "" )
 		{
 			// load yaml file
-			if(!utils::parseModelConfig( classID_file_path_.toStdString(), modelNameIdMap_))
+			if(!utils::parseModelConfig(classID_file_path_.toStdString(), modelNameIdMap_, modelMaskIdColorMap_))
 			{
 				ROS_ERROR("model classid structure FAILED to load: %s", classID_file_path_.toStdString().c_str());
 			}
@@ -101,7 +101,6 @@ void TableSemanticsPanel::setTable( const QString& new_file )
 			{
 				ROS_INFO("LOADED: %s",classID_file_path_.toStdString().c_str());
 			}
-
 		}
 		
 		// rviz::Panel defines the configChanged() signal.  Emitting it
@@ -156,7 +155,6 @@ void TableSemanticsPanel::updateSemanticTable(const rtabmap_ros::SemanticClassId
 			// item was not found, it needs to be added to the map
 			semanticClassIdMap_.insert({ labelid ,{ occupancyType , maskColor }});
 		}
-
 	}
 
 	// update the widget table with map information

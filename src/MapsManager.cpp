@@ -165,18 +165,21 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		// set the model class map if available
 		if(!semanticSegmentationModelFilePath_.empty())
 		{
-#ifdef WITH_YAMLCPP
 			std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
+			std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
 			
-			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap))
+			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap, modelMaskIdColorMap))
 			{
 				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
 			}
 
 			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
 			semanticOctomap_->updateObjectTypeMap();
-			semanticOctomap_->generateMaskIdColorMap();
-#endif
+
+			if(modelMaskIdColorMap.empty())
+				semanticOctomap_->generateMaskIdColorMap();
+			else
+				semanticOctomap_->setMaskidColorMap(modelMaskIdColorMap);
 		}
 	}
 	// JHUAPL section end
@@ -400,18 +403,22 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 		// set the model class map if available
 		if(!semanticSegmentationModelFilePath_.empty())
 		{
-#ifdef WITH_YAMLCPP
 			std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
-			
-			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap))
+			std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
+
+			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap, modelMaskIdColorMap))
 			{
 				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
 			}
 
 			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
 			semanticOctomap_->updateObjectTypeMap();
-			semanticOctomap_->generateMaskIdColorMap();
-#endif
+
+			if(modelMaskIdColorMap.empty())
+				semanticOctomap_->generateMaskIdColorMap();
+			else
+				semanticOctomap_->setMaskidColorMap(modelMaskIdColorMap);
+			
 		}
 	}
 	// JHUAPL section end
