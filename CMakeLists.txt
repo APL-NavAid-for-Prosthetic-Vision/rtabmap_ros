@@ -164,6 +164,7 @@ generate_messages(
    std_msgs
    geometry_msgs
    sensor_msgs
+   nav_msgs
 )
 
 #add dynamic reconfigure api
@@ -266,7 +267,6 @@ SET(rtabmap_plugins_lib_src
    ${RTABMAP_ROS_PATH}/src/nodelets/icp_odometry.cpp
    ${RTABMAP_ROS_PATH}/src/nodelets/data_throttle.cpp
    ${RTABMAP_ROS_PATH}/src/nodelets/stereo_throttle.cpp
-   src/nodelets/ExternOdomInfo.cpp
    ${RTABMAP_ROS_PATH}/src/nodelets/data_odom_sync.cpp
    ${RTABMAP_ROS_PATH}/src/nodelets/point_cloud_xyzrgb.cpp 
    ${RTABMAP_ROS_PATH}/src/nodelets/point_cloud_xyz.cpp
