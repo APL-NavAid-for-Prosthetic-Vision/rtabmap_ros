@@ -28,6 +28,8 @@
     <arg name="orb_cuda"                       default="true" />
     <arg name="queue_size_rgbd"                default="30"/>  <!--default for depth mode -->
     <arg name="queue_size"                     default="200"/> <!--default for depth mode -->
+    <arg name="marker_detection"               default="false"/>
+    <arg name="marker_dict_type"               default="0"/> 
     
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -88,6 +90,8 @@
         <!-- <arg name="optimizer_robust"            default="true"/> -->
         <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
         <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
+        <arg name="marker_detection"            default="$(arg marker_detection)"/>
+        <arg name="marker_dict_type"            default="$(arg marker_dict_type)"/> 
     </include>
 
 </launch>

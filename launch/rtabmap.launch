@@ -148,8 +148,9 @@
   <arg name="subscribe_odom_info"          default="$(arg visual_odometry)"/>
   <arg name="imageAlreadyRectify"          default="true"/>    <!-- (default:true) Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false. -->
   <arg name="rectifyOnlyFeatures"          default="false"/>   <!-- If ImagesAlreadyRectified is false and this parameter is true, the whole RGB image will not be rectified, only the features.-->
+  <arg name="marker_detection"             default="false"/>
+  <arg name="marker_dict_type"             default="0"/>       <!-- see below for option available, used when marker_detection is true -->
   
-
   <!-- These arguments should not be modified directly, see referred topics without "_relay" suffix above -->
   
   <arg if="$(arg compressed)"     name="rgb_topic_relay"           default="$(arg rgb_topic)_relay"/>
@@ -428,7 +429,6 @@
       <param name="RGBD/MaxOdomCacheSize"             type="string"   value="$(arg rgbd_maxOdomCacheSize)"/>
       <param name="RGBD/MaxLoopClosureDistance"       type="string"   value="0.0" />                         <!-- Reject loop closures/localizations if the distance from the map is over this distance (0=disabled) -->
 
-      <!-- Local/Proximity loop closure detection -->
       <param name="RGBD/ProximityAngle"               type="string"   value="65" />      <!-- maximum angle (degrees) for visual proximity detection.-->
       <param name="RGBD/ProximityMaxPaths"            type="string"   value="5" />       <!-- Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit -->
       <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="0.05" />       <!-- path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection -->
@@ -437,6 +437,20 @@
       <param name="RGBD/ProximityBySpace"             type="string"   value="true"/>     <!-- Local loop closure detection (using estimated position) with locations in WM -->
 	    <param name="RGBD/ProximityByTime"              type="string"   value="false"/>    <!-- Local loop closure detection with locations in STM -->
       <param name="RGBD/ProximityMaxGraphDepth"       type="string"   value="50" />      <!-- Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore-->
+
+      <param name="RGBD/MarkerDetection"              type="string"   value="$(arg marker_detection)" />      <!--Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored.-->>
+
+      <!-- 
+        Dictionary to use: DICT_ARUCO_4X4_50=0, DICT_ARUCO_4X4_100=1, DICT_ARUCO_4X4_250=2, DICT_ARUCO_4X4_1000=3, DICT_ARUCO_5X5_50=4, DICT_ARUCO_5X5_100=5, DICT_ARUCO_5X5_250=6, DICT_ARUCO_5X5_1000=7, 
+      DICT_ARUCO_6X6_50=8, DICT_ARUCO_6X6_100=9, DICT_ARUCO_6X6_250=10, DICT_ARUCO_6X6_1000=11, DICT_ARUCO_7X7_50=12, DICT_ARUCO_7X7_100=13, DICT_ARUCO_7X7_250=14, DICT_ARUCO_7X7_1000=15, DICT_ARUCO_ORIGINAL = 16, 
+      DICT_APRILTAG_16h5=17, DICT_APRILTAG_25h9=18, DICT_APRILTAG_36h10=19, DICT_APRILTAG_36h11=20
+      -->
+      <param name="Marker/Dictionary"               type="string" value="$(arg marker_dict_type)" />
+      <param name="Marker/Length"                   type="string" value="0" />      <!--The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image-->>
+      <param name="Marker/MaxDepthError"            type="string" value="0.05" />   <!-- Maximum depth error between all corners of a marker when estimating the marker length -->
+      <param name="Marker/VarianceLinear"           type="string" value="0.001" /> 
+      <param name="Marker/VarianceAngular"          type="string" value="0.01" />
+      <param name="Marker/CornerRefinementMethod"   type="string" value="0" />      <!--Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag2)  opencv > 3.3 -->
 
       <param name="Vis/FeatureType"     type="string" value="8" />
       <param name="Vis/MaxDepth"        type="string" value="10.0" />

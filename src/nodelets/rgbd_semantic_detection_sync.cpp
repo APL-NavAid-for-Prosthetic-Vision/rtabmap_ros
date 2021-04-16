@@ -222,6 +222,7 @@ private:
 				cvImg.toImageMsg(objRecognSegImgMsg.request.image);
 				cvDepth.toImageMsg(objRecognSegImgMsg.request.depth);
 				objRecognSegImgMsg.request.odom = *odom;
+				objRecognSegImgMsg.request.cameraInfo = *cameraInfo;
 				ros::Time start_time = ros::Time::now();
 				// request server in object recognition node a corresponding the semantic segmentation mask
 				objRecognitionSemanticDetectionClient_.call(objRecognSegImgMsg);
