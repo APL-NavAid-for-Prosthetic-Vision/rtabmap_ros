@@ -150,7 +150,11 @@
   <arg name="rectifyOnlyFeatures"          default="false"/>   <!-- If ImagesAlreadyRectified is false and this parameter is true, the whole RGB image will not be rectified, only the features.-->
   <arg name="marker_detection"             default="false"/>
   <arg name="marker_dict_type"             default="0"/>       <!-- see below for option available, used when marker_detection is true -->
+  <arg name="multi_level_cell_size"        default="0.5 0.5 0.5 0.5 0.5"/>   <!-- 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
+  <arg name="ground_label_id"              default="-1"/>   <!-- default -1 , disables  ground level layer, and ground gets added to static level layer -->
+  <arg name="ceiling_label_id"             default="-1"/>   <!-- default -1 , disables  ceiling level layer, and ceiling gets added to static level layer -->
   
+
   <!-- These arguments should not be modified directly, see referred topics without "_relay" suffix above -->
   
   <arg if="$(arg compressed)"     name="rgb_topic_relay"           default="$(arg rgb_topic)_relay"/>
@@ -469,11 +473,14 @@
       <param name="Grid/RangeMax"                   type="string"   value="$(arg grid_rangeMax)" />
       <param name="Grid/NoiseFilteringMinNeighbors" type="string"   value="5" />
       <param name="Grid/NoiseFilteringRadius"       type="string"   value="0.0"/>
-      <param name="Grid/DepthDecimation"            type="string"   value="4"/>
+      <param name="Grid/DepthDecimation"            type="string"   value="2"/>
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>
       <param name="Grid/MaxObstacleHeight"          type="string"   value="$(arg grid_maxObstacleHeight)"/>
+      <param name="Grid/MultiLevelCellSize"         type="string"   value="$(arg multi_level_cell_size)"/>
+      <param name="Grid/GroundLabelId"              type="string"   value="$(arg ground_label_id)"/>
+      <param name="Grid/CeilingLabelId"             type="string"   value="$(arg ceiling_label_id)"/>
      
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />

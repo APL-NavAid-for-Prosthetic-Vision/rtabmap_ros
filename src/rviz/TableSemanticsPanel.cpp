@@ -20,8 +20,6 @@
 #include <QBrush>
 #include <QtGlobal>
 
-#include <rtabmap/core/SemanticOctoMap.h>
-
 namespace rtabmap_ros
 {
 

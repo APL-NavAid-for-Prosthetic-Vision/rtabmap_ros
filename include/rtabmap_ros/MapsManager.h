@@ -118,6 +118,7 @@ private:
 	ros::Publisher gridMapPub_;
 	ros::Publisher gridProbMapPub_;
 	ros::Publisher scanMapPub_;
+
 	ros::Publisher octoMapPubBin_;
 	ros::Publisher octoMapPubFull_;
 	ros::Publisher octoMapCloud_;
@@ -126,6 +127,14 @@ private:
 	ros::Publisher octoMapObstacleCloud_;
 	ros::Publisher octoMapEmptySpace_;
 	ros::Publisher octoMapProj_;
+
+	// JHUAPL section
+	ros::Publisher octoMapFullGroundPub_;
+	ros::Publisher octoMapFullCeilingPub_;
+	ros::Publisher octoMapFullStaticPub_;
+	ros::Publisher octoMapFullMovablePub_;
+	ros::Publisher octoMapFullDynamicPub_;
+	// JHUAPL end section
 
 	std::map<int, rtabmap::Transform> assembledGroundPoses_;
 	std::map<int, rtabmap::Transform> assembledObstaclePoses_;

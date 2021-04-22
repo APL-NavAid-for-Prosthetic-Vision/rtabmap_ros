@@ -18,6 +18,8 @@
 
 #include <map>
 
+#include <rtabmap/core/SemanticOctoMap.h>
+
 #include <rtabmap_ros/SemanticClassIdElement.h>
 #include <rtabmap_ros/SemanticClassIdMap.h>
 
