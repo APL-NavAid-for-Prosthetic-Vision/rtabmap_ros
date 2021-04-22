@@ -250,8 +250,6 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-	octoMapPubBin_ = nht->advertise<octomap_msgs::Octomap>("octomap_binary", 1, latching_);
-	latched_.insert(std::make_pair((void*)&octoMapPubBin_, false));
 	octoMapPubFull_ = nht->advertise<octomap_msgs::Octomap>("octomap_full", 1, latching_);
 	latched_.insert(std::make_pair((void*)&octoMapPubFull_, false));
 	octoMapCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_occupied_space_cloud", 1, latching_);
@@ -272,6 +270,8 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	}
 	else 
 	{
+		octoMapPubBin_ = nht->advertise<octomap_msgs::Octomap>("octomap_binary", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapPubBin_, false));
 		octoMapFrontierCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_global_frontier_space", 1, latching_);
 		latched_.insert(std::make_pair((void*)&octoMapFrontierCloud_, false));
 		octoMapObstacleCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_obstacles", 1, latching_);
@@ -1847,7 +1847,6 @@ void MapsManager::publishAPLMaps(
 
 	if( octomapUpdated_ || 
 		!latching_ ||
-		(octoMapPubBin_.getNumSubscribers() && !latched_.at(&octoMapPubBin_)) ||
 		(octoMapPubFull_.getNumSubscribers() && !latched_.at(&octoMapPubFull_)) ||
 		(octoMapFullGroundPub_.getNumSubscribers() && !latched_.at(&octoMapFullGroundPub_)) ||
 		(octoMapFullCeilingPub_.getNumSubscribers() && !latched_.at(&octoMapFullCeilingPub_)) ||
@@ -1857,19 +1856,6 @@ void MapsManager::publishAPLMaps(
 		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)) )
 	{
 		const std::vector<std::string> MULTILEVELNAMES = rtabmap::SemanticOctoMap::MULTILEVELNAMES;
-		// octoMapPubBin_ publishes all layers as single octomap binary
-		if(octoMapPubBin_.getNumSubscribers())
-		{	
-			octomap_msgs::Octomap msg;
-			/// TODO: merger layers
-			//Rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = multiLevelOctrees.at(0);
-
-			// octomap_msgs::binaryMapToMsg(*multiLevelOctreePtr, msg);
-			// msg.header.frame_id = mapFrameId;
-			// msg.header.stamp = stamp;
-			// octoMapPubBin_.publish(msg);
-			// latched_.at(&octoMapPubBin_) = true;
-		}
 		// octoMapPubFull_ publishes all layers as single octomap ful map (include node's data)
 		if(octoMapPubFull_.getNumSubscribers())
 		{
@@ -1959,7 +1945,8 @@ void MapsManager::publishAPLMaps(
 				pcl::IndicesPtr emptyIndices(new std::vector<int>);
 
 				std::string layerName = MULTILEVELNAMES.at(i);
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = semanticOctomap_->createCloud(layerName ,octomapTreeDepth_, occupiedIndices.get(), emptyIndices.get(), true);
+				//UDEBUG("MULTILEVELNAMES: \"%s\"", layerName.c_str());
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = semanticOctomap_->createCloud(layerName, octomapTreeDepth_, occupiedIndices.get(), emptyIndices.get(), true);
 
 				clouds.push_back(cloud);
 			}
@@ -1977,8 +1964,8 @@ void MapsManager::publishAPLMaps(
 	
 
 	if( mapCacheCleanup_ &&
-		octoMapPubBin_.getNumSubscribers() == 0 &&
 		octoMapPubFull_.getNumSubscribers() == 0 &&
+		octoMapCloud_.getNumSubscribers() == 0 &&
 		octoMapFullGroundPub_.getNumSubscribers() == 0 &&
 		octoMapFullCeilingPub_.getNumSubscribers() == 0 &&
 		octoMapFullStaticPub_.getNumSubscribers() == 0 &&
@@ -1988,10 +1975,6 @@ void MapsManager::publishAPLMaps(
 		semanticOctomap_->clear();
 	}
 
-	if(octoMapPubBin_.getNumSubscribers() == 0)
-	{
-		latched_.at(&octoMapPubBin_) = false;
-	}
 	if(octoMapPubFull_.getNumSubscribers() == 0)
 	{
 		latched_.at(&octoMapPubFull_) = false;
