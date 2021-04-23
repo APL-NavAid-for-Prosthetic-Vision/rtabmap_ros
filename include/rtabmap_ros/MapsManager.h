@@ -118,6 +118,7 @@ private:
 	ros::Publisher gridMapPub_;
 	ros::Publisher gridProbMapPub_;
 	ros::Publisher scanMapPub_;
+
 	ros::Publisher octoMapPubBin_;
 	ros::Publisher octoMapPubFull_;
 	ros::Publisher octoMapCloud_;
@@ -126,6 +127,14 @@ private:
 	ros::Publisher octoMapObstacleCloud_;
 	ros::Publisher octoMapEmptySpace_;
 	ros::Publisher octoMapProj_;
+
+	// JHUAPL section
+	ros::Publisher octoMapFullGroundPub_;
+	ros::Publisher octoMapFullCeilingPub_;
+	ros::Publisher octoMapFullStaticPub_;
+	ros::Publisher octoMapFullMovablePub_;
+	ros::Publisher octoMapFullDynamicPub_;
+	// JHUAPL end section
 
 	std::map<int, rtabmap::Transform> assembledGroundPoses_;
 	std::map<int, rtabmap::Transform> assembledObstaclePoses_;
@@ -157,7 +166,7 @@ private:
 
 	rtabmap::SemanticOctoMap * semanticOctomap_;
 	bool semanticSegmentationEnable_;
-	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> > gridAPLMaps_; // < map<class label, obstacle>, empty cells >
+	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat>> > gridAPLMaps_; // < map<class label, obstacle>, map< octree layer, empty cells >
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;

@@ -27,3 +27,7 @@ Point3f[] points
 uint8[] descriptors
 
 GlobalDescriptor global_descriptor
+
+# odom
+nav_msgs/Odometry odom
+rtabmap_ros/OdomInfo odomInfo

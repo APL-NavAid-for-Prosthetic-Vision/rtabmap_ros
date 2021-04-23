@@ -26,7 +26,14 @@
     <arg name="rgbd_semantic_detection_sync"   default="false"/>
     <arg name="model_classes_file_path"        default="" />
     <arg name="orb_cuda"                       default="true" />
-    
+    <arg name="queue_size_rgbd"                default="30"/>  <!--default for depth mode -->
+    <arg name="queue_size"                     default="200"/> <!--default for depth mode -->
+    <arg name="marker_detection"               default="false"/>
+    <arg name="marker_dict_type"               default="0"/> 
+    <arg name="multi_level_cell_size"          default="0.05 0.05 0.05 0.05 0.05"/>   <!-- 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
+    <arg name="ground_label_id"                default="-1"/>   <!-- default -1 , disables  ground level layer, and ground gets added to static level layer -->
+    <arg name="ceiling_label_id"               default="-1"/>   <!-- default -1 , disables  ceiling level layer, and ceiling gets added to static level layer -->
+  
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
     <arg name="map_always_update"           default="false"/>
@@ -52,8 +59,7 @@
         <!-- <arg name="extern_odom_info"        default="false" /> -->
         <arg name="rgbd_semantic_detection_sync" default="$(arg rgbd_semantic_detection_sync)"/>
         <arg unless="$(arg rgbd_semantic_detection_sync)" name="rgbd_sync" default="true" />
-        <arg name="approx_rgbd_sync"        default="false"/>
-        <arg name="rgbd_decimation"         default="1"/>
+        <arg name="approx_rgbd_sync"        default="true"/>
         
         <!-- RGB-D related topics -->
         <arg name="rgb_topic"               default="$(arg rgb_topic)"/>
@@ -72,11 +78,11 @@
         <arg name="memory_threshold"            default="1000"/>  <!--  "Rtabmap/MemoryThr" : number of nodes in octomap before moved to long-term storage-->
         <arg name="map_resolution"              default="0.05"/>  <!-- "Grid/CellSize": resolution in m of grid/octomap-->
         <arg name="max_nodes"                   default="1000"/>  <!--  "GridGlobal/MaxNodes:" : Maximum nodes assembled in the map starting from the last node (octomap)-->
-        <arg name="queue_size"                  default="200"/>
+        <arg name="queue_size"                  default="$(arg queue_size)"/>
         <arg name="rtabmap_detectionRate"       default="$(arg rtabmap_detectionRate)"/>      <!-- "Rtabmap/DetectionRate" : [Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.] --> 
         <arg name="tf_delay"                    default="0.0667"/>  <!-- (15 Hz: 0.0667 sec) (30 Hz: 0.0334 sec) in order to keep up with the odometry time update-->
         <arg name="grid_rangeMax"               default="10.0"/>
-        <arg name="queue_size_rgbd"             default="15"/>
+        <arg name="queue_size_rgbd"             default="$(arg queue_size_rgbd)"/>
         <arg name="mem_STMSize"                 default="20"/>
         <arg name="bayes_fullPredictionUpdate"  default="$(arg bayes_fullPredictionUpdate)"/>
         <arg name="imageAlreadyRectify"         default="$(arg imageAlreadyRectify)"/>  <!-- /color/image_raw has not been rectified -->
@@ -87,6 +93,11 @@
         <!-- <arg name="optimizer_robust"            default="true"/> -->
         <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
         <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
+        <arg name="marker_detection"            default="$(arg marker_detection)"/>
+        <arg name="marker_dict_type"            default="$(arg marker_dict_type)"/>
+        <arg name="multi_level_cell_size"       default="$(arg multi_level_cell_size)"/>   
+        <arg name="ground_label_id"             default="$(arg ground_label_id)"/>   
+        <arg name="ceiling_label_id"            default="$(arg ceiling_label_id)"/>
     </include>
 
 </launch>

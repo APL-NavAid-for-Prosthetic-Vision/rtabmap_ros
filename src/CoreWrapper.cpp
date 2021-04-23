@@ -1,6 +1,8 @@
 /*
-Modified by: Johns Hopkins University Applied Physics Laboratory
-			> added support for RGBDSemanticDetection msg input
+Modification by:
+	The Johns Hopkins University
+   	Applied Physics Laboratory.
+		
 Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.

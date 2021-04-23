@@ -148,6 +148,11 @@
   <arg name="subscribe_odom_info"          default="$(arg visual_odometry)"/>
   <arg name="imageAlreadyRectify"          default="true"/>    <!-- (default:true) Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false. -->
   <arg name="rectifyOnlyFeatures"          default="false"/>   <!-- If ImagesAlreadyRectified is false and this parameter is true, the whole RGB image will not be rectified, only the features.-->
+  <arg name="marker_detection"             default="false"/>
+  <arg name="marker_dict_type"             default="0"/>       <!-- see below for option available, used when marker_detection is true -->
+  <arg name="multi_level_cell_size"        default="0.05 0.05 0.05 0.05 0.05"/>   <!-- ['meters'] 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
+  <arg name="ground_label_id"              default="-1"/>   <!-- default -1 , disables  ground level layer, and ground gets added to static level layer -->
+  <arg name="ceiling_label_id"             default="-1"/>   <!-- default -1 , disables  ceiling level layer, and ceiling gets added to static level layer -->
   
 
   <!-- These arguments should not be modified directly, see referred topics without "_relay" suffix above -->
@@ -162,13 +167,6 @@
   <arg unless="$(arg compressed)" name="right_image_topic_relay"   default="$(arg right_image_topic)"/>
   <arg if="$(arg rgbd_sync)"      name="rgbd_topic_relay"          default="$(arg rgbd_topic)"/>
   <arg unless="$(arg rgbd_sync)"  name="rgbd_topic_relay"          default="$(arg rgbd_topic)_relay"/>
-
-  <!--APL added arguments-->
-  <arg name="extern_odom_info"          default="false" />
-  <arg if="$(arg extern_odom_info)"     name="odom_topic_relay"        default="/rtabmap/extern_odom_info/odom"/>
-  <arg unless="$(arg extern_odom_info)" name="odom_topic_relay"        default="$(arg odom_topic)"/>
-  <arg if="$(arg extern_odom_info)"     name="odom_info_topic_relay"   default="/rtabmap/extern_odom_info/odomInfo"/>
-  <arg unless="$(arg extern_odom_info)" name="odom_info_topic_relay"   default="$(arg odom_info_topic)"/>
 
   <!-- Nodes -->
   <group ns="$(arg namespace)">
@@ -200,11 +198,10 @@
           <remap from="rgb/image"       to="$(arg rgb_topic_relay)"/>
           <remap from="depth/image"     to="$(arg depth_topic_relay)"/>
           <remap from="rgb/camera_info" to="$(arg camera_info_topic)"/>
+          <remap from="odom"            to="$(arg odom_topic)"/>
           <!-- <remap from="rgbd_semantic_detection_image"      to="$(arg rgbd_semantic_detection_image_topic)"/> -->
           <param name="approx_sync"     type="bool"   value="$(arg approx_rgbd_sync)"/>
           <param name="queue_size"      type="int"    value="$(arg queue_size_rgbd)"/>
-          <param name="depth_scale"     type="double" value="$(arg rgbd_depth_scale)"/>
-          <param name="decimation"      type="int"    value="$(arg rgbd_decimation)"/>
         </node>
       </group>
     </group>
@@ -238,14 +235,6 @@
          </node>
       </group>
     </group>
-
-    <!-- APL added extern_odom_info -->
-    <group if="$(arg extern_odom_info)">
-      <node unless="$(arg visual_odometry)" pkg="nodelet" type="nodelet" name="extern_odom_info" args="standalone rtabmap_ros/extern_odom_info" output="$(arg output)">
-        <remap from="odom_in"             to="$(arg odom_topic)"/>
-      </node>
-    </group>
-  
 
     <!-- Visual odometry -->
     <group unless="$(arg icp_odometry)">
@@ -352,14 +341,15 @@
       <param name="subscribe_rgb"        type="bool"   value="$(arg depth)"/>
       <param name="subscribe_rgbd"       type="bool"   value="$(arg subscribe_rgbd)"/>
       <param name="subscribe_rgbd_semantic_detection"  type="bool"   value="$(arg subscribe_rgbd_semantic_detection)"/>
+      <param if="$(arg subscribe_rgbd_semantic_detection)" name="subscribe_odom" type="bool" value="false"/>
       <param name="subscribe_stereo"     type="bool"   value="$(arg stereo)"/>
       <param name="subscribe_scan"       type="bool"   value="$(arg subscribe_scan)"/>
       <param name="subscribe_scan_cloud" type="bool"   value="$(arg subscribe_scan_cloud)"/>
       <param name="subscribe_scan_descriptor" type="bool" value="$(arg subscribe_scan_descriptor)"/>
       <param name="subscribe_user_data"  type="bool"   value="$(arg subscribe_user_data)"/>
       <param if="$(arg visual_odometry)"  name="subscribe_odom_info" type="bool" value="true"/>
-      <param if="$(arg extern_odom_info)" name="subscribe_odom_info"  type="bool" value="true"/>
       <param if="$(arg icp_odometry)"    name="subscribe_odom_info" type="bool" value="true"/>
+      <param if="$(arg subscribe_rgbd_semantic_detection)" name="subscribe_odom_info" type="bool" value="false"/>
       <param name="frame_id"             type="string" value="$(arg frame_id)"/>
       <param name="map_frame_id"         type="string" value="$(arg map_frame_id)"/>
       <param name="odom_frame_id"        type="string" value="$(arg odom_frame_id)"/>
@@ -398,9 +388,9 @@
       <remap from="user_data_async"        to="$(arg user_data_async_topic)"/>
       <remap from="gps/fix"                to="$(arg gps_topic)"/>
       <remap from="tag_detections"         to="$(arg tag_topic)"/>
-      <remap from="odom"                   to="$(arg odom_topic_relay)"/>
+      <remap from="odom"                   to="$(arg odom_topic)"/>
       <remap from="imu"                    to="$(arg imu_topic)"/>
-      <remap from="odom_info"              to="$(arg odom_info_topic_relay)"/>
+      <remap from="odom_info"              to="$(arg odom_info_topic)"/>
       
       <!-- localization mode -->
       <param     if="$(arg localization)" name="Mem/IncrementalMemory" type="string" value="false"/>
@@ -425,7 +415,8 @@
       <param name="Mem/STMSize"              type="string"  value="$(arg mem_STMSize)"/>
       <param name="Mem/NotLinkedNodesKept"   type="string"  value="false"/>
       <param name="Mem/RehearsalSimilarity"  type="string"  value="0.60"/>
-        
+      <param name="Mem/UseOdomFeatures"      type="string"  value="false"/>                 <!-- Use odometry features instead of regenerating them. -->
+
       <param name="RGBD/CreateOccupancyGrid"          type="string"   value="true"/>                    <!--params to get rtab to output octomap-->
       <param name="RGBD/AngularUpdate"                type="string"   value="0.1" />
       <param name="RGBD/LinearUpdate"                 type="string"   value="0.1" />
@@ -442,7 +433,6 @@
       <param name="RGBD/MaxOdomCacheSize"             type="string"   value="$(arg rgbd_maxOdomCacheSize)"/>
       <param name="RGBD/MaxLoopClosureDistance"       type="string"   value="0.0" />                         <!-- Reject loop closures/localizations if the distance from the map is over this distance (0=disabled) -->
 
-      <!-- Local/Proximity loop closure detection -->
       <param name="RGBD/ProximityAngle"               type="string"   value="65" />      <!-- maximum angle (degrees) for visual proximity detection.-->
       <param name="RGBD/ProximityMaxPaths"            type="string"   value="5" />       <!-- Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit -->
       <param name="RGBD/ProximityPathFilteringRadius" type="string"   value="0.05" />       <!-- path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection -->
@@ -451,6 +441,20 @@
       <param name="RGBD/ProximityBySpace"             type="string"   value="true"/>     <!-- Local loop closure detection (using estimated position) with locations in WM -->
 	    <param name="RGBD/ProximityByTime"              type="string"   value="false"/>    <!-- Local loop closure detection with locations in STM -->
       <param name="RGBD/ProximityMaxGraphDepth"       type="string"   value="50" />      <!-- Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore-->
+
+      <param name="RGBD/MarkerDetection"              type="string"   value="$(arg marker_detection)" />      <!--Detect static markers to be added as landmarks for graph optimization. If input data have already landmarks, this will be ignored.-->>
+
+      <!-- 
+        Dictionary to use: DICT_ARUCO_4X4_50=0, DICT_ARUCO_4X4_100=1, DICT_ARUCO_4X4_250=2, DICT_ARUCO_4X4_1000=3, DICT_ARUCO_5X5_50=4, DICT_ARUCO_5X5_100=5, DICT_ARUCO_5X5_250=6, DICT_ARUCO_5X5_1000=7, 
+      DICT_ARUCO_6X6_50=8, DICT_ARUCO_6X6_100=9, DICT_ARUCO_6X6_250=10, DICT_ARUCO_6X6_1000=11, DICT_ARUCO_7X7_50=12, DICT_ARUCO_7X7_100=13, DICT_ARUCO_7X7_250=14, DICT_ARUCO_7X7_1000=15, DICT_ARUCO_ORIGINAL = 16, 
+      DICT_APRILTAG_16h5=17, DICT_APRILTAG_25h9=18, DICT_APRILTAG_36h10=19, DICT_APRILTAG_36h11=20
+      -->
+      <param name="Marker/Dictionary"               type="string" value="$(arg marker_dict_type)" />
+      <param name="Marker/Length"                   type="string" value="0" />      <!--The length (m) of the markers' side. 0 means automatic marker length estimation using the depth image-->>
+      <param name="Marker/MaxDepthError"            type="string" value="0.05" />   <!-- Maximum depth error between all corners of a marker when estimating the marker length -->
+      <param name="Marker/VarianceLinear"           type="string" value="0.001" /> 
+      <param name="Marker/VarianceAngular"          type="string" value="0.01" />
+      <param name="Marker/CornerRefinementMethod"   type="string" value="0" />      <!--Corner refinement method (0: None, 1: Subpixel, 2:contour, 3: AprilTag2)  opencv > 3.3 -->
 
       <param name="Vis/FeatureType"     type="string" value="8" />
       <param name="Vis/MaxDepth"        type="string" value="10.0" />
@@ -469,11 +473,14 @@
       <param name="Grid/RangeMax"                   type="string"   value="$(arg grid_rangeMax)" />
       <param name="Grid/NoiseFilteringMinNeighbors" type="string"   value="5" />
       <param name="Grid/NoiseFilteringRadius"       type="string"   value="0.0"/>
-      <param name="Grid/DepthDecimation"            type="string"   value="4"/>
+      <param name="Grid/DepthDecimation"            type="string"   value="2"/>
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>
       <param name="Grid/MaxObstacleHeight"          type="string"   value="$(arg grid_maxObstacleHeight)"/>
+      <param name="Grid/MultiLevelCellSize"         type="string"   value="$(arg multi_level_cell_size)"/>
+      <param name="Grid/GroundLabelId"              type="string"   value="$(arg ground_label_id)"/>
+      <param name="Grid/CeilingLabelId"             type="string"   value="$(arg ceiling_label_id)"/>
      
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />

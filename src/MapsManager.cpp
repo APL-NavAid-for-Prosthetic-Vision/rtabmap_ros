@@ -153,6 +153,19 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		image_transport::ImageTransport semantic_it(semantic_nh);
 		semanticMaskPub_ = semantic_it.advertise("image_mask", 1);
 	}
+
+	std::string multiLevelCellSizeStr = "0.5 0.5 0.5 0.5 0.5";
+	pnh.param("Grid/MultiLevelCellSize", multiLevelCellSizeStr, multiLevelCellSizeStr);
+	ROS_INFO("%s(maps): Grid/MultiLevelCellSize = %s", name.c_str(), multiLevelCellSizeStr.c_str());
+	std::list<std::string> multiLevelCellSizeStrList = uSplit(multiLevelCellSizeStr, ' ');
+	std::vector<float> multiLevelCellSize(multiLevelCellSizeStrList.size());
+
+	unsigned int index = 0;
+	for(std::list<std::string>::iterator jter = multiLevelCellSizeStrList.begin(); jter != multiLevelCellSizeStrList.end(); ++jter) {
+		multiLevelCellSize.at(index) = uStr2Float(*jter);
+		++index;
+	}
+	
 	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
@@ -160,23 +173,26 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	// JHUAPL section
 	if(semanticSegmentationEnable_)
 	{
-		semanticOctomap_ = new SemanticOctoMap(occupancyGrid_->getCellSize(), 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
+		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
 	
 		// set the model class map if available
 		if(!semanticSegmentationModelFilePath_.empty())
 		{
-#ifdef WITH_YAMLCPP
 			std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
+			std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
 			
-			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap))
+			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap, modelMaskIdColorMap))
 			{
 				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
 			}
 
 			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
-			semanticOctomap_->updateObjectTypeMap();
-			semanticOctomap_->generateMaskIdColorMap();
-#endif
+			semanticOctomap_->updateOccupancyMapStruct();
+
+			if(modelMaskIdColorMap.empty())
+				semanticOctomap_->generateMaskIdColorMap();
+			else
+				semanticOctomap_->setMaskidColorMap(modelMaskIdColorMap);
 		}
 	}
 	// JHUAPL section end
@@ -234,22 +250,40 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-	octoMapPubBin_ = nht->advertise<octomap_msgs::Octomap>("octomap_binary", 1, latching_);
-	latched_.insert(std::make_pair((void*)&octoMapPubBin_, false));
 	octoMapPubFull_ = nht->advertise<octomap_msgs::Octomap>("octomap_full", 1, latching_);
 	latched_.insert(std::make_pair((void*)&octoMapPubFull_, false));
 	octoMapCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_occupied_space_cloud", 1, latching_);
 	latched_.insert(std::make_pair((void*)&octoMapCloud_, false));
-	octoMapFrontierCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_global_frontier_space", 1, latching_);
-	latched_.insert(std::make_pair((void*)&octoMapFrontierCloud_, false));
-	octoMapObstacleCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_obstacles", 1, latching_);
-	latched_.insert(std::make_pair((void*)&octoMapObstacleCloud_, false));
-	octoMapGroundCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_ground", 1, latching_);
-	latched_.insert(std::make_pair((void*)&octoMapGroundCloud_, false));
-	octoMapEmptySpace_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_empty_space", 1, latching_);
-	latched_.insert(std::make_pair((void*)&octoMapEmptySpace_, false));
-	octoMapProj_ = nht->advertise<nav_msgs::OccupancyGrid>("octomap_grid", 1, latching_);
-	latched_.insert(std::make_pair((void*)&octoMapProj_, false));
+
+	if(semanticSegmentationEnable_)
+	{
+		octoMapFullGroundPub_ = nht->advertise<octomap_msgs::Octomap>("octomap_full_ground", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapFullGroundPub_, false));
+		octoMapFullCeilingPub_ = nht->advertise<octomap_msgs::Octomap>("octomap_full_ceiling", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapFullCeilingPub_, false));
+		octoMapFullStaticPub_ = nht->advertise<octomap_msgs::Octomap>("octomap_full_static", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapFullStaticPub_, false));
+		octoMapFullMovablePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_full_movable", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapFullMovablePub_, false));
+		octoMapFullDynamicPub_ = nht->advertise<octomap_msgs::Octomap>("octomap_full_dynamic", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapFullDynamicPub_, false));
+	}
+	else 
+	{
+		octoMapPubBin_ = nht->advertise<octomap_msgs::Octomap>("octomap_binary", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapPubBin_, false));
+		octoMapFrontierCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_global_frontier_space", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapFrontierCloud_, false));
+		octoMapObstacleCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_obstacles", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapObstacleCloud_, false));
+		octoMapGroundCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_ground", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapGroundCloud_, false));
+		octoMapEmptySpace_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_empty_space", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapEmptySpace_, false));
+		octoMapProj_ = nht->advertise<nav_msgs::OccupancyGrid>("octomap_grid", 1, latching_);
+		latched_.insert(std::make_pair((void*)&octoMapProj_, false));
+	}
+
 #endif
 #endif
 }
@@ -400,18 +434,22 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 		// set the model class map if available
 		if(!semanticSegmentationModelFilePath_.empty())
 		{
-#ifdef WITH_YAMLCPP
 			std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
-			
-			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap))
+			std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
+
+			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap, modelMaskIdColorMap))
 			{
 				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
 			}
 
 			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
-			semanticOctomap_->updateObjectTypeMap();
-			semanticOctomap_->generateMaskIdColorMap();
-#endif
+			semanticOctomap_->updateOccupancyMapStruct();
+
+			if(modelMaskIdColorMap.empty())
+				semanticOctomap_->generateMaskIdColorMap();
+			else
+				semanticOctomap_->setMaskidColorMap(modelMaskIdColorMap);
+			
 		}
 	}
 	// JHUAPL section end
@@ -519,7 +557,12 @@ bool MapsManager::hasSubscribers() const
 			octoMapObstacleCloud_.getNumSubscribers() != 0 ||
 			octoMapGroundCloud_.getNumSubscribers() != 0 ||
 			octoMapEmptySpace_.getNumSubscribers() != 0 ||
-			octoMapProj_.getNumSubscribers() != 0;
+			octoMapProj_.getNumSubscribers() != 0 ||
+			octoMapFullGroundPub_.getNumSubscribers() != 0 ||
+			octoMapFullCeilingPub_.getNumSubscribers() != 0 ||
+			octoMapFullStaticPub_.getNumSubscribers() != 0 ||
+			octoMapFullMovablePub_.getNumSubscribers() != 0 ||
+			octoMapFullDynamicPub_.getNumSubscribers() != 0;
 }
 
 std::map<int, Transform> MapsManager::getFilteredPoses(const std::map<int, Transform> & poses)
@@ -552,7 +595,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				octoMapObstacleCloud_.getNumSubscribers() != 0 ||
 				octoMapGroundCloud_.getNumSubscribers() != 0 ||
 				octoMapEmptySpace_.getNumSubscribers() != 0 ||
-				octoMapProj_.getNumSubscribers() != 0;
+				octoMapProj_.getNumSubscribers() != 0 ||
+				octoMapFullGroundPub_.getNumSubscribers() != 0 ||
+				octoMapFullCeilingPub_.getNumSubscribers() != 0 ||
+				octoMapFullStaticPub_.getNumSubscribers() != 0 ||
+				octoMapFullMovablePub_.getNumSubscribers() != 0 ||
+				octoMapFullDynamicPub_.getNumSubscribers() != 0;
 
 		updateGrid = projMapPub_.getNumSubscribers() != 0 ||
 				gridMapPub_.getNumSubscribers() != 0 ||
@@ -675,7 +723,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 
 					UDEBUG("Adding grid map %d to cache...", iter->first);
 					cv::Point3f viewPoint;
-					cv::Mat emptyCells;
+					std::map<int, cv::Mat> emptyCellsMap;
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
 					if(iter->first > 0)
 					{
@@ -706,20 +754,20 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
 								semanticSegmentationEnable_?&semanticMask:0,
 								generateGrid?0:&obstaclesCellsMap,
-								generateGrid?0:&emptyCells);
+								generateGrid?0:&emptyCellsMap);
 												
 						if(generateGrid)
 						{
 							Signature tmp(data);
 							tmp.setPose(iter->second);
-							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCellsMap, viewPoint);
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
 							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 						}
 						else
 						{
 							viewPoint = data.gridViewPoint();
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
 							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 						}
 					}
@@ -745,20 +793,20 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
 								semanticSegmentationEnable_?&semanticMask:0,
 								generateGrid?0:&obstaclesCellsMap,
-								generateGrid?0:&emptyCells);
+								generateGrid?0:&emptyCellsMap);
 						
 						if(generateGrid)
 						{
 							Signature tmp(data);
 							tmp.setPose(iter->second);
-							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCellsMap, viewPoint);
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
 							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 						}
 						else
 						{
 							viewPoint = data.gridViewPoint();
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
 							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 						}
 
@@ -907,12 +955,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					(iter->first == 0 || 
 						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
 				{
-					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> >::iterator mter = gridAPLMaps_.find(iter->first);
+					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat>> >::iterator mter = gridAPLMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
 					if(mter != gridAPLMaps_.end() && pter!=gridMapsViewpoints_.end())
 					{
 						if(mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2 &&
-						   (mter->second.second.empty() || mter->second.second.channels() > 2))
+						   (mter->second.second.begin()->second.empty() || mter->second.second.begin()->second.channels() > 2))
 						{
 							semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
 						}
@@ -1017,8 +1065,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		else
 		{
 			// In Semantic Segmentation Mode
-			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat>>::iterator iter=gridAPLMaps_.begin();
-			iter!=gridAPLMaps_.end();)
+			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat>>>::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
 			{
 				if(!uContains(poses, iter->first))
 				{
@@ -1155,7 +1202,7 @@ void MapsManager::publishMaps(
 			assembledGroundPoses_.clear();
 			assembledGroundIndex_.release();
 		}
-		if(graphObstacleOptimized || graphObstacleChanged )
+		if(graphObstacleOptimized || graphObstacleChanged)
 		{
 			int previousSize = assembledObstacles_->size();
 			assembledObstacles_->clear();
@@ -1799,105 +1846,162 @@ void MapsManager::publishAPLMaps(
 
 	if( octomapUpdated_ || 
 		!latching_ ||
-		(octoMapPubBin_.getNumSubscribers() && !latched_.at(&octoMapPubBin_)) ||
 		(octoMapPubFull_.getNumSubscribers() && !latched_.at(&octoMapPubFull_)) ||
+		(octoMapFullGroundPub_.getNumSubscribers() && !latched_.at(&octoMapFullGroundPub_)) ||
+		(octoMapFullCeilingPub_.getNumSubscribers() && !latched_.at(&octoMapFullCeilingPub_)) ||
+		(octoMapFullStaticPub_.getNumSubscribers() && !latched_.at(&octoMapFullStaticPub_)) ||
+		(octoMapFullMovablePub_.getNumSubscribers() && !latched_.at(&octoMapFullMovablePub_)) ||
+		(octoMapFullDynamicPub_.getNumSubscribers() && !latched_.at(&octoMapFullDynamicPub_)) ||
 		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)) )
 	{
-		if(octoMapPubBin_.getNumSubscribers())
-		{	
-			octomap_msgs::Octomap msg;
-			octomap_msgs::binaryMapToMsg(*semanticOctomap_->octree(), msg);
-			msg.header.frame_id = mapFrameId;
-			msg.header.stamp = stamp;
-			octoMapPubBin_.publish(msg);
-			latched_.at(&octoMapPubBin_) = true;
-		}
+		const std::vector<std::string> MULTILEVELNAMES = rtabmap::SemanticOctoMap::MULTILEVELNAMES;
+		// octoMapPubFull_ publishes all layers as single octomap ful map (include node's data)
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			octomap_msgs::fullMapToMsg(*semanticOctomap_->octree(), msg);
+			/// TODO: merger layers
+			//Rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = multiLevelOctrees.at(0);
+
+			// octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
+			// msg.header.frame_id = mapFrameId;
+			// msg.header.stamp = stamp;
+			// octoMapPubFull_.publish(msg);
+			// latched_.at(&octoMapPubFull_) = true;
+		}
+		// octoMapFullGroundPub_ publishes ground layer
+		if(octoMapFullGroundPub_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+			UASSERT(semanticOctomap_->multiLevelOctrees()[0]);
+			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(0);
+
+			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
-			octoMapPubFull_.publish(msg);
-			latched_.at(&octoMapPubFull_) = true;
+			octoMapFullGroundPub_.publish(msg);
+			latched_.at(&octoMapFullGroundPub_) = true;
 		}
+		// octoMapFullCeilingPub_ publishes ceiling layer
+		if(octoMapFullCeilingPub_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+			UASSERT(semanticOctomap_->multiLevelOctrees()[1]);
+			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(1);
+
+			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapFullCeilingPub_.publish(msg);
+			latched_.at(&octoMapFullCeilingPub_) = true;
+		}
+		// octoMapFullStaticPub_ publishes static layer
+		if(octoMapFullStaticPub_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+			UASSERT(semanticOctomap_->multiLevelOctrees()[2]);
+			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(2);
+
+			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapFullStaticPub_.publish(msg);
+			latched_.at(&octoMapFullStaticPub_) = true;
+		}
+		// octoMapFullMovablePub_ publishes movable layer
+		if(octoMapFullMovablePub_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+			UASSERT(semanticOctomap_->multiLevelOctrees()[3]);
+			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(3);
+
+			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapFullMovablePub_.publish(msg);
+			latched_.at(&octoMapFullMovablePub_) = true;
+		}
+		// octoMapFullDynamicPub_ publishes dynamic layer
+		if(octoMapFullDynamicPub_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+			UASSERT(semanticOctomap_->multiLevelOctrees()[4]);
+			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(4);
+
+			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapFullDynamicPub_.publish(msg);
+			latched_.at(&octoMapFullDynamicPub_) = true;
+		}
+		// octoMapCloud_ publishes all layers as single point cloud (include node's data)
 		if(octoMapCloud_.getNumSubscribers())
 		{
 			sensor_msgs::PointCloud2 msg;
-			pcl::IndicesPtr staticIndices(new std::vector<int>);
-			pcl::IndicesPtr movableIndices(new std::vector<int>);
-			pcl::IndicesPtr emptyIndices(new std::vector<int>);
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = semanticOctomap_->createCloud(octomapTreeDepth_, staticIndices.get(), movableIndices.get(), 
-																					emptyIndices.get(), true);
+			std::list<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+			
+			for (int i = 0; i < MULTILEVELNAMES.size(); ++i) {
+				pcl::IndicesPtr occupiedIndices(new std::vector<int>);
+				pcl::IndicesPtr emptyIndices(new std::vector<int>);
 
-			if(octoMapCloud_.getNumSubscribers())
-			{
-				pcl::PointCloud<pcl::PointXYZRGB> cloudOccupiedSpace;
-				pcl::IndicesPtr indices = util3d::concatenate(staticIndices, movableIndices);
-				pcl::copyPointCloud(*cloud, *indices, cloudOccupiedSpace);
-				pcl::toROSMsg(cloudOccupiedSpace, msg);
-				msg.header.frame_id = mapFrameId;
-				msg.header.stamp = stamp;
-				octoMapCloud_.publish(msg);
-				latched_.at(&octoMapCloud_) = true;
+				std::string layerName = MULTILEVELNAMES.at(i);
+				//UDEBUG("MULTILEVELNAMES: \"%s\"", layerName.c_str());
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = semanticOctomap_->createCloud(layerName, octomapTreeDepth_, occupiedIndices.get(), emptyIndices.get(), true);
+
+				clouds.push_back(cloud);
 			}
+
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudOccupiedSpacePtr;
+			cloudOccupiedSpacePtr = util3d::concatenateClouds(clouds);
+			
+			pcl::toROSMsg(*cloudOccupiedSpacePtr, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapCloud_.publish(msg);
+			latched_.at(&octoMapCloud_) = true;
 		}
 	}
 	
 
 	if( mapCacheCleanup_ &&
-		octoMapPubBin_.getNumSubscribers() == 0 &&
 		octoMapPubFull_.getNumSubscribers() == 0 &&
-		octoMapCloud_.getNumSubscribers() == 0)
-
-		/*
-		
 		octoMapCloud_.getNumSubscribers() == 0 &&
-		octoMapFrontierCloud_.getNumSubscribers() == 0 &&
-		octoMapObstacleCloud_.getNumSubscribers() == 0 &&
-		octoMapGroundCloud_.getNumSubscribers() == 0 &&
-		octoMapEmptySpace_.getNumSubscribers() == 0 &&
-		octoMapProj_.getNumSubscribers() == 0)*/
+		octoMapFullGroundPub_.getNumSubscribers() == 0 &&
+		octoMapFullCeilingPub_.getNumSubscribers() == 0 &&
+		octoMapFullStaticPub_.getNumSubscribers() == 0 &&
+		octoMapFullMovablePub_.getNumSubscribers() == 0 &&
+		octoMapFullDynamicPub_.getNumSubscribers() == 0 )
 	{
 		semanticOctomap_->clear();
 	}
 
-	if(octoMapPubBin_.getNumSubscribers() == 0)
-	{
-		latched_.at(&octoMapPubBin_) = false;
-	}
 	if(octoMapPubFull_.getNumSubscribers() == 0)
 	{
 		latched_.at(&octoMapPubFull_) = false;
+	}
+	if(octoMapFullGroundPub_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapFullGroundPub_) = false;
+	}
+	if(octoMapFullCeilingPub_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapFullCeilingPub_) = false;
+	}
+	if(octoMapFullStaticPub_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapFullStaticPub_) = false;
+	}
+	if(octoMapFullMovablePub_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapFullMovablePub_) = false;
+	}
+	if(octoMapFullDynamicPub_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapFullDynamicPub_) = false;
 	}
 	if(octoMapCloud_.getNumSubscribers() == 0)
 	{
 		latched_.at(&octoMapCloud_) = false;
 	}
-
-	/*
-	
-	if(octoMapFrontierCloud_.getNumSubscribers() == 0)
-	{
-		latched_.at(&octoMapFrontierCloud_) = false;
-	}
-	if(octoMapObstacleCloud_.getNumSubscribers() == 0)
-	{
-		latched_.at(&octoMapObstacleCloud_) = false;
-	}
-	if(octoMapGroundCloud_.getNumSubscribers() == 0)
-	{
-		latched_.at(&octoMapGroundCloud_) = false;
-	}
-	if(octoMapEmptySpace_.getNumSubscribers() == 0)
-	{
-		latched_.at(&octoMapEmptySpace_) = false;
-	}
-	if(octoMapProj_.getNumSubscribers() == 0)
-	{
-		latched_.at(&octoMapProj_) = false;
-	}
-	*/
 
 #endif
 #endif
@@ -1941,23 +2045,21 @@ void MapsManager::publishSemanticMask(rtabmap::SensorData & data)
 		// apply maskcolor to semantic mask image
 		cv::Mat semanticMaskImage = cv::Mat::zeros(semanticMask.rows, semanticMask.cols, CV_8UC3);
 
-		// Enable TBB in OPENCV for multi-thread processing.
-		semanticMaskImage.forEach<cv::Vec3b>
-		(	[&classIDSemanticMaskMap, &semanticMask](cv::Vec3b & pixel, const int * position) -> void 
-			{
-				// x (rows)-> position[0] ; y (cols)-> position[1]
-				unsigned int classId = semanticMask.at<uint8_t>(position[0], position[1]);
-				std::map<unsigned int, cv::Point3f>::iterator classIDSemanticMaskMapIter = classIDSemanticMaskMap.find(classId);
+		for(int h = 0; h < semanticMaskImage.rows; ++h) {
+			for(int w = 0; w < semanticMaskImage.cols; ++w) {
+				//unsigned int classId = semanticMaskImage.at<uint8_t>(h, w);
+				std::map<unsigned int, cv::Point3f>::iterator classIDSemanticMaskMapIter = 
+					classIDSemanticMaskMap.find(semanticMask.at<uint8_t>(h, w));
 				if(classIDSemanticMaskMapIter != classIDSemanticMaskMap.end())
-				{
-					// classIDSemanticMaskMap is in RGB but ROS needs it in  BGR
+		 		{
+					// classIDSemanticMaskMap is in RGB but ROS needs it in BGR
 					// (b,g,r) = (r,g,b) <==> (z,y,x) <==> (x,y,z)
-					pixel[0] = (uint8_t) classIDSemanticMaskMapIter->second.z; // blue
-					pixel[1] = (uint8_t) classIDSemanticMaskMapIter->second.y; // green
-					pixel[2] = (uint8_t) classIDSemanticMaskMapIter->second.x; // red
+					semanticMaskImage.at<cv::Vec3b>(h, w)[0] =  classIDSemanticMaskMapIter->second.z; // blue
+					semanticMaskImage.at<cv::Vec3b>(h, w)[1] =  classIDSemanticMaskMapIter->second.y; // green
+					semanticMaskImage.at<cv::Vec3b>(h, w)[2] =  classIDSemanticMaskMapIter->second.x; // red
 				}
 			}
-		); 
+		}
 
 		sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", semanticMaskImage).toImageMsg();
 		semanticMaskPub_.publish(msg);

@@ -18,6 +18,8 @@
 
 #include <map>
 
+#include <rtabmap/core/SemanticOctoMap.h>
+
 #include <rtabmap_ros/SemanticClassIdElement.h>
 #include <rtabmap_ros/SemanticClassIdMap.h>
 
@@ -67,7 +69,7 @@ protected:
     QString classID_file_path_; 
     std::map< std::string, std::map<unsigned int, std::string> > modelNameIdMap_;
     std::map<unsigned int, std::pair< int, cv::Point3f> > semanticClassIdMap_;   // [label id : {OccupancyType, maskColor}]
-
+    std::map<unsigned int, cv::Point3f> modelMaskIdColorMap_;                   // [label id : semanticMaskColor]
 };
 
 } // end of namespace 

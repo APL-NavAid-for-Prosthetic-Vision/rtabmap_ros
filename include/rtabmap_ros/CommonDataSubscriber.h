@@ -1,5 +1,8 @@
 /*
 Modified: 
+	The Johns Hopkins University
+    Applied Physics Laboratory.
+
 Original: Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -71,7 +74,8 @@ public:
 	bool isSubscribedToScan2d() const {return subscribedToScan2d_;}
 	bool isSubscribedToScan3d() const {return subscribedToScan3d_;}
 	bool isSubscribedToOdomInfo() const {return subscribedToOdomInfo_;}
-	bool isDataSubscribed() const {return isSubscribedToDepth() || isSubscribedToStereo() || isSubscribedToRGBD() || isSubscribedToScan2d() || isSubscribedToScan3d() || isSubscribedToRGB() || isSubscribedToOdom();}
+	bool isDataSubscribed() const {return isSubscribedToDepth() || isSubscribedToStereo() || isSubscribedToRGBD() || isSubscribedToScan2d() || 
+									isSubscribedToScan3d() || isSubscribedToRGB() || isSubscribedToOdom() || isSubscribedToRGBDSemanticDetection();}
 	int rgbdCameras() const {return isSubscribedToRGBD()?(int)rgbdSubs_.size():0;}
 	int getQueueSize() const {return queueSize_;}
 	bool isApproxSync() const {return approxSync_;}
@@ -162,9 +166,9 @@ protected:
 				const cv_bridge::CvImageConstPtr & semanticMaskMsg,
 				const sensor_msgs::CameraInfo & rgbCameraInfoMsg,
 				const sensor_msgs::CameraInfo & depthCameraInfoMsg,
-				const sensor_msgs::LaserScan& scanMsg,
-				const sensor_msgs::PointCloud2& scan3dMsg,
-				const rtabmap_ros::OdomInfoConstPtr& odomInfoMsg,
+				const sensor_msgs::LaserScan & scanMsg,
+				const sensor_msgs::PointCloud2 & scan3dMsg,
+				const rtabmap_ros::OdomInfoConstPtr & odomInfoMsg,
 				const std::vector<rtabmap_ros::GlobalDescriptor> & globalDescriptorMsgs = std::vector<rtabmap_ros::GlobalDescriptor>(),
 				const std::vector<rtabmap_ros::KeyPoint> & localKeyPoints = std::vector<rtabmap_ros::KeyPoint>(),
 				const std::vector<rtabmap_ros::Point3f> & localPoints3d = std::vector<rtabmap_ros::Point3f>(),
@@ -444,6 +448,9 @@ private:
 	DATA_SYNCS4(rgbdOdomScan2dInfo, nav_msgs::Odometry, rtabmap_ros::RGBDImage, sensor_msgs::LaserScan, rtabmap_ros::OdomInfo);
 	DATA_SYNCS4(rgbdOdomScan3dInfo, nav_msgs::Odometry, rtabmap_ros::RGBDImage, sensor_msgs::PointCloud2, rtabmap_ros::OdomInfo);
 	DATA_SYNCS4(rgbdOdomScanDescInfo, nav_msgs::Odometry, rtabmap_ros::RGBDImage, rtabmap_ros::ScanDescriptor, rtabmap_ros::OdomInfo);
+
+	// 1 RGBDSemanticDetection 
+	void rgbdSemanticDetectionMsgCallback(const rtabmap_ros::RGBDSemanticDetectionConstPtr&);
 
 	// 1 RGBDSemanticDetection + Odom
 	DATA_SYNCS2(rgbdSemanticDetectionOdom, nav_msgs::Odometry, rtabmap_ros::RGBDSemanticDetection);

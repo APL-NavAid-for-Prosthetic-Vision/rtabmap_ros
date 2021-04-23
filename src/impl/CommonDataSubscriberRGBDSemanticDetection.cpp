@@ -1,5 +1,6 @@
 /*
-*   Johns Hopkins University Applied Physics Laboratory
+*   Copyright 2021 The Johns Hopkins University
+*   Applied Physics Laboratory.  All rights reserved.
 *   
 *   This is based on the work from CommonDataSubscribedRGBD.cpp by Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 *   All rights reserved.
@@ -31,12 +32,12 @@ void CommonDataSubscriber::setupRGBDSemanticDetectionCallbacks(
 	{
 		rgbdSemanticDetectionSubs_.resize(1);
 		rgbdSemanticDetectionSubs_[0] = new message_filters::Subscriber<rtabmap_ros::RGBDSemanticDetection>;
-		rgbdSemanticDetectionSubs_[0]->subscribe(nh, "rgbd_semantic_detection", 1);
+		rgbdSemanticDetectionSubs_[0]->subscribe(nh, "rgbd_semantic_detection_msg", 1);
 #ifdef RTABMAP_SYNC_USER_DATA
 		if(subscribeOdom && subscribeUserData)
 		{
-			// TODO in future version supporting UserData
-			
+			/// TODO: support of incoming UserData
+			ROS_FATAL("Not supposed mode!");
 		}
 		else
 #endif
@@ -56,24 +57,45 @@ void CommonDataSubscriber::setupRGBDSemanticDetectionCallbacks(
         }
         else
         {
-            ROS_FATAL("Not supposed to be here!");
+            ROS_FATAL("Not supposed mode!");
         }
         
     }
     else
     {
-        //TODO: when supports it as a callback when odom comes from rtabmap 
-        /* 
-        rgbdSemanticDetectionSub_ = nh.subscribe("rgbd_semantic_detection_image", 1, &CommonDataSubscriber::rgbdCallback, this);
+        rgbdSemanticDetectionSub_ = nh.subscribe("rgbd_semantic_detection_msg", 1, &CommonDataSubscriber::rgbdSemanticDetectionMsgCallback, this);
 
 		subscribedTopicsMsg_ =
 				uFormat("\n%s subscribed to:\n   %s",
 				ros::this_node::getName().c_str(),
-				rgbdSemanticDetectionSub_.getTopic().c_str());
-
-        */
+				rgbdSemanticDetectionSub_.getTopic().c_str());		
     }
-    
+}
+
+// 1 RGBDSemanticDectection msg
+void CommonDataSubscriber::rgbdSemanticDetectionMsgCallback(const rtabmap_ros::RGBDSemanticDetectionConstPtr& image1Msg)
+{
+	cv_bridge::CvImageConstPtr rgb, depth, semantic_mask;
+	rtabmap_ros::toCvShare(image1Msg, rgb, depth, semantic_mask);
+
+	rtabmap_ros::UserDataConstPtr userDataMsg; // Null
+	sensor_msgs::LaserScan scanMsg; // Null
+	sensor_msgs::PointCloud2 scan3dMsg; // Null
+
+	std::vector<rtabmap_ros::GlobalDescriptor> globalDescriptorMsgs;
+	if(!image1Msg->global_descriptor.data.empty())
+	{
+		globalDescriptorMsgs.push_back(image1Msg->global_descriptor);
+	}
+
+	nav_msgs::OdometryConstPtr odomMsgPtr( new nav_msgs::Odometry(image1Msg->odom) );
+	rtabmap_ros::OdomInfoConstPtr odomInfoMsgPtr( new rtabmap_ros::OdomInfo(image1Msg->odomInfo) );
+	
+	commonSingleDepthCallback(odomMsgPtr, userDataMsg, rgb, depth,
+			semantic_mask, image1Msg->rgb_camera_info, image1Msg->depth_camera_info,
+			scanMsg, scan3dMsg, odomInfoMsgPtr,
+			globalDescriptorMsgs, image1Msg->key_points, image1Msg->points,
+			rtabmap::uncompressData(image1Msg->descriptors));
 }
 
 // 1 RGBDSemanticDetection + Odom  

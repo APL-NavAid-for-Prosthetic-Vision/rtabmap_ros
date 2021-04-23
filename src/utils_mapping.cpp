@@ -1,5 +1,6 @@
 /*
-*   Johns Hopkins University Applied Physics Laboratory
+*   Copyright 2021 The Johns Hopkins University
+*   Applied Physics Laboratory.  All rights reserved.
 */
 
 #include "rtabmap_ros/utils_mapping.h"
@@ -10,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <cmath>
+#include <vector>
 
 #ifdef WITH_YAMLCPP
 #include <yaml-cpp/yaml.h> 
@@ -23,47 +25,64 @@
 
 namespace utils
 {
-
-    bool parseModelConfig(std::string filePath, std::map< std::string, std::map<unsigned int, std::string> > & modelMap)
+    bool parseConfig(std::string filePath, YAML::Node & node)
     {
         std::ifstream finput;
-    	finput.open(filePath, std::ifstream::in);
+        finput.open(filePath, std::ifstream::in);
 
         if(!finput.is_open())
         {
             ROS_ERROR(" failed to open yaml file");
             return false;
         }
-
 #ifdef WITH_YAMLCPP
-        YAML::Node modelNamesConfig;
         try 
         {
-            modelNamesConfig = YAML::Load(finput);
+            node = YAML::Load(finput);
         }
-        catch (const YAML::Exception& e) 
+        catch(const YAML::Exception& e) 
         {
-            ROS_ERROR_STREAM("yaml load error: " << e.what() << "\n");
+            std::ostringstream msg;
+            msg << e.what();
+            ROS_ERROR(" failed to read yaml file : msg:\"%s\"", msg.str().c_str());
+            finput.close();
+            return false;
+        }
+#endif 
+        finput.close();
+        return true;
+    }
+
+    bool parseModelConfig(std::string filePath, 
+                    std::map< std::string, std::map<unsigned int, std::string>> & modelMap, 
+                    std::map<unsigned int, cv::Point3f> & modelMaskIdColorMap)
+    {
+        YAML::Node modelNamesConfig;
+        if(!parseConfig(filePath, modelNamesConfig))
+        {
+            ROS_ERROR(" file=%s", filePath.c_str());
         }
              
         for(YAML::const_iterator it=modelNamesConfig.begin(); it!=modelNamesConfig.end(); ++it) 
         {
             std::string type = it->first.as<std::string>();
 
-            std::map<std::string, unsigned int> typeObjMap = it->second.as<std::map<std::string, unsigned int>>();
             std::map<unsigned int, std::string> ObjIdMap;
-            for(std::map<std::string, unsigned int>::iterator itMap=typeObjMap.begin(); itMap!=typeObjMap.end();  ++itMap)
+            for(YAML::const_iterator objIt=it->second.begin(); objIt!=it->second.end(); ++objIt) 
             {
+                std::string className = objIt->first.as<std::string>();
+                unsigned int labelId = objIt->second["id"].as<unsigned int>();
+                std::vector<float> maskColor = objIt->second["color"].as<std::vector<float>>();
+
                 // update the map based on the object id (key) and name (value)
-                //unsigned int labelId = itMap->second;
-                ObjIdMap.insert({itMap->second, itMap->first});
+                ObjIdMap.insert({labelId, className});
+                // add the mask color for each label id :[label id : semanticMaskColor]
+                cv::Point3f maskColorCV(maskColor.at(0),maskColor.at(1),maskColor.at(2));
+                modelMaskIdColorMap.insert({labelId, maskColorCV});
             }
             modelMap.insert({type, ObjIdMap});
         }   
-#endif    
-
-        finput.close();
-
+   
         // check if the modelMap was populated
         if(modelMap.empty())
         {
@@ -108,11 +127,10 @@ namespace utils
         }
     }
 
+    ///
     /// Based on the 
     /// https://github.com/arnaudgelas/OpenCVExamples/blob/master/cvMat/Statistics/Median/Median.cpp
     /// https://gist.github.com/heisters/9cd68181397fbd35031b
-    /// 
-    ///
     /// 
     double medianMat(cv::Mat& input)
     {
