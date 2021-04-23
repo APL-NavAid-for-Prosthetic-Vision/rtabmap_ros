@@ -166,7 +166,7 @@ private:
 
 	rtabmap::SemanticOctoMap * semanticOctomap_;
 	bool semanticSegmentationEnable_;
-	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> > gridAPLMaps_; // < map<class label, obstacle>, empty cells >
+	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat>> > gridAPLMaps_; // < map<class label, obstacle>, map< octree layer, empty cells >
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
