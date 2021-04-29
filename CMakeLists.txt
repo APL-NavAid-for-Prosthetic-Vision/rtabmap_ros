@@ -41,6 +41,8 @@ find_package(OpenCV 3.4.10 REQUIRED)
 message(STATUS "OpenCV_INCLUDE_DIRS=${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCV_LIBRARIES=${OpenCV_LIBRARIES}")
 
+find_package(fmt REQUIRED)
+
 option(RTABMAP_GUI "rtabmap_apl library librtabmap_gui.so" OFF)
 
 IF(RTABMAP_GUI)
@@ -225,7 +227,8 @@ SET(Libraries
    ${OpenCV_LIBRARIES}
    ${PCL_LIBRARIES}
    ${catkin_LIBRARIES}
-   ${rtabmap_apl_LIBRARIES}    
+   ${rtabmap_apl_LIBRARIES}
+   fmt::fmt   
 )
  
 SET(rtabmap_sync_lib_src

@@ -607,6 +607,7 @@ void CoreWrapper::onInit()
 	// JHUAPL section end
 
 	mapsManager_.setParameters(parameters_);
+	mapsManager_.setRate(rate_);
 
 	// Init RTAB-Map
 	rtabmap_.init(parameters_, databasePath_);
@@ -2346,6 +2347,8 @@ void CoreWrapper::process(
 					// publish the newest semantic mask added to map
 					mapsManager_.publishSemanticMask(data);
 				}
+				// publish landmarks
+				mapsManager_.publishLandmarksMap(mapFrameId_);
 				
 				// update goal if planning is enabled
 				if(!currentMetricGoal_.isNull())

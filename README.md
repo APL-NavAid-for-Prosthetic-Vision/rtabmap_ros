@@ -16,12 +16,16 @@ octomap_msgs, octomap_ros, octomap_rviz_plugins
 
 system libraries:  
 opencv 3.4.10 (Tested, newer might work 3.4.x)  
+libfmt-dev 
 
 ## Installation
 
 - From your workspace initialize and configure the catkin project (make sure to have source the ROS environment 'source /opt/ros/melodic/setup.bash')
 
 ```bash
+# system dependecies
+$ sudo apt-get install -y libfmt-dev
+
 $ catkin init
 #if building python3
 $ catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3

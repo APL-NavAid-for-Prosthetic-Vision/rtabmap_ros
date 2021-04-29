@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/FlannIndex.h>
+#include <rtabmap/core/Landmark.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <ros/time.h>
@@ -90,6 +91,8 @@ public:
 	const rtabmap::OccupancyGrid * getOccupancyGrid() const {return occupancyGrid_;}
 
 	// JHUAPL section
+	void setRate(float rate) { rate_ = rate;}
+
 	bool isSemanticSegmentationEnabled() { return semanticSegmentationEnable_; }
 
 	void publishAPLMaps(const std::map<int, rtabmap::Transform> & poses,
@@ -97,6 +100,8 @@ public:
 						const std::string & mapFrameId);
 
 	void publishSemanticMask(rtabmap::SensorData & data);
+
+	void publishLandmarksMap(const std::string & mapFrameId);
 	
 	// JHUAPL section end
 
@@ -134,6 +139,8 @@ private:
 	ros::Publisher octoMapFullStaticPub_;
 	ros::Publisher octoMapFullMovablePub_;
 	ros::Publisher octoMapFullDynamicPub_;
+
+	ros::Publisher landmarksMapPub_;
 	// JHUAPL end section
 
 	std::map<int, rtabmap::Transform> assembledGroundPoses_;
@@ -164,12 +171,14 @@ private:
 
 	// JHUAPL section
 
+	float rate_;
 	rtabmap::SemanticOctoMap * semanticOctomap_;
 	bool semanticSegmentationEnable_;
-	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat>> > gridAPLMaps_; // < map<class label, obstacle>, map< octree layer, empty cells >
+	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat> > > gridAPLMaps_; // < map<class label, obstacle>, map< octree layer, empty cells >
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
+	std::map<int, rtabmap::Landmarks> landmarksMap_; // Landmarks : std::map<int, Landmark> ::  <nodeID, landmarId, Landmark]
 
 	// JHUAPL section end
 };
