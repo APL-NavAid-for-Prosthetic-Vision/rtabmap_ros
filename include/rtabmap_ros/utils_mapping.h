@@ -20,10 +20,12 @@
 
 namespace utils
 {
+#ifdef WITH_YAMLCPP
     ///
     /// @brief helper function parse yaml file into a node
     ///
     bool parseConfig(std::string filePath, YAML::Node & node);
+#endif 
 
     ///
     /// @brief helper function for parsing out model class id, type, and color mask

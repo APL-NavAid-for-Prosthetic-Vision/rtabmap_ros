@@ -25,6 +25,8 @@
 
 namespace utils
 {
+    
+#ifdef WITH_YAMLCPP
     bool parseConfig(std::string filePath, YAML::Node & node)
     {
         std::ifstream finput;
@@ -35,7 +37,7 @@ namespace utils
             ROS_ERROR(" failed to open yaml file");
             return false;
         }
-#ifdef WITH_YAMLCPP
+
         try 
         {
             node = YAML::Load(finput);
@@ -48,7 +50,7 @@ namespace utils
             finput.close();
             return false;
         }
-#endif 
+ 
         finput.close();
         return true;
     }
@@ -93,6 +95,7 @@ namespace utils
            return true;
         }           
     }
+#endif
 
     void depthEdgeFilter(cv::Mat& depthImg)
     {
