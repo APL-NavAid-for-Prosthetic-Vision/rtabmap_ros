@@ -178,7 +178,7 @@ private:
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
-	std::map<int, rtabmap::Landmarks> landmarksMap_; // Landmarks : std::map<int, Landmark> ::  <nodeID, landmarId, Landmark]
+	std::map<int, rtabmap::Landmarks> landmarksMap_; // Landmarks : std::map<int, Landmark> ::  <nodeID, landmarkId, Landmark]
 
 	// JHUAPL section end
 };

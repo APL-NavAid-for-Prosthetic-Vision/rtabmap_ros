@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/io.h>
@@ -96,6 +97,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //APL
 #include "rtabmap_ros/utils_mapping.h"
+#include "rtabmap_ros/SemanticOccupancyGrid.h"
 
 using namespace rtabmap;
 
@@ -240,6 +242,8 @@ void CoreWrapper::onInit()
 #endif
 
 	pnh.param("depth_Filters", depthFilters_, depthFilters_);
+
+	semanticOccupancyGridPub_ = nh.advertise<rtabmap_ros::SemanticOccupancyGrid>("semantic_occupancy_grid", 1);
 	// JHUAPL section end
 
 	infoPub_ = nh.advertise<rtabmap_ros::Info>("info", 1);
@@ -1342,6 +1346,62 @@ void CoreWrapper::commonDepthCallbackImpl(
 	covariance_ = cv::Mat();
 }
 
+void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const double & stamp, const rtabmap::SensorData & data, const rtabmap::Transform & pose)
+{
+	
+	rtabmap_ros::SemanticOccupancyGrid msg;
+	if(!data.gridObstacleCellsMapRaw().empty())
+	{
+		const std::map<unsigned int, cv::Mat> obstacleCellsMap = data.gridObstacleCellsMapRaw();
+		
+		// add to message
+		cv_bridge::CvImage rgbImgCv;
+		rgbImgCv.header.stamp = ros::Time(stamp);
+		rgbImgCv.image = data.imageRaw();;
+		// add rgb image to the msg out
+		rgbImgCv.toImageMsg(msg.rgbImage);
+
+		cv_bridge::CvImage depthImgCv;
+		depthImgCv.header.stamp = ros::Time(stamp);
+		depthImgCv.image = data.depthOrRightRaw();
+		// add depth image to the msg out
+		rgbImgCv.toImageMsg(msg.depthImage);
+
+		// add occupancy grip corresponding to rgb and depth image
+		std::vector<unsigned int> semanticOccupancyMapKeys;
+		std::vector<sensor_msgs::Image> semanticOccupancyMapValues;
+		for (std::map<unsigned int, cv::Mat>::const_iterator iter = obstacleCellsMap.begin(); iter != obstacleCellsMap.end(); ++iter) 
+		{
+			semanticOccupancyMapKeys.push_back(iter->first);
+
+			sensor_msgs::Image objectCellsMsg;
+			cv_bridge::CvImage objectCellsCv;
+			objectCellsCv.header.stamp = ros::Time(stamp);
+			objectCellsCv.image = iter->second;
+
+			objectCellsCv.toImageMsg(objectCellsMsg);
+
+			semanticOccupancyMapValues.push_back(objectCellsMsg);
+		}
+		msg.semanticOccupancyMapKeys = semanticOccupancyMapKeys;
+		msg.semanticOccupancyMapValues = semanticOccupancyMapValues;	
+	}
+	else 
+	{
+		// grid must be compressed
+		ROS_WARN("obstacleCellsMap needs to be decompressed");
+	}
+
+	// signatureId is the same as the node id
+	msg.signatureId = id;
+
+	// msg header 
+	msg.header.stamp = ros::Time::now();
+
+	// publish message
+	semanticOccupancyGridPub_.publish(msg);
+
+}
 
 /****************************
 *	JHUAPL end of section 
@@ -2261,6 +2321,24 @@ void CoreWrapper::process(
 			}
 			else
 			{
+				// JHUAPL section
+				//if(mapsManager_.isSemanticSegmentationEnabled())
+				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
+				{
+					const rtabmap::SensorData data = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData();
+					const rtabmap::Transform pose =  rtabmap_.getMemory()->getLastWorkingSignature()->getPose();
+					const double stamp = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
+					const int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
+					// publish the grid + depth + RGB from incoming data node
+					publishSemanticOccupancyGrid(id, stamp, data, pose);
+				}
+				else 
+				{
+					/// TODO: support for when in depth mode
+				}
+				// JHUAPL section end
+
+
 				// Publish local graph, info
 				this->publishStats(stamp);
 				if(localizationPosePub_.getNumSubscribers() &&

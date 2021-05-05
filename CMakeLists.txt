@@ -143,6 +143,7 @@ add_message_files(
    RGBDSemanticDetection.msg
    SemanticClassIdElement.msg 
    SemanticClassIdMap.msg
+   SemanticOccupancyGrid.msg
 )
 
 ## Generate services in the 'srv' folder

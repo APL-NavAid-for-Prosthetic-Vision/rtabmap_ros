@@ -101,9 +101,9 @@ private:
 	bool odomUpdate(const nav_msgs::OdometryConstPtr & odomMsg, ros::Time stamp);
 	bool odomTFUpdate(const ros::Time & stamp); // TF odom
 
-	/*
-	*	JHU APL functions
-	*/
+	///
+	///	JHU APL functions
+	///
 	virtual void commonDepthCallback(
 				const nav_msgs::OdometryConstPtr & odomMsg,
 				const rtabmap_ros::UserDataConstPtr & userDataMsg,
@@ -132,11 +132,12 @@ private:
 				const std::vector<std::vector<rtabmap_ros::KeyPoint> > & localKeyPoints,
 				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d,
 				const std::vector<cv::Mat> & localDescriptors);
+
+	void publishSemanticOccupancyGrid(const int & id, const double & stamp, const rtabmap::SensorData & data, const rtabmap::Transform & pose);
 				
-	/*
-	*	JHU APL functions
-	*	  end of functions
-	*/
+	///
+	///	JHUAPL section end
+	///
 
 	virtual void commonDepthCallback(
 				const nav_msgs::OdometryConstPtr & odomMsg,
@@ -398,6 +399,7 @@ private:
 	ros::Time previousStamp_;
 
 	//  JHUAPL section
+	ros::Publisher semanticOccupancyGridPub_;
 	bool depthFilters_;
 	//  JHUAPL section end
 };
