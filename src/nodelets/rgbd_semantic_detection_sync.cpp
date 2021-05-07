@@ -153,11 +153,11 @@ private:
 		odomInfoMsg.interval = rtabmap_ros::timestampFromROS(odom->header.stamp) - lastOdomStamp_;
 		odomInfoMsg.timeEstimation = (float) rtabmap_ros::timestampFromROS(odom->header.stamp);
 
-		memcpy(odomInfoMsg.covariance.data(), odom->pose.covariance.data(), 36*sizeof(double));
-
-		rtabmap::Transform odomTransform = rtabmap_ros::transformFromPoseMsg(odom->pose.pose);
-		rtabmap_ros::transformToGeometryMsg(odomTransform, odomInfoMsg.transform);
-
+		odomInfoMsg.covariance = odom->pose.covariance;
+		odomInfoMsg.transform.translation.x = odom->pose.pose.position.x;
+		odomInfoMsg.transform.translation.y = odom->pose.pose.position.y;
+		odomInfoMsg.transform.translation.z = odom->pose.pose.position.z;
+		odomInfoMsg.transform.rotation = odom->pose.pose.orientation;
 	}
 
 	void callback(
@@ -228,7 +228,7 @@ private:
 				objRecognitionSemanticDetectionClient_.call(objRecognSegImgMsg);
 				
 				double elapse_time = ros::Time::now().toSec() - start_time.toSec();
-				NODELET_DEBUG("object recognition client call: elapse_time= %f", elapse_time);
+				NODELET_INFO("object recognition client call: elapse_time= %f", elapse_time);
 				
 				if(objRecognSegImgMsg.response.output.data.empty())
 				{
