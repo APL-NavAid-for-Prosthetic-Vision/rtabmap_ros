@@ -95,9 +95,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap_ros/MsgConversion.h"
 
-//APL
+/// JHUAPL section
+
 #include "rtabmap_ros/utils_mapping.h"
 #include "rtabmap_ros/SemanticOccupancyGrid.h"
+
+#include <rtabmap/core/Memory.h>
+#include <rtabmap/core/Link.h>
+#include <rtabmap/core/Transform.h>
+
+#include <rtabmap_ros/Landmark.h>
+#include <rtabmap_ros/Landmarks.h>
+#include <visualization_msgs/MarkerArray.h>
+
+/// JHUAPL section end
 
 using namespace rtabmap;
 
@@ -611,8 +622,7 @@ void CoreWrapper::onInit()
 	// JHUAPL section end
 
 	mapsManager_.setParameters(parameters_);
-	mapsManager_.setRate(rate_);
-
+	
 	// Init RTAB-Map
 	rtabmap_.init(parameters_, databasePath_);
 
@@ -773,6 +783,15 @@ void CoreWrapper::onInit()
 	tagDetectionsSub_ = nh.subscribe("tag_detections", 1, &CoreWrapper::tagDetectionsAsyncCallback, this);
 #endif
 	imuSub_ = nh.subscribe("imu", 100, &CoreWrapper::imuAsyncCallback, this);
+
+	// JHUAPL section 
+
+	landmarksMapPub_ =  nh.advertise<visualization_msgs::MarkerArray>("landmarks_map", 1);
+	landmarkInsertSrv_ = nh.advertiseService("landmarks_insert", &CoreWrapper::landmarksInsertSrvCallback, this);
+	landmarksQuerySrv_ = nh.advertiseService("landmarks_available", &CoreWrapper::landmarksQuerySrvCallback, this);
+	landmarksRemoveSrv_ = nh.advertiseService("landmarks_remove", &CoreWrapper::landmarksRemoveSrvCallback, this);
+	
+	// JHUAPL section end
 }
 
 CoreWrapper::~CoreWrapper()
@@ -1378,6 +1397,7 @@ void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const double & st
 			cv_bridge::CvImage objectCellsCv;
 			objectCellsCv.header.stamp = ros::Time(stamp);
 			objectCellsCv.image = iter->second;
+			objectCellsCv.encoding = sensor_msgs::image_encodings::TYPE_32FC4;
 
 			objectCellsCv.toImageMsg(objectCellsMsg);
 
@@ -1401,6 +1421,200 @@ void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const double & st
 	// publish message
 	semanticOccupancyGridPub_.publish(msg);
 
+}
+
+void CoreWrapper::publishLandmarksMap(const rtabmap::Memory * memory, const std::string & mapFrameId) 
+{
+    if(memory == 0)
+    {
+        return;
+    }
+
+    if(landmarksMapPub_.getNumSubscribers()) 
+	{
+        // [ signature id , set containing landmarks id] 
+        const std::map<int, std::set<int> > landmarksIndex = memory->getLandmarksIndex();
+
+        visualization_msgs::MarkerArray markers;
+        for(std::map<int, std::set<int> >::const_iterator nIter = landmarksIndex.begin(); nIter != landmarksIndex.end(); ++nIter)
+		{
+            int signatureId = nIter->first;
+            
+            if(nIter->second.empty()) 
+			{
+                // the signature has not set of landmarkIds
+                // the signature will not have the landmark link
+                continue;
+            }
+
+            std::map<int, rtabmap::Link> landmarksLinkMap;
+            const rtabmap::Signature * s = memory->getSignature(signatureId);
+            if(s)
+            {
+                landmarksLinkMap = s->getLandmarks();
+            }
+
+            if(!landmarksLinkMap.empty()) 
+            {
+                // in one signature there might be multiple landmarks
+                for(std::map<int, rtabmap::Link>::iterator lIter = landmarksLinkMap.begin(); lIter != landmarksLinkMap.end(); ++lIter) 
+                {
+					visualization_msgs::Marker marker;
+                    // this is the actual landmark id
+					int landMarkId = lIter->second.getId();
+
+					// check if marker has already been added to markers array
+                    bool markerExist = false;
+					for(auto tmpMarker : markers.markers)
+					{
+						if(tmpMarker.id == landMarkId)
+                            markerExist = true;
+							break;
+					}
+                    if(markerExist)
+                        continue;
+                    
+                    const rtabmap::Transform tf = lIter->second.transform();
+					Eigen::Quaterniond quaternion = tf.getQuaterniond();
+
+					marker.header.frame_id = mapFrameId;
+					marker.header.stamp = ros::Time::now();
+					marker.ns = "landmarks";
+					marker.id = landMarkId;
+					marker.action = visualization_msgs::Marker::ADD;
+					marker.pose.position.x = tf.x();
+					marker.pose.position.y = tf.y();
+					marker.pose.position.z = tf.z();
+					marker.pose.orientation.x = quaternion.x();
+					marker.pose.orientation.y = quaternion.y();
+					marker.pose.orientation.z = quaternion.z();
+					marker.pose.orientation.w = quaternion.w();
+					marker.scale.x = 0.20;
+					marker.scale.y = 0.20;
+					marker.scale.z = 0.20;
+					marker.color.a = 0.5;
+					marker.color.r = 1.0;
+					marker.color.g = 0.70;
+					marker.color.b = 0.0;
+					marker.lifetime = ros::Duration(1.f/rate_);
+
+					marker.type = visualization_msgs::Marker::CUBE;
+					
+					markers.markers.push_back(marker);
+                }
+            }
+        }
+        landmarksMapPub_.publish(markers);
+    }
+}
+
+///
+/// ROS callback functions
+///
+
+bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Request & req, rtabmap_ros::LandmarksInsert::Response & res)
+{
+	if(req.landmarks.empty())
+	{
+		ROS_WARN("landmark msg is empty!!");
+		return false;
+	}
+	
+	for(int i = 0; i < req.landmarks.size(); ++i)
+	{
+		rtabmap_ros::Landmark landmarkMsg = req.landmarks.at(i);
+		int signatureId = landmarkMsg.signatureId;
+		double timeStamp = landmarkMsg.timeStamp;
+		int landmarkId = landmarkMsg.landmarkId;
+		std::string description = landmarkMsg.description;
+
+		if(signatureId == 0 || timeStamp == 0)
+		{
+			ROS_WARN("landmark (%d) msg is missing signature id or timestamp", landmarkId);
+			res.added.push_back(false);
+			continue;
+		}
+
+		rtabmap::Transform pose = transformFromGeometryMsg(landmarkMsg.transform);
+		cv::Mat covariance = cv::Mat(6,6, CV_64FC1, (void*)landmarkMsg.covariance.data()).clone();
+
+		if(pose.isNull()) 
+		{
+			ROS_WARN("landmark (%d) msg is missing pose", landmarkId);
+			res.added.push_back(false);
+			continue;
+		}
+
+		if(!rtabmap_.insertLandmark(signatureId, landmarkId, description, pose, covariance))
+		{
+			ROS_WARN("adding landmark (%d) in signature id (%d) failed!", landmarkId, signatureId);
+			res.added.push_back(false);
+		}
+		res.added.push_back(true);
+	}
+	return true;
+}
+
+
+bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request & req, rtabmap_ros::LandmarksQuery::Response & res)
+{
+	std::map<int, rtabmap::Link> landmarks;
+	// gets all landmarks in the working map
+	rtabmap_.getLandmarks(landmarks, req.maxRange, req.lookInDB);
+
+	int index = 0;
+	for(std::map<int, rtabmap::Link>::iterator lIter = landmarks.begin(); lIter != landmarks.end(); ++lIter, ++index)
+	{
+		rtabmap_ros::Landmark landmark;
+		landmark.landmarkId = lIter->second.getId();
+		landmark.description = lIter->second.getDescription();
+		landmark.landmarkMapId = lIter->first;
+		landmark.signatureId = lIter->second.from();
+		transformToGeometryMsg(lIter->second.transform(), landmark.transform);
+		
+		if(lIter->second.infMatrix().type() == CV_64FC1 && 
+			lIter->second.infMatrix().cols == 6 && 
+			lIter->second.infMatrix().rows == 6)
+		{
+			memcpy(landmark.covariance.data(), lIter->second.infMatrix().data, 36*sizeof(double));
+		}
+
+		res.landmarks.push_back(landmark);	
+	}
+	
+	return true;
+}
+
+bool CoreWrapper::landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res)
+{
+	
+	if(req.removeAll)
+	{
+		std::vector<int> landmarkMapIds;
+		std::vector<uint8_t> removedLandmarks;
+		//remove all landmarks
+		if(req.lookInDB)
+		{
+			
+			rtabmap_.removeLandmarks(landmarkMapIds, removedLandmarks, true, true);
+		}
+		else 
+		{
+			rtabmap_.removeLandmarks(landmarkMapIds, removedLandmarks, true, false);
+		}
+	}
+	else 
+	{
+		if(req.lookInDB)
+		{
+			rtabmap_.removeLandmarks(req.landmarkMapIds, res.landmarksRemoved, false, true);
+		}
+		else
+		{
+			rtabmap_.removeLandmarks(req.landmarkMapIds, res.landmarksRemoved);
+		}
+	}
+	return true;
 }
 
 /****************************
@@ -2211,7 +2425,7 @@ void CoreWrapper::process(
 		gps_ = rtabmap::GPS();
 
 		//tag detections
-		Landmarks landmarks = rtabmap_ros::landmarksFromROS(
+		rtabmap::Landmarks landmarks = rtabmap_ros::landmarksFromROS(
 				tags_,
 				frameId_,
 				odomFrameId,
@@ -2322,7 +2536,6 @@ void CoreWrapper::process(
 			else
 			{
 				// JHUAPL section
-				//if(mapsManager_.isSemanticSegmentationEnabled())
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 				{
 					const rtabmap::SensorData data = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData();
@@ -2425,8 +2638,7 @@ void CoreWrapper::process(
 					// publish the newest semantic mask added to map
 					mapsManager_.publishSemanticMask(data);
 				}
-				// publish landmarks
-				mapsManager_.publishLandmarksMap(mapFrameId_);
+				this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
 				
 				// update goal if planning is enabled
 				if(!currentMetricGoal_.isNull())

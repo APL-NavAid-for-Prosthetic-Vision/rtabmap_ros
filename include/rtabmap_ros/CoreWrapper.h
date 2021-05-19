@@ -82,6 +82,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <actionlib_msgs/GoalStatusArray.h>
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
+/// JHUAPL section
+
+#include <rtabmap/core/Signature.h>
+
+#include <rtabmap_ros/Landmark.h>
+#include <rtabmap_ros/Landmarks.h>
+#include <rtabmap_ros/LandmarksQuery.h>
+#include <rtabmap_ros/LandmarksRemove.h>
+#include <rtabmap_ros/LandmarksInsert.h>
+
+// system
+#include <string>
+
+/// JHUAPL section end
 namespace rtabmap {
 class StereoDense;
 }
@@ -101,9 +115,10 @@ private:
 	bool odomUpdate(const nav_msgs::OdometryConstPtr & odomMsg, ros::Time stamp);
 	bool odomTFUpdate(const ros::Time & stamp); // TF odom
 
-	///
+	/// 
 	///	JHU APL functions
-	///
+	/// ******************************************
+
 	virtual void commonDepthCallback(
 				const nav_msgs::OdometryConstPtr & odomMsg,
 				const rtabmap_ros::UserDataConstPtr & userDataMsg,
@@ -135,7 +150,16 @@ private:
 
 	void publishSemanticOccupancyGrid(const int & id, const double & stamp, const rtabmap::SensorData & data, const rtabmap::Transform & pose);
 				
-	///
+	void publishLandmarksMap(const rtabmap::Memory * memory, const std::string & mapFrameId);
+	
+	// ROS callback functions
+	//
+	
+	bool landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Request & req, rtabmap_ros::LandmarksInsert::Response & res);
+	bool landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request & req, rtabmap_ros::LandmarksQuery::Response & res);
+	bool landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res);
+
+	/// ******************************************
 	///	JHUAPL section end
 	///
 
@@ -399,8 +423,16 @@ private:
 	ros::Time previousStamp_;
 
 	//  JHUAPL section
+	
 	ros::Publisher semanticOccupancyGridPub_;
+	ros::Publisher landmarksMapPub_;
+	
+	ros::ServiceServer landmarkInsertSrv_;
+	ros::ServiceServer landmarksQuerySrv_;
+	ros::ServiceServer landmarksRemoveSrv_;
+
 	bool depthFilters_;
+	
 	//  JHUAPL section end
 };
 

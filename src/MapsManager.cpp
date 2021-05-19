@@ -64,8 +64,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap_ros/utils_mapping.h>
 
-#include <visualization_msgs/MarkerArray.h>
-
 //system
 #include <string>
 #include <fmt/format.h>
@@ -169,7 +167,8 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	std::vector<float> multiLevelCellSize(multiLevelCellSizeStrList.size());
 
 	unsigned int index = 0;
-	for(std::list<std::string>::iterator jter = multiLevelCellSizeStrList.begin(); jter != multiLevelCellSizeStrList.end(); ++jter) {
+	for(std::list<std::string>::iterator jter = multiLevelCellSizeStrList.begin(); jter != multiLevelCellSizeStrList.end(); ++jter)
+	{
 		multiLevelCellSize.at(index) = uStr2Float(*jter);
 		++index;
 	}
@@ -256,8 +255,6 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	scanMapPub_ = nht->advertise<sensor_msgs::PointCloud2>("scan_map", 1, latching_);
 	latched_.insert(std::make_pair((void*)&scanMapPub_, false));
 
-	landmarksMapPub_ = nh.advertise<visualization_msgs::MarkerArray>("tags_landmarks", 1, latching_);
-	latched_.insert(std::make_pair((void*)&landmarksMapPub_, false));
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
@@ -594,7 +591,6 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		bool updateOctomap,
 		const std::map<int, rtabmap::Signature> & signatures)
 {
-	bool updateLandmarks;
 	bool updateGridCache = updateGrid || updateOctomap;
 	if(!updateGrid && !updateOctomap)
 	{
@@ -618,9 +614,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				gridMapPub_.getNumSubscribers() != 0 ||
 				gridProbMapPub_.getNumSubscribers() != 0;
 
-		updateLandmarks = landmarksMapPub_.getNumSubscribers() != 0;
-
-		updateGridCache = updateOctomap || updateGrid || updateLandmarks ||
+		updateGridCache = updateOctomap || updateGrid ||
 				cloudMapPub_.getNumSubscribers() != 0 ||
 				cloudObstaclesPub_.getNumSubscribers() != 0 ||
 				cloudGroundPub_.getNumSubscribers() != 0 ||
@@ -1005,42 +999,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				}
 #endif
 #endif
-				/// updating landmarks map - Landmarks are static
-				// when landmarksMap_ doesnt contain the pose
-				if(updateLandmarks && memory && !uContains(landmarksMap_, iter->first))
-				{
-					std::map<int, rtabmap::Link> landmarksLinkMap;
-					const Signature * s = memory->getSignature(iter->first);
-					if(s)
-					{
-						landmarksLinkMap = s->getLandmarks();
-					}
-
-					if(!landmarksLinkMap.empty()) 
-					{
-						std::string landMarksIdStr;
-						rtabmap::Landmarks tempLandMarks;
-						for(std::map<int, rtabmap::Link>::iterator lmIter = landmarksLinkMap.begin(); lmIter != landmarksLinkMap.end(); ++lmIter) 
-						{
-							if((lmIter->second.isValid()))
-							{	
-								rtabmap::Landmark landmark(lmIter->second.getId(), lmIter->second.transform(), lmIter->second.infMatrix());
-								tempLandMarks.insert({lmIter->first, landmark});
-
-								landMarksIdStr.append(fmt::format("{:d}({:d}) ", lmIter->first, lmIter->second.getId()));
-							}
-						}
-						landmarksMap_.insert({iter->first, tempLandMarks});
-						ROS_INFO(" (%d) updateLandmarks: landmarksID: \"%s\"", iter->first, landMarksIdStr.c_str());
-					}
-				}
 			}
 			else
 			{
 				ROS_ERROR("Pose null for node %d", iter->first);
 			}
 		}
-		ROS_DEBUG("landmarks map size: %d", (unsigned int)landmarksMap_.size());
 
 		if(updateGrid && !semanticSegmentationEnable_)
 		{
@@ -2109,73 +2073,6 @@ void MapsManager::publishSemanticMask(rtabmap::SensorData & data)
 		semanticMaskPub_.publish(msg);
 	}
 
-}
-
-void MapsManager::publishLandmarksMap(const std::string & mapFrameId) 
-{
-	if(!latching_ || (landmarksMapPub_.getNumSubscribers() && !latched_.at(&landmarksMapPub_))) 
-	{
-		visualization_msgs::MarkerArray markers;
-		for(std::map<int, rtabmap::Landmarks>::iterator nIter = landmarksMap_.begin(); nIter != landmarksMap_.end(); ++nIter)
-		{
-			int poseId = nIter->first;
-			if(!nIter->second.empty()) 
-			{
-				for(rtabmap::Landmarks::iterator lIter = nIter->second.begin(); lIter != nIter->second.end(); ++lIter)
-				{
-					visualization_msgs::Marker marker;
-					int landMarkId = lIter->second.id();
-					// check if marker has already been added to markers
-					for(auto tmpMarker : markers.markers)
-					{
-						if(tmpMarker.id == landMarkId)
-							continue;
-					}
-
-					const rtabmap::Transform tf = lIter->second.pose();
-					Eigen::Quaterniond quaternion = tf.getQuaterniond();
-
-					marker.header.frame_id = mapFrameId;
-					marker.header.stamp = ros::Time::now();
-					marker.ns = "tags_landmarks";
-					marker.id = landMarkId;
-					marker.action = visualization_msgs::Marker::ADD;
-					marker.pose.position.x = tf.x();
-					marker.pose.position.y = tf.y();
-					marker.pose.position.z = tf.z();
-					marker.pose.orientation.x = quaternion.x();
-					marker.pose.orientation.y = quaternion.y();
-					marker.pose.orientation.z = quaternion.z();
-					marker.pose.orientation.w = quaternion.w();
-					marker.scale.x = 0.20;
-					marker.scale.y = 0.20;
-					marker.scale.z = 0.20;
-					marker.color.a = 0.5;
-					marker.color.r = 1.0;
-					marker.color.g = 0.70;
-					marker.color.b = 0.0;
-					marker.lifetime = ros::Duration(1.f/rate_);
-
-					marker.type = visualization_msgs::Marker::CUBE;
-					
-					markers.markers.push_back(marker);
-				}
-			}
-		}
-		landmarksMapPub_.publish(markers);
-	}
-
-	if(mapCacheCleanup_ &&
-		octoMapPubFull_.getNumSubscribers() == 0 )
-	{
-		landmarksMap_.clear();
-	}
-
-	if(landmarksMapPub_.getNumSubscribers() == 0)
-	{
-		latched_.at(&landmarksMapPub_) = false;
-	}
-	
 }
 
 // JHUAPL section end

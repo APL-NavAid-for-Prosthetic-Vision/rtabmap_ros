@@ -91,7 +91,6 @@ public:
 	const rtabmap::OccupancyGrid * getOccupancyGrid() const {return occupancyGrid_;}
 
 	// JHUAPL section
-	void setRate(float rate) { rate_ = rate;}
 
 	bool isSemanticSegmentationEnabled() { return semanticSegmentationEnable_; }
 
@@ -140,7 +139,6 @@ private:
 	ros::Publisher octoMapFullMovablePub_;
 	ros::Publisher octoMapFullDynamicPub_;
 
-	ros::Publisher landmarksMapPub_;
 	// JHUAPL end section
 
 	std::map<int, rtabmap::Transform> assembledGroundPoses_;
@@ -171,14 +169,12 @@ private:
 
 	// JHUAPL section
 
-	float rate_;
 	rtabmap::SemanticOctoMap * semanticOctomap_;
 	bool semanticSegmentationEnable_;
 	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat> > > gridAPLMaps_; // < map<class label, obstacle>, map< octree layer, empty cells >
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
-	std::map<int, rtabmap::Landmarks> landmarksMap_; // Landmarks : std::map<int, Landmark> ::  <nodeID, landmarkId, Landmark]
 
 	// JHUAPL section end
 };

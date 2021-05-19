@@ -144,6 +144,8 @@ add_message_files(
    SemanticClassIdElement.msg 
    SemanticClassIdMap.msg
    SemanticOccupancyGrid.msg
+   Landmark.msg
+   Landmarks.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -159,6 +161,14 @@ add_message_files(
    GetPlan.srv
    AddLink.srv
    GetNodeData.srv
+ )
+
+ add_service_files(
+   DIRECTORY srv
+   FILES
+   LandmarksQuery.srv
+   LandmarksRemove.srv
+   LandmarksInsert.srv
  )
 
 ## Generate added messages and services with any dependencies listed here
@@ -603,6 +613,7 @@ catkin_install_python(PROGRAMS
    ${RTABMAP_ROS_PATH}/scripts/point_to_tf.py
    ${RTABMAP_ROS_PATH}/scripts/transform_to_tf.py
    ${RTABMAP_ROS_PATH}/scripts/yaml_to_camera_info.py
+   scripts/insert_landmarks_test.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

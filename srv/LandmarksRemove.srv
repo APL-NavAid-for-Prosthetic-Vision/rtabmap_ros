@@ -1,0 +1,15 @@
+#request
+#   if removeAll is true, it will request to removeAll .
+#   if lookInDB is true, it will request to look into the data base
+#   
+
+bool removeAll
+bool lookInDB
+
+# landmarkMapIds are the link reference id (this is not the actual landmark id)
+int32[] landmarkMapIds
+
+---
+#response
+
+bool[] landmarksRemoved

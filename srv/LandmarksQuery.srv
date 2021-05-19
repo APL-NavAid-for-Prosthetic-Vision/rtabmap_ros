@@ -1,0 +1,11 @@
+#request
+#   it will return all the landmarks in the working map
+#   if lookInDB is true, it will request to look into the data base (LTM)
+#   if you want to access landmarks within a max range from the camera pose
+
+bool lookInDB
+float64 maxRange
+
+---
+#response
+Landmark[] landmarks
