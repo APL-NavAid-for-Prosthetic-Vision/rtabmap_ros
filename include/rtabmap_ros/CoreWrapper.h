@@ -148,7 +148,7 @@ private:
 				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d,
 				const std::vector<cv::Mat> & localDescriptors);
 
-	void publishSemanticOccupancyGrid(const int & id, const double & stamp, const rtabmap::SensorData & data, const rtabmap::Transform & pose);
+	void publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const rtabmap::Transform & pose, const double & stamp);
 				
 	void publishLandmarksMap(const rtabmap::Memory * memory, const std::string & mapFrameId);
 	
