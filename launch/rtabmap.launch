@@ -413,6 +413,7 @@
       <param name="Mem/NotLinkedNodesKept"   type="string"  value="false"/>
       <param name="Mem/RehearsalSimilarity"  type="string"  value="0.60"/>
       <param name="Mem/UseOdomFeatures"      type="string"  value="false"/>                 <!-- Use odometry features instead of regenerating them. -->
+      <param name="Mem/BinDataKept"          type="string"  value="true"/>
 
       <param name="RGBD/CreateOccupancyGrid"          type="string"   value="true"/>                    <!--params to get rtab to output octomap-->
       <param name="RGBD/AngularUpdate"                type="string"   value="0.1" />
