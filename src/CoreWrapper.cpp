@@ -1375,9 +1375,11 @@ void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::Se
 		obstacleCellsMap = data.gridObstacleCellsMapRaw();
 		rgb = data.imageRaw();
 		depth = data.depthOrRightRaw();
+		UDEBUG(" semantic occupancy Grid Raw");
 	}
 	else 
 	{
+		UDEBUG(" semantic occupancy Grid compressed ... uncompressing");
 		data.uncompressDataConst(&rgb, &depth, 0, &obstacleCellsMap);
 	}
 	
@@ -2543,16 +2545,19 @@ void CoreWrapper::process(
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 				{ 
 					int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
-					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, false);
 					const rtabmap::Transform posetf = rtabmap_.getMemory()->getLastWorkingSignature()->getPose(); 
+					const double stamp = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
+					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, false);
+					
 					//const rtabmap::SensorData sd = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData();
+
 					/// TODO: do this  correctly, this is hack and not optimal
 					std::map<unsigned int, cv::Mat> tempObjCellRaw = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridObstacleCellsMapRaw();
 					std::map<int, cv::Mat> tempFreeCellRaw = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridEmptyCellsMapRaw();
 					cv::Point3f gridVPt =  rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridViewPoint();
 					std::vector<float> cellSizes = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridCellSizes();
 					sd.setOccupancyGrid(tempObjCellRaw, tempFreeCellRaw, cellSizes, gridVPt);
-					const double stamp = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
+					
 					// publish the grid + depth + RGB from register node
 					publishSemanticOccupancyGrid(id, sd, posetf, stamp);
 				}
