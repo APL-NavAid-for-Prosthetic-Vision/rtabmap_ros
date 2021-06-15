@@ -68,6 +68,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <fmt/format.h>
 
+#ifdef RTK
+#include <RTK/Map/Maps/OcTreeDist.h>
+namespace octomap {
+  class OcTreeDist;
+}
+#endif
+
 using namespace rtabmap;
 
 MapsManager::MapsManager() :
@@ -715,7 +722,6 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			if(!iter->second.isNull())
 			{
 				rtabmap::SensorData data;
-				// when gridAPLMaps_ doesnt contain the pose
 				if(updateGridCache && semanticSegmentationEnable_ && (iter->first == 0 || !uContains(gridAPLMaps_, iter->first)))
 				{
 					UDEBUG("Data required for %d", iter->first);
@@ -736,7 +742,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					if(iter->first > 0)
 					{
 						cv::Mat rgb, depth, semanticMask;
-						bool generateGrid = data.gridCellSize() == 0.0f;
+						bool generateGrid = true;
+						if(data.gridCellSizes().size() > 0) 
+						{
+							// just looking that there is at least one octree with grid size greater than zero
+							generateGrid = data.gridCellSizes().at(0) == 0.0f;
+						}
 						static bool warningShown = false;
 						if(occupancySavedInDB && generateGrid && !warningShown)
 						{
@@ -760,7 +771,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 						data.uncompressData(
 								occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
 								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
-								semanticSegmentationEnable_?&semanticMask:0,
+								semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
 								generateGrid?0:&obstaclesCellsMap,
 								generateGrid?0:&emptyCellsMap);
 												
@@ -794,12 +805,16 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 						}
 
 						cv::Mat rgb, depth, semanticMask;
-						bool generateGrid = data.gridCellSize() == 0.0f || (unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_);
+						bool generateGrid = true;
+						if(data.gridCellSizes().size() > 0) 
+						{
+							generateGrid = data.gridCellSizes().at(0) == 0.0f || (unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_);
+						}
 						
 						data.uncompressData(
 								occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
 								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
-								semanticSegmentationEnable_?&semanticMask:0,
+								semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
 								generateGrid?0:&obstaclesCellsMap,
 								generateGrid?0:&emptyCellsMap);
 						
@@ -1867,14 +1882,27 @@ void MapsManager::publishAPLMaps(
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			/// TODO: merger layers
-			//Rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = multiLevelOctrees.at(0);
+#ifdef RTK
+			// init rtk octree with some hard coded settings
+			octomap::OcTreeDist* rtkOctree = new octomap::OcTreeDist(0.05);
 
-			// octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
-			// msg.header.frame_id = mapFrameId;
-			// msg.header.stamp = stamp;
-			// octoMapPubFull_.publish(msg);
-			// latched_.at(&octoMapPubFull_) = true;
+			rtkOctree->setOccupancyThres(0.5);
+			rtkOctree->setProbHit(0.7);
+			rtkOctree->setProbMiss(0.4);
+			rtkOctree->setClampingThresMin(0.1192);
+			rtkOctree->setClampingThresMax(0.971);
+
+			semanticOctomap_->mergerOctrees2RtkOctree(rtkOctree);
+
+			octomap_msgs::binaryMapToMsg(*rtkOctree, msg);
+			//octomap_msgs::fullMapToMsg(*rtkOctree, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubFull_.publish(msg);
+			latched_.at(&octoMapPubFull_) = true;
+
+			delete rtkOctree;
+#endif
 		}
 		// octoMapFullGroundPub_ publishes ground layer
 		if(octoMapFullGroundPub_.getNumSubscribers())
