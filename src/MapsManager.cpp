@@ -1894,8 +1894,7 @@ void MapsManager::publishAPLMaps(
 
 			semanticOctomap_->mergerOctrees2RtkOctree(rtkOctree);
 
-			octomap_msgs::binaryMapToMsg(*rtkOctree, msg);
-			//octomap_msgs::fullMapToMsg(*rtkOctree, msg);
+			octomap_msgs::fullMapToMsg(*rtkOctree, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			octoMapPubFull_.publish(msg);
