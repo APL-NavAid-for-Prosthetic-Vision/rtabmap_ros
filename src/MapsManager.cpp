@@ -1884,23 +1884,21 @@ void MapsManager::publishAPLMaps(
 			octomap_msgs::Octomap msg;
 #ifdef RTK
 			// init rtk octree with some hard coded settings
-			octomap::OcTreeDist* rtkOctree = new octomap::OcTreeDist(0.05);
+			octomap::OcTreeDist rtkOctree(0.05);
 
-			rtkOctree->setOccupancyThres(0.5);
-			rtkOctree->setProbHit(0.7);
-			rtkOctree->setProbMiss(0.4);
-			rtkOctree->setClampingThresMin(0.1192);
-			rtkOctree->setClampingThresMax(0.971);
+			rtkOctree.setOccupancyThres(0.5);
+			rtkOctree.setProbHit(0.7);
+			rtkOctree.setProbMiss(0.4);
+			rtkOctree.setClampingThresMin(0.1192);
+			rtkOctree.setClampingThresMax(0.971);
 
-			semanticOctomap_->mergerOctrees2RtkOctree(rtkOctree);
-
-			octomap_msgs::fullMapToMsg(*rtkOctree, msg);
+			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
+			
+			octomap_msgs::fullMapToMsg(rtkOctree, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			octoMapPubFull_.publish(msg);
 			latched_.at(&octoMapPubFull_) = true;
-
-			delete rtkOctree;
 #endif
 		}
 		// octoMapFullGroundPub_ publishes ground layer
