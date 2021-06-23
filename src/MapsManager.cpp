@@ -1,6 +1,6 @@
 /*
 Modified by: Johns Hopkins University Applied Physics Laboratory
-			> added support for semantic segmentation map
+			
 Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
@@ -267,6 +267,8 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 #ifdef RTABMAP_OCTOMAP
 	octoMapPubFull_ = nht->advertise<octomap_msgs::Octomap>("octomap_full", 1, latching_);
 	latched_.insert(std::make_pair((void*)&octoMapPubFull_, false));
+	octoMapPubBin_ = nht->advertise<octomap_msgs::Octomap>("octomap_binary", 1, latching_);
+	latched_.insert(std::make_pair((void*)&octoMapPubBin_, false));
 	octoMapCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_occupied_space_cloud", 1, latching_);
 	latched_.insert(std::make_pair((void*)&octoMapCloud_, false));
 
@@ -285,8 +287,6 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	}
 	else 
 	{
-		octoMapPubBin_ = nht->advertise<octomap_msgs::Octomap>("octomap_binary", 1, latching_);
-		latched_.insert(std::make_pair((void*)&octoMapPubBin_, false));
 		octoMapFrontierCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_global_frontier_space", 1, latching_);
 		latched_.insert(std::make_pair((void*)&octoMapFrontierCloud_, false));
 		octoMapObstacleCloud_ = nht->advertise<sensor_msgs::PointCloud2>("octomap_obstacles", 1, latching_);
@@ -1869,6 +1869,7 @@ void MapsManager::publishAPLMaps(
 
 	if( octomapUpdated_ || 
 		!latching_ ||
+		(octoMapPubBin_.getNumSubscribers() && !latched_.at(&octoMapPubBin_)) ||
 		(octoMapPubFull_.getNumSubscribers() && !latched_.at(&octoMapPubFull_)) ||
 		(octoMapFullGroundPub_.getNumSubscribers() && !latched_.at(&octoMapFullGroundPub_)) ||
 		(octoMapFullCeilingPub_.getNumSubscribers() && !latched_.at(&octoMapFullCeilingPub_)) ||
@@ -1878,7 +1879,7 @@ void MapsManager::publishAPLMaps(
 		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)) )
 	{
 		const std::vector<std::string> MULTILEVELNAMES = rtabmap::SemanticOctoMap::MULTILEVELNAMES;
-		// octoMapPubFull_ publishes all layers as single octomap ful map (include node's data)
+		// octoMapPubFull_ publishes layers {static,movable,dynamic} as OcTreeDist full map (include node's data)
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
@@ -1901,7 +1902,29 @@ void MapsManager::publishAPLMaps(
 			latched_.at(&octoMapPubFull_) = true;
 #endif
 		}
-		// octoMapFullGroundPub_ publishes ground layer
+		// octoMapPubBin_ publishes layers {static,movable,dynamic} as OcTreeDist Binary map
+		if(octoMapPubBin_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+#ifdef RTK
+			// init rtk octree with some hard coded settings
+			octomap::OcTreeDist rtkOctree(0.05);
+
+			rtkOctree.setOccupancyThres(0.5);
+			rtkOctree.setProbHit(0.7);
+			rtkOctree.setProbMiss(0.4);
+			rtkOctree.setClampingThresMin(0.1192);
+			rtkOctree.setClampingThresMax(0.971);
+
+			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
+			octomap_msgs::binaryMapToMsg(rtkOctree, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubBin_.publish(msg);
+			latched_.at(&octoMapPubBin_) = true;
+#endif
+		}
+		// octoMapFullGroundb_ publishes ground layer
 		if(octoMapFullGroundPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
@@ -1996,6 +2019,7 @@ void MapsManager::publishAPLMaps(
 	
 
 	if( mapCacheCleanup_ &&
+		octoMapPubBin_.getNumSubscribers() == 0 &&
 		octoMapPubFull_.getNumSubscribers() == 0 &&
 		octoMapCloud_.getNumSubscribers() == 0 &&
 		octoMapFullGroundPub_.getNumSubscribers() == 0 &&
@@ -2007,6 +2031,10 @@ void MapsManager::publishAPLMaps(
 		semanticOctomap_->clear();
 	}
 
+	if(octoMapPubBin_.getNumSubscribers() == 0)
+	{
+		latched_.at(&octoMapPubBin_) = false;
+	}
 	if(octoMapPubFull_.getNumSubscribers() == 0)
 	{
 		latched_.at(&octoMapPubFull_) = false;
@@ -2044,7 +2072,6 @@ void MapsManager::publishAPLMaps(
 		gridAPLMaps_.clear();
 		gridMapsViewpoints_.clear();
 	}
-
 }
 
 void MapsManager::publishSemanticMask(rtabmap::SensorData & data)

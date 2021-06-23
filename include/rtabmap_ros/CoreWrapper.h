@@ -1,6 +1,6 @@
 /*
 Modified by: Johns Hopkins University Applied Physics Laboratory
-			> added support 
+			
 Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
@@ -148,7 +148,7 @@ private:
 				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d,
 				const std::vector<cv::Mat> & localDescriptors);
 
-	void publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const rtabmap::Transform & pose, const double & stamp);
+	void publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const double & stamp);
 				
 	void publishLandmarksMap(const rtabmap::Memory * memory, const std::string & mapFrameId);
 	

@@ -1,6 +1,6 @@
 /*
 Modified by: Johns Hopkins University Applied Physics Laboratory
-			> added support for segmantic segmentation map
+			
 Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.

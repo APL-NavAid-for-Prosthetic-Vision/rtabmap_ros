@@ -1,7 +1,6 @@
 /*
 Modification by:
-	The Johns Hopkins University
-   	Applied Physics Laboratory.
+	The Johns Hopkins University Applied Physics Laboratory.
 		
 Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
@@ -1365,7 +1364,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 	covariance_ = cv::Mat();
 }
 
-void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const rtabmap::Transform & pose, const double & stamp)
+void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const double & stamp)
 {
 	rtabmap_ros::SemanticOccupancyGrid msg;
 	cv::Mat rgb, depth;
@@ -2545,7 +2544,6 @@ void CoreWrapper::process(
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 				{ 
 					int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
-					const rtabmap::Transform posetf = rtabmap_.getMemory()->getLastWorkingSignature()->getPose(); 
 					const double stamp = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
 					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, false);
 					
@@ -2559,7 +2557,7 @@ void CoreWrapper::process(
 					sd.setOccupancyGrid(tempObjCellRaw, tempFreeCellRaw, cellSizes, gridVPt);
 					
 					// publish the grid + depth + RGB from register node
-					publishSemanticOccupancyGrid(id, sd, posetf, stamp);
+					publishSemanticOccupancyGrid(id, sd, stamp);
 				}
 				else 
 				{
