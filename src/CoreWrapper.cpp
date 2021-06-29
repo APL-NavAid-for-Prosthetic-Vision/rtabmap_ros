@@ -2545,16 +2545,7 @@ void CoreWrapper::process(
 				{ 
 					int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
 					const double stamp = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
-					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, false);
-					
-					//const rtabmap::SensorData sd = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData();
-
-					/// TODO: do this  correctly, this is hack and not optimal
-					std::map<unsigned int, cv::Mat> tempObjCellRaw = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridObstacleCellsMapRaw();
-					std::map<int, cv::Mat> tempFreeCellRaw = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridEmptyCellsMapRaw();
-					cv::Point3f gridVPt =  rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridViewPoint();
-					std::vector<float> cellSizes = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridCellSizes();
-					sd.setOccupancyGrid(tempObjCellRaw, tempFreeCellRaw, cellSizes, gridVPt);
+					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, true);
 					
 					// publish the grid + depth + RGB from register node
 					publishSemanticOccupancyGrid(id, sd, stamp);

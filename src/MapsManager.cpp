@@ -1879,51 +1879,6 @@ void MapsManager::publishAPLMaps(
 		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)) )
 	{
 		const std::vector<std::string> MULTILEVELNAMES = rtabmap::SemanticOctoMap::MULTILEVELNAMES;
-		// octoMapPubFull_ publishes layers {static,movable,dynamic} as OcTreeDist full map (include node's data)
-		if(octoMapPubFull_.getNumSubscribers())
-		{
-			octomap_msgs::Octomap msg;
-#ifdef RTK
-			// init rtk octree with some hard coded settings
-			octomap::OcTreeDist rtkOctree(0.05);
-
-			rtkOctree.setOccupancyThres(0.5);
-			rtkOctree.setProbHit(0.7);
-			rtkOctree.setProbMiss(0.4);
-			rtkOctree.setClampingThresMin(0.1192);
-			rtkOctree.setClampingThresMax(0.971);
-
-			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
-			
-			octomap_msgs::fullMapToMsg(rtkOctree, msg);
-			msg.header.frame_id = mapFrameId;
-			msg.header.stamp = stamp;
-			octoMapPubFull_.publish(msg);
-			latched_.at(&octoMapPubFull_) = true;
-#endif
-		}
-		// octoMapPubBin_ publishes layers {static,movable,dynamic} as OcTreeDist Binary map
-		if(octoMapPubBin_.getNumSubscribers())
-		{
-			octomap_msgs::Octomap msg;
-#ifdef RTK
-			// init rtk octree with some hard coded settings
-			octomap::OcTreeDist rtkOctree(0.05);
-
-			rtkOctree.setOccupancyThres(0.5);
-			rtkOctree.setProbHit(0.7);
-			rtkOctree.setProbMiss(0.4);
-			rtkOctree.setClampingThresMin(0.1192);
-			rtkOctree.setClampingThresMax(0.971);
-
-			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
-			octomap_msgs::binaryMapToMsg(rtkOctree, msg);
-			msg.header.frame_id = mapFrameId;
-			msg.header.stamp = stamp;
-			octoMapPubBin_.publish(msg);
-			latched_.at(&octoMapPubBin_) = true;
-#endif
-		}
 		// octoMapFullGroundb_ publishes ground layer
 		if(octoMapFullGroundPub_.getNumSubscribers())
 		{
@@ -2015,6 +1970,53 @@ void MapsManager::publishAPLMaps(
 			octoMapCloud_.publish(msg);
 			latched_.at(&octoMapCloud_) = true;
 		}
+		// octoMapPubFull_ publishes layers {static,movable,dynamic} as OcTreeDist full map (include node's data)
+		if(octoMapPubFull_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+#ifdef RTK
+			// init rtk octree with some hard coded settings
+			octomap::OcTreeDist rtkOctree(0.05);
+
+			rtkOctree.setOccupancyThres(0.5);
+			rtkOctree.setProbHit(0.7);
+			rtkOctree.setProbMiss(0.4);
+			rtkOctree.setClampingThresMin(0.1192);
+			rtkOctree.setClampingThresMax(0.971);
+
+			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
+			
+			octomap_msgs::fullMapToMsg(rtkOctree, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubFull_.publish(msg);
+			latched_.at(&octoMapPubFull_) = true;
+#endif
+		}
+		// octoMapPubBin_ publishes layers {static,movable,dynamic} as OcTreeDist Binary map
+		if(octoMapPubBin_.getNumSubscribers())
+		{
+			octomap_msgs::Octomap msg;
+#ifdef RTK
+			// init rtk octree with some hard coded settings
+			octomap::OcTreeDist rtkOctree(0.05);
+
+			rtkOctree.setOccupancyThres(0.5);
+			rtkOctree.setProbHit(0.7);
+			rtkOctree.setProbMiss(0.4);
+			rtkOctree.setClampingThresMin(0.1192);
+			rtkOctree.setClampingThresMax(0.971);
+
+			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
+			octomap_msgs::binaryMapToMsg(rtkOctree, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubBin_.publish(msg);
+			latched_.at(&octoMapPubBin_) = true;
+#endif
+		}
+
+
 	}
 	
 
