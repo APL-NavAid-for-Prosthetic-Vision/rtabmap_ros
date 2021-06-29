@@ -2585,16 +2585,21 @@ void CoreWrapper::process(
 
 				// Publish local graph, info
 				this->publishStats(stamp);
-				if(localizationPosePub_.getNumSubscribers() &&
-					!rtabmap_.getStatistics().localizationCovariance().empty())
+				
+				// JHAPL modification 
+				// publish localization with correction regardless whether covariance is available
+				if(localizationPosePub_.getNumSubscribers())
 				{
 					geometry_msgs::PoseWithCovarianceStamped poseMsg;
 					poseMsg.header.frame_id = mapFrameId_;
 					poseMsg.header.stamp = stamp;
 					rtabmap_ros::transformToPoseMsg(mapToOdom_*odom, poseMsg.pose.pose);
 					poseMsg.pose.covariance;
-					const cv::Mat & cov = rtabmap_.getStatistics().localizationCovariance();
-					memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total()*sizeof(double));
+					if(!rtabmap_.getStatistics().localizationCovariance().empty())
+					{
+						const cv::Mat & cov = rtabmap_.getStatistics().localizationCovariance();
+						memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total()*sizeof(double));
+					}
 					localizationPosePub_.publish(poseMsg);
 				}
 				std::map<int, rtabmap::Transform> filteredPoses(rtabmap_.getLocalOptimizedPoses().lower_bound(1), rtabmap_.getLocalOptimizedPoses().end());
