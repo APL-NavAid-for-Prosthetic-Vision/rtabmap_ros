@@ -1575,7 +1575,36 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 		landmark.description = lIter->second.getDescription();
 		landmark.landmarkMapId = lIter->first;
 		landmark.signatureId = lIter->second.from();
-		transformToGeometryMsg(lIter->second.transform(), landmark.transform);
+
+		// compute the pose of landmark with respect to map reference frame
+		// assuming the landmark's node is in the optimized map.
+		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.signatureId);
+		//check if the node id pose was found; if not found, it would be all zeros
+		if(map2NodePose.isNull())
+		{
+			// node with landmarks should always be in the optimized map ... 
+			ROS_WARN("signature id POSE not found!!! in optimized node map.");
+			if(rtabmap_.getMemory()) 
+			{
+				const rtabmap::Signature * s = rtabmap_.getMemory()->getSignature(landmark.signatureId);
+				map2NodePose = s->getPose();
+
+				if(map2NodePose.isNull())
+				{
+					ROS_ERROR("signature id POSE not found in memory!!! THIS SHOULD NOT HAPPEN");
+					return false;
+				}
+			}
+			else
+			{
+				ROS_ERROR("signature id POSE not found!!! THIS SHOULD NOT HAPPEN");
+				return false;
+			}
+		}
+		rtabmap::Transform map2lastPose = rtabmap_.getLastLocalizationPose();
+		rtabmap::Transform currenPose2landmarkPoseTf = map2lastPose.inverse() * map2NodePose * lIter->second.transform();
+
+		transformToGeometryMsg(currenPose2landmarkPoseTf, landmark.transform);
 		
 		if(lIter->second.infMatrix().type() == CV_64FC1 && 
 			lIter->second.infMatrix().cols == 6 && 
@@ -1600,7 +1629,6 @@ bool CoreWrapper::landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Reque
 		//remove all landmarks
 		if(req.lookInDB)
 		{
-			
 			rtabmap_.removeLandmarks(landmarkMapIds, removedLandmarks, true, true);
 		}
 		else 
@@ -1787,7 +1815,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 		}
 	}
 	else if(!scan3dMsg.data.empty())
-	{
+	{	
 		if(!rtabmap_ros::convertScan3dMsg(
 				scan3dMsg,
 				frameId_,
@@ -2360,7 +2388,6 @@ void CoreWrapper::process(
 							odomVelocity[5] = yaw/info.interval;
 						}
 					}
-
 					rtabmap_.process(interData, interOdom, covariance, odomVelocity, externalStats);
 				}
 				interOdoms_.erase(iter++);
@@ -2555,7 +2582,6 @@ void CoreWrapper::process(
 					/// TODO: support for when in depth mode
 				}
 				// JHUAPL section end
-
 
 				// Publish local graph, info
 				this->publishStats(stamp);
