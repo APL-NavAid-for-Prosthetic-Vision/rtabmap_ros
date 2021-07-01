@@ -1,7 +1,6 @@
 /*
 Modification by:
-	The Johns Hopkins University
-   	Applied Physics Laboratory.
+	The Johns Hopkins University Applied Physics Laboratory.
 		
 Original by:
 Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
@@ -1365,7 +1364,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 	covariance_ = cv::Mat();
 }
 
-void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const rtabmap::Transform & pose, const double & stamp)
+void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const double & stamp)
 {
 	rtabmap_ros::SemanticOccupancyGrid msg;
 	cv::Mat rgb, depth;
@@ -1576,7 +1575,36 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 		landmark.description = lIter->second.getDescription();
 		landmark.landmarkMapId = lIter->first;
 		landmark.signatureId = lIter->second.from();
-		transformToGeometryMsg(lIter->second.transform(), landmark.transform);
+
+		// compute the pose of landmark with respect to map reference frame
+		// assuming the landmark's node is in the optimized map.
+		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.signatureId);
+		//check if the node id pose was found; if not found, it would be all zeros
+		if(map2NodePose.isNull())
+		{
+			// node with landmarks should always be in the optimized map ... 
+			ROS_WARN("signature id POSE not found!!! in optimized node map.");
+			if(rtabmap_.getMemory()) 
+			{
+				const rtabmap::Signature * s = rtabmap_.getMemory()->getSignature(landmark.signatureId);
+				map2NodePose = s->getPose();
+
+				if(map2NodePose.isNull())
+				{
+					ROS_ERROR("signature id POSE not found in memory!!! THIS SHOULD NOT HAPPEN");
+					return false;
+				}
+			}
+			else
+			{
+				ROS_ERROR("signature id POSE not found!!! THIS SHOULD NOT HAPPEN");
+				return false;
+			}
+		}
+		rtabmap::Transform map2lastPose = rtabmap_.getLastLocalizationPose();
+		rtabmap::Transform currenPose2landmarkPoseTf = map2lastPose.inverse() * map2NodePose * lIter->second.transform();
+
+		transformToGeometryMsg(currenPose2landmarkPoseTf, landmark.transform);
 		
 		if(lIter->second.infMatrix().type() == CV_64FC1 && 
 			lIter->second.infMatrix().cols == 6 && 
@@ -1601,7 +1629,6 @@ bool CoreWrapper::landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Reque
 		//remove all landmarks
 		if(req.lookInDB)
 		{
-			
 			rtabmap_.removeLandmarks(landmarkMapIds, removedLandmarks, true, true);
 		}
 		else 
@@ -1788,7 +1815,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 		}
 	}
 	else if(!scan3dMsg.data.empty())
-	{
+	{	
 		if(!rtabmap_ros::convertScan3dMsg(
 				scan3dMsg,
 				frameId_,
@@ -2361,7 +2388,6 @@ void CoreWrapper::process(
 							odomVelocity[5] = yaw/info.interval;
 						}
 					}
-
 					rtabmap_.process(interData, interOdom, covariance, odomVelocity, externalStats);
 				}
 				interOdoms_.erase(iter++);
@@ -2545,21 +2571,14 @@ void CoreWrapper::process(
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 				{ 
 					int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
-					const rtabmap::Transform posetf = rtabmap_.getMemory()->getLastWorkingSignature()->getPose(); 
-					const double stamp = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
-					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, false);
-					
-					//const rtabmap::SensorData sd = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData();
-
-					/// TODO: do this  correctly, this is hack and not optimal
-					std::map<unsigned int, cv::Mat> tempObjCellRaw = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridObstacleCellsMapRaw();
-					std::map<int, cv::Mat> tempFreeCellRaw = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridEmptyCellsMapRaw();
-					cv::Point3f gridVPt =  rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridViewPoint();
-					std::vector<float> cellSizes = rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridCellSizes();
-					sd.setOccupancyGrid(tempObjCellRaw, tempFreeCellRaw, cellSizes, gridVPt);
+					double stampLastWS = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
+					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, true);
 					
 					// publish the grid + depth + RGB from register node
-					publishSemanticOccupancyGrid(id, sd, posetf, stamp);
+					publishSemanticOccupancyGrid(id, sd, stampLastWS);
+
+					// publish the newest semantic mask added to map
+					mapsManager_.publishSemanticMask(data);
 				}
 				else 
 				{
@@ -2567,19 +2586,22 @@ void CoreWrapper::process(
 				}
 				// JHUAPL section end
 
-
 				// Publish local graph, info
 				this->publishStats(stamp);
-				if(localizationPosePub_.getNumSubscribers() &&
-					!rtabmap_.getStatistics().localizationCovariance().empty())
+				// JHAPL modification 
+				// publish localization with correction regardless whether covariance is available
+				if(localizationPosePub_.getNumSubscribers())
 				{
 					geometry_msgs::PoseWithCovarianceStamped poseMsg;
 					poseMsg.header.frame_id = mapFrameId_;
 					poseMsg.header.stamp = stamp;
 					rtabmap_ros::transformToPoseMsg(mapToOdom_*odom, poseMsg.pose.pose);
 					poseMsg.pose.covariance;
-					const cv::Mat & cov = rtabmap_.getStatistics().localizationCovariance();
-					memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total()*sizeof(double));
+					if(!rtabmap_.getStatistics().localizationCovariance().empty())
+					{
+						const cv::Mat & cov = rtabmap_.getStatistics().localizationCovariance();
+						memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total()*sizeof(double));
+					}
 					localizationPosePub_.publish(poseMsg);
 				}
 				std::map<int, rtabmap::Transform> filteredPoses(rtabmap_.getLocalOptimizedPoses().lower_bound(1), rtabmap_.getLocalOptimizedPoses().end());
@@ -2643,6 +2665,8 @@ void CoreWrapper::process(
 				
 				timeUpdateMaps = timer.ticks();
 
+				UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
+
 				if(!mapsManager_.isSemanticSegmentationEnabled())
 				{
 					mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId_);
@@ -2650,9 +2674,7 @@ void CoreWrapper::process(
 				else
 				{
 					// publish maps in semantic segmentation mode
-					mapsManager_.publishAPLMaps(filteredPoses, stamp, mapFrameId_);	
-					// publish the newest semantic mask added to map
-					mapsManager_.publishSemanticMask(data);
+					mapsManager_.publishAPLMaps(stamp, mapFrameId_);	
 				}
 				this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
 				

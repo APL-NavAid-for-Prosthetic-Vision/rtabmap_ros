@@ -29,9 +29,8 @@
     <arg name="queue_size_rgbd"                default="30"/>  <!--default for depth mode -->
     <arg name="queue_size"                     default="200"/> <!--default for depth mode --> 
     <arg name="multi_level_cell_size"          default="0.05 0.05 0.05 0.05 0.05"/>   <!-- 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
-    <arg name="ground_label_id"                default="-1"/>   <!-- default -1 , disables  ground level layer, and ground gets added to static level layer -->
-    <arg name="ceiling_label_id"               default="-1"/>   <!-- default -1 , disables  ceiling level layer, and ceiling gets added to static level layer -->
-  
+    <arg name="multi_level_cell_name"          default="ground ceiling static movable dynamic"/>   <!-- Name of octree per layer. -->
+   
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
     <arg name="map_always_update"           default="false"/>
@@ -92,8 +91,7 @@
         <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
         <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
         <arg name="multi_level_cell_size"       default="$(arg multi_level_cell_size)"/>   
-        <arg name="ground_label_id"             default="$(arg ground_label_id)"/>   
-        <arg name="ceiling_label_id"            default="$(arg ceiling_label_id)"/>
+        <arg name="multi_level_cell_name"       default="$(arg multi_level_cell_name)"/>   
     </include>
 
 </launch>

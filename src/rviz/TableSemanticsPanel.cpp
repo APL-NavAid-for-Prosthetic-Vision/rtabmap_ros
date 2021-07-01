@@ -311,7 +311,13 @@ std::string TableSemanticsPanel::getOccupancyType_str(int type)
 {
 	std::string typeStr;
 
-	if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeStatic) 
+	if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeGround) {
+		typeStr = "ground";
+	}
+	else if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeCeiling) {
+		typeStr = "ceiling";
+	}
+	else if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeStatic) 
 	{
 		typeStr = "static";
 	}
