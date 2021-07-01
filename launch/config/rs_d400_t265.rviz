@@ -144,6 +144,7 @@ Visualization Manager:
         TF: false
         Value: true
         grid_Map: false
+        landmarksMap: true
         mapCloud: false
         mapPath: false
         rtabmapColorOccupancyGrid: true
@@ -383,9 +384,9 @@ Visualization Manager:
       Voxel Rendering: Occupied Voxels
     - Class: ugv_rviz_plugins/OccupancyOctoMapDisplay
       Enabled: false
-      Max. Height Display: inf
+      Max. Height Display: 3.4028234663852886e+38
       Max. Octree Depth: 16
-      Min. Height Display: -inf
+      Min. Height Display: -3.4028234663852886e+38
       Name: OccupancyOctoMapDisplayBinary
       OctoMap Msg Mode: BinaryMap_Mode
       Octomap Topic: /rtabmap/octomap_binary
@@ -394,6 +395,14 @@ Visualization Manager:
       Voxel Alpha: 1
       Voxel Coloring: Z-Axis
       Voxel Rendering: Occupied Voxels
+    - Class: rviz/MarkerArray
+      Enabled: false
+      Marker Topic: /rtabmap/landmarks_map
+      Name: landmarksMap
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -418,25 +427,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 5.57541561126709
+      Distance: 6.244465351104736
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.5859044790267944
-        Y: -0.45102086663246155
-        Z: 1.3311685052030953e-6
+        X: 0.4227677583694458
+        Y: -0.284586101770401
+        Z: 1.0927499261015328e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5403993129730225
+      Pitch: 0.5853986740112305
       Target Frame: t265_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.060417890548706
+      Yaw: 3.110427141189575
     Saved: ~
 Window Geometry:
   Camera:
@@ -463,4 +472,4 @@ Window Geometry:
     collapsed: true
   Width: 1657
   X: 1990
-  Y: 32
+  Y: 2
