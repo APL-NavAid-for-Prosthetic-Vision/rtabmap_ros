@@ -1449,6 +1449,7 @@ void CoreWrapper::publishLandmarksMap(const rtabmap::Memory * memory, const std:
 			{
                 // the signature has not set of landmarkIds
                 // the signature will not have the landmark link
+				ROS_WARN("signature id (%d) is missing landmarks!! should not have an empty set of landmarks", signatureId);
                 continue;
             }
 
@@ -1461,6 +1462,19 @@ void CoreWrapper::publishLandmarksMap(const rtabmap::Memory * memory, const std:
 
             if(!landmarksLinkMap.empty()) 
             {
+				// compute the pose of landmark with respect to map reference frame
+				// assuming the landmark's node is in the optimized map.
+				rtabmap::Transform map2NodePose = rtabmap_.getPose(signatureId);
+				//check if the node id pose was found; if not found, it would be all zeros
+				if(map2NodePose.isNull())
+				{
+					map2NodePose = s->getPose();
+					if(map2NodePose.isNull())
+					{
+						ROS_ERROR("		signature id POSE not found in memory!!! THIS SHOULD NOT HAPPEN");
+						continue;
+					}
+				}
                 // in one signature there might be multiple landmarks
                 for(std::map<int, rtabmap::Link>::iterator lIter = landmarksLinkMap.begin(); lIter != landmarksLinkMap.end(); ++lIter) 
                 {
@@ -1479,17 +1493,17 @@ void CoreWrapper::publishLandmarksMap(const rtabmap::Memory * memory, const std:
                     if(markerExist)
                         continue;
                     
-                    const rtabmap::Transform tf = lIter->second.transform();
-					Eigen::Quaterniond quaternion = tf.getQuaterniond();
+					rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
+					Eigen::Quaterniond quaternion = mapPose2landmarkPoseTf.getQuaterniond();
 
 					marker.header.frame_id = mapFrameId;
 					marker.header.stamp = ros::Time::now();
 					marker.ns = "landmarks";
 					marker.id = landMarkId;
 					marker.action = visualization_msgs::Marker::ADD;
-					marker.pose.position.x = tf.x();
-					marker.pose.position.y = tf.y();
-					marker.pose.position.z = tf.z();
+					marker.pose.position.x = mapPose2landmarkPoseTf.x();
+					marker.pose.position.y = mapPose2landmarkPoseTf.y();
+					marker.pose.position.z = mapPose2landmarkPoseTf.z();
 					marker.pose.orientation.x = quaternion.x();
 					marker.pose.orientation.y = quaternion.y();
 					marker.pose.orientation.z = quaternion.z();
@@ -1601,10 +1615,10 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 				return false;
 			}
 		}
-		rtabmap::Transform map2lastPose = rtabmap_.getLastLocalizationPose();
-		rtabmap::Transform currenPose2landmarkPoseTf = map2lastPose.inverse() * map2NodePose * lIter->second.transform();
+		
+		rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
 
-		transformToGeometryMsg(currenPose2landmarkPoseTf, landmark.transform);
+		transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.transform);
 		
 		if(lIter->second.infMatrix().type() == CV_64FC1 && 
 			lIter->second.infMatrix().cols == 6 && 
