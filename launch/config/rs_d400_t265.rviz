@@ -8,6 +8,7 @@ Panels:
         - /Odometry1/Covariance1/Position1
         - /Mapped_Pose1/Covariance1/Position1
         - /Mapped_Pose1/Covariance1/Orientation1
+        - /rtabmapColorOccupancyGrid1/Status1
       Splitter Ratio: 0.5887096524238586
     Tree Height: 425
   - Class: rviz/Selection
@@ -28,7 +29,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Depth_Image
+    SyncSource: Camera
   - Class: rtabmap_ros/TableSemantics
     Name: TableSemantics
     classid_file_path: /home/norenn1/ws_ros1_py3_catkin/src/navmap/navmap_core/config/sceneParse150_class_name_architecture.yaml
@@ -136,6 +137,8 @@ Visualization Manager:
         Info: false
         MapCloud_data: false
         Mapped_Pose: false
+        OccupancyOctoMapDisplay: true
+        OccupancyOctoMapDisplayBinary: true
         Odometry: false
         SemanticMaskImage: true
         TF: false
@@ -347,7 +350,7 @@ Visualization Manager:
       Min. Height Display: -3.4028234663852886e+38
       Name: rtabmapColorOccupancyGrid
       OctoMap Msg Mode: FullMap_Mode
-      Octomap Topic: /rtabmap/octomap_full
+      Octomap Topic: /rtabmap/octomap_full_static
       Queue Size: 5
       Value: false
       Voxel Alpha: 1
@@ -365,6 +368,32 @@ Visualization Manager:
       Transport Hint: raw
       Unreliable: false
       Value: true
+    - Class: ugv_rviz_plugins/OccupancyOctoMapDisplay
+      Enabled: false
+      Max. Height Display: 3.4028234663852886e+38
+      Max. Octree Depth: 16
+      Min. Height Display: -3.4028234663852886e+38
+      Name: OccupancyOctoMapDisplay
+      OctoMap Msg Mode: FullMap_Mode
+      Octomap Topic: /rtabmap/octomap_full
+      Queue Size: 5
+      Value: false
+      Voxel Alpha: 1
+      Voxel Coloring: Z-Axis
+      Voxel Rendering: Occupied Voxels
+    - Class: ugv_rviz_plugins/OccupancyOctoMapDisplay
+      Enabled: false
+      Max. Height Display: inf
+      Max. Octree Depth: 16
+      Min. Height Display: -inf
+      Name: OccupancyOctoMapDisplayBinary
+      OctoMap Msg Mode: BinaryMap_Mode
+      Octomap Topic: /rtabmap/octomap_binary
+      Queue Size: 5
+      Value: false
+      Voxel Alpha: 1
+      Voxel Coloring: Z-Axis
+      Voxel Rendering: Occupied Voxels
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -389,25 +418,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 3.098259925842285
+      Distance: 5.57541561126709
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.1587129831314087
-        Y: -0.16621041297912598
-        Z: 1.0927499261015328e-6
+        X: 0.5859044790267944
+        Y: -0.45102086663246155
+        Z: 1.3311685052030953e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6403986215591431
+      Pitch: 0.5403993129730225
       Target Frame: t265_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 2.780405044555664
+      Yaw: 3.060417890548706
     Saved: ~
 Window Geometry:
   Camera:
@@ -433,5 +462,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1657
-  X: 203
-  Y: 27
+  X: 1990
+  Y: 32
