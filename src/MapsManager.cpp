@@ -54,8 +54,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl_conversions/pcl_conversions.h>
 
 #ifdef WITH_OCTOMAP_MSGS
-#ifdef RTABMAP_OCTOMAP
+#include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/conversions.h>
+#ifdef RTABMAP_OCTOMAP
 #include <octomap/ColorOcTree.h>
 #include <rtabmap/core/OctoMap.h>
 #include <rtabmap/core/SemanticOctoMap.h>
@@ -68,12 +69,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <fmt/format.h>
 
-#ifdef RTK
-#include <RTK/Map/Maps/OcTreeDist.h>
-namespace octomap {
-  class OcTreeDist;
-}
-#endif
+// #ifdef RTK
+// #include <RTK/Map/Maps/OcTreeDist.h>
+// #endif
 
 using namespace rtabmap;
 
@@ -737,7 +735,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 
 					UDEBUG("Adding grid map %d to cache...", iter->first);
 					cv::Point3f viewPoint;
-					std::map<int, cv::Mat> emptyCellsMap;
+					cv::Mat emptyCells;
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
 					if(iter->first > 0)
 					{
@@ -773,20 +771,20 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
 								semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
 								generateGrid?0:&obstaclesCellsMap,
-								generateGrid?0:&emptyCellsMap);
-												
+								generateGrid?0:&emptyCells);
+						
 						if(generateGrid)
 						{
 							Signature tmp(data);
 							tmp.setPose(iter->second);
-							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCellsMap, viewPoint);
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
+							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
 							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 						}
 						else
 						{
 							viewPoint = data.gridViewPoint();
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
 							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 						}
 					}
@@ -816,20 +814,20 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
 								semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
 								generateGrid?0:&obstaclesCellsMap,
-								generateGrid?0:&emptyCellsMap);
+								generateGrid?0:&emptyCells);
 						
 						if(generateGrid)
 						{
 							Signature tmp(data);
 							tmp.setPose(iter->second);
-							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCellsMap, viewPoint);
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
+							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
 							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 						}
 						else
-						{
+						{	
 							viewPoint = data.gridViewPoint();
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
+							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
 							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 						}
 
@@ -978,14 +976,18 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					(iter->first == 0 || 
 						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
 				{
-					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat>> >::iterator mter = gridAPLMaps_.find(iter->first);
+					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > >::iterator mter = gridAPLMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
-					if(mter != gridAPLMaps_.end() && pter!=gridMapsViewpoints_.end())
+					if(mter != gridAPLMaps_.end() && pter != gridMapsViewpoints_.end())
 					{
-						if(mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2 &&
-						   (mter->second.second.begin()->second.empty() || mter->second.second.begin()->second.channels() > 2))
+						if( (mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
+						   (mter->second.second.empty() || mter->second.second.channels() > 2) )
 						{
 							semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
+						}
+						else
+						{
+							ROS_WARN("Node %d: Cannot update octomap occupancy grids were not added to octomap cache! ", iter->first);
 						}
 					}
 				}
@@ -1088,7 +1090,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		else
 		{
 			// In Semantic Segmentation Mode
-			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat>>>::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
+			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
 			{
 				if(!uContains(poses, iter->first))
 				{
@@ -1853,7 +1855,6 @@ cv::Mat MapsManager::getGridProbMap(
 // JHUAPL section
 
 void MapsManager::publishAPLMaps(
-		const std::map<int, rtabmap::Transform> & poses,
 		const ros::Time & stamp,
 		const std::string & mapFrameId)
 {
@@ -1878,70 +1879,77 @@ void MapsManager::publishAPLMaps(
 		(octoMapFullDynamicPub_.getNumSubscribers() && !latched_.at(&octoMapFullDynamicPub_)) ||
 		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)) )
 	{
-		const std::vector<std::string> MULTILEVELNAMES = rtabmap::SemanticOctoMap::MULTILEVELNAMES;
+		const std::vector<std::string> MULTILEVELNAMES = SemanticOctoMap::MULTILEVELNAMES;
 		// octoMapFullGroundb_ publishes ground layer
-		if(octoMapFullGroundPub_.getNumSubscribers())
+		SemanticOctoMap::MultiLevelOctrees mlOctrees = semanticOctomap_->multiLevelOctrees();
+		if(mlOctrees[0] && octoMapFullGroundPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			UASSERT(semanticOctomap_->multiLevelOctrees()[0]);
-			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(0);
-
-			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
-			octoMapFullGroundPub_.publish(msg);
+
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[0], msg))
+				octoMapFullGroundPub_.publish(msg);
+			else
+				ROS_ERROR("ERROR serializing Octomap (%d)", 0);
+	
 			latched_.at(&octoMapFullGroundPub_) = true;
+			
 		}
 		// octoMapFullCeilingPub_ publishes ceiling layer
-		if(octoMapFullCeilingPub_.getNumSubscribers())
+		if(mlOctrees[1] && octoMapFullCeilingPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			UASSERT(semanticOctomap_->multiLevelOctrees()[1]);
-			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(1);
-
-			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
-			octoMapFullCeilingPub_.publish(msg);
+
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[1], msg))
+				octoMapFullCeilingPub_.publish(msg);
+			else
+				ROS_ERROR("ERROR serializing Octomap (%d)", 1);
+
 			latched_.at(&octoMapFullCeilingPub_) = true;
 		}
 		// octoMapFullStaticPub_ publishes static layer
-		if(octoMapFullStaticPub_.getNumSubscribers())
+		if(mlOctrees[2] && octoMapFullStaticPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			UASSERT(semanticOctomap_->multiLevelOctrees()[2]);
-			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(2);
-
-			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
-			octoMapFullStaticPub_.publish(msg);
+			
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[2], msg))
+				octoMapFullStaticPub_.publish(msg);
+			else
+				ROS_ERROR("ERROR serializing Octomap (%d)", 2);
+
 			latched_.at(&octoMapFullStaticPub_) = true;
 		}
 		// octoMapFullMovablePub_ publishes movable layer
-		if(octoMapFullMovablePub_.getNumSubscribers())
+		if(mlOctrees[3] && octoMapFullMovablePub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			UASSERT(semanticOctomap_->multiLevelOctrees()[3]);
-			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(3);
-
-			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
-			octoMapFullMovablePub_.publish(msg);
+			
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[3], msg))
+				octoMapFullMovablePub_.publish(msg);
+			else
+				ROS_ERROR("ERROR serializing Octomap (%d)", 3);
+
 			latched_.at(&octoMapFullMovablePub_) = true;
 		}
 		// octoMapFullDynamicPub_ publishes dynamic layer
-		if(octoMapFullDynamicPub_.getNumSubscribers())
+		if(mlOctrees[4] && octoMapFullDynamicPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			UASSERT(semanticOctomap_->multiLevelOctrees()[4]);
-			rtabmap::RtabmapAPLColorOcTree* multiLevelOctreePtr = semanticOctomap_->multiLevelOctrees().at(4);
-
-			octomap_msgs::fullMapToMsg(*multiLevelOctreePtr, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
-			octoMapFullDynamicPub_.publish(msg);
+			
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[4], msg))
+				octoMapFullDynamicPub_.publish(msg);
+			else
+				ROS_ERROR("ERROR serializing Octomap (%d)", 4);
+			
 			latched_.at(&octoMapFullDynamicPub_) = true;
 		}
 		// octoMapCloud_ publishes all layers as single point cloud (include node's data)
@@ -1974,52 +1982,49 @@ void MapsManager::publishAPLMaps(
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-#ifdef RTK
-			// init rtk octree with some hard coded settings
-			octomap::OcTreeDist rtkOctree(0.05);
+// #ifdef RTK
+// 			// init rtk octree with some hard coded settings
+// 			octomap::OcTreeDist rtkOctree(0.05);
 
-			rtkOctree.setOccupancyThres(0.5);
-			rtkOctree.setProbHit(0.7);
-			rtkOctree.setProbMiss(0.4);
-			rtkOctree.setClampingThresMin(0.1192);
-			rtkOctree.setClampingThresMax(0.971);
+// 			rtkOctree.setOccupancyThres(0.5);
+// 			rtkOctree.setProbHit(0.7);
+// 			rtkOctree.setProbMiss(0.4);
+// 			rtkOctree.setClampingThresMin(0.1192);
+// 			rtkOctree.setClampingThresMax(0.971);
 
-			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
+// 			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
 			
-			octomap_msgs::fullMapToMsg(rtkOctree, msg);
-			msg.header.frame_id = mapFrameId;
-			msg.header.stamp = stamp;
-			octoMapPubFull_.publish(msg);
-			latched_.at(&octoMapPubFull_) = true;
-#endif
+// 			octomap_msgs::fullMapToMsg(rtkOctree, msg);
+// 			msg.header.frame_id = mapFrameId;
+// 			msg.header.stamp = stamp;
+// 			octoMapPubFull_.publish(msg);
+// 			latched_.at(&octoMapPubFull_) = true;
+// #endif
 		}
 		// octoMapPubBin_ publishes layers {static,movable,dynamic} as OcTreeDist Binary map
 		if(octoMapPubBin_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-#ifdef RTK
-			// init rtk octree with some hard coded settings
-			octomap::OcTreeDist rtkOctree(0.05);
+// #ifdef RTK
+// 			// init rtk octree with some hard coded settings
+// 			octomap::OcTreeDist rtkOctree(0.05);
 
-			rtkOctree.setOccupancyThres(0.5);
-			rtkOctree.setProbHit(0.7);
-			rtkOctree.setProbMiss(0.4);
-			rtkOctree.setClampingThresMin(0.1192);
-			rtkOctree.setClampingThresMax(0.971);
+// 			rtkOctree.setOccupancyThres(0.5);
+// 			rtkOctree.setProbHit(0.7);
+// 			rtkOctree.setProbMiss(0.4);
+// 			rtkOctree.setClampingThresMin(0.1192);
+// 			rtkOctree.setClampingThresMax(0.971);
 
-			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
-			octomap_msgs::binaryMapToMsg(rtkOctree, msg);
-			msg.header.frame_id = mapFrameId;
-			msg.header.stamp = stamp;
-			octoMapPubBin_.publish(msg);
-			latched_.at(&octoMapPubBin_) = true;
-#endif
+// 			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
+// 			octomap_msgs::binaryMapToMsg(rtkOctree, msg);
+// 			msg.header.frame_id = mapFrameId;
+// 			msg.header.stamp = stamp;
+// 			octoMapPubBin_.publish(msg);
+// 			latched_.at(&octoMapPubBin_) = true;
+// #endif
 		}
-
-
 	}
 	
-
 	if( mapCacheCleanup_ &&
 		octoMapPubBin_.getNumSubscribers() == 0 &&
 		octoMapPubFull_.getNumSubscribers() == 0 &&
@@ -2076,7 +2081,7 @@ void MapsManager::publishAPLMaps(
 	}
 }
 
-void MapsManager::publishSemanticMask(rtabmap::SensorData & data)
+void MapsManager::publishSemanticMask(const rtabmap::SensorData & data)
 {
 	if(semanticMaskPub_.getNumSubscribers())
 	{

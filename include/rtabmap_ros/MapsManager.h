@@ -94,13 +94,10 @@ public:
 
 	bool isSemanticSegmentationEnabled() { return semanticSegmentationEnable_; }
 
-	void publishAPLMaps(const std::map<int, rtabmap::Transform> & poses,
-						const ros::Time & stamp,
+	void publishAPLMaps(const ros::Time & stamp,
 						const std::string & mapFrameId);
 
-	void publishSemanticMask(rtabmap::SensorData & data);
-
-	void publishLandmarksMap(const std::string & mapFrameId);
+	void publishSemanticMask(const rtabmap::SensorData & data);
 	
 	// JHUAPL section end
 
@@ -171,7 +168,7 @@ private:
 
 	rtabmap::SemanticOctoMap * semanticOctomap_;
 	bool semanticSegmentationEnable_;
-	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<int, cv::Mat> > > gridAPLMaps_; // < map<class label, obstacle>, map< octree layer, empty cells >
+	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > > gridAPLMaps_; // < , < map<class_label_id, object_cells>, empty_cells > >
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;

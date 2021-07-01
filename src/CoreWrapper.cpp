@@ -2571,11 +2571,14 @@ void CoreWrapper::process(
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 				{ 
 					int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
-					const double stamp = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
+					double stampLastWS = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
 					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, true);
 					
 					// publish the grid + depth + RGB from register node
-					publishSemanticOccupancyGrid(id, sd, stamp);
+					publishSemanticOccupancyGrid(id, sd, stampLastWS);
+
+					// publish the newest semantic mask added to map
+					mapsManager_.publishSemanticMask(data);
 				}
 				else 
 				{
@@ -2585,7 +2588,6 @@ void CoreWrapper::process(
 
 				// Publish local graph, info
 				this->publishStats(stamp);
-				
 				// JHAPL modification 
 				// publish localization with correction regardless whether covariance is available
 				if(localizationPosePub_.getNumSubscribers())
@@ -2663,6 +2665,8 @@ void CoreWrapper::process(
 				
 				timeUpdateMaps = timer.ticks();
 
+				UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
+
 				if(!mapsManager_.isSemanticSegmentationEnabled())
 				{
 					mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId_);
@@ -2670,9 +2674,7 @@ void CoreWrapper::process(
 				else
 				{
 					// publish maps in semantic segmentation mode
-					mapsManager_.publishAPLMaps(filteredPoses, stamp, mapFrameId_);	
-					// publish the newest semantic mask added to map
-					mapsManager_.publishSemanticMask(data);
+					mapsManager_.publishAPLMaps(stamp, mapFrameId_);	
 				}
 				this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
 				
