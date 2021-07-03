@@ -177,7 +177,12 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		multiLevelCellSize.at(index) = uStr2Float(*jter);
 		++index;
 	}
-	
+
+	std::string multiLevelTreeNameStr = "static movable dynamic";
+	pnh.param("Grid/MultiLevelTreeName", multiLevelTreeNameStr, multiLevelTreeNameStr);
+	ROS_INFO("%s(maps): Grid/MultiLevelTreeName = %s", name.c_str(), multiLevelTreeNameStr.c_str());
+	std::list<std::string> multiLevelTreeName = uSplit(multiLevelTreeNameStr, ' ');
+
 	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
@@ -185,7 +190,7 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	// JHUAPL section
 	if(semanticSegmentationEnable_)
 	{
-		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
+		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
 	
 		// set the model class map if available
 		if(!semanticSegmentationModelFilePath_.empty())
@@ -200,11 +205,17 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 
 			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
 			semanticOctomap_->updateOccupancyMapStruct();
+			// configure association of labels id with multi-level map
+			semanticOctomap_->setMultiLevelOctreeConfig(multiLevelCellSize.size());
 
 			if(modelMaskIdColorMap.empty())
 				semanticOctomap_->generateMaskIdColorMap();
 			else
 				semanticOctomap_->setMaskidColorMap(modelMaskIdColorMap);
+		}
+		else
+		{
+			ROS_ERROR("file with Label Name to Id association for semantic segmentation model Not FOUND!!");
 		}
 	}
 	// JHUAPL section end
@@ -421,7 +432,13 @@ void MapsManager::backwardCompatibilityParameters(ros::NodeHandle & pnh, Paramet
 void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 {
 	// JHUAPL section
+
 	Parameters::parse(parameters, Parameters::kGridEnableSemanticSegmentation(), semanticSegmentationEnable_);
+
+	std::string multiLevelCellSizeStr;
+	Parameters::parse(parameters, Parameters::kGridMultiLevelCellSize(), multiLevelCellSizeStr);
+	std::list<std::string> mlCellSizeStrList = uSplit(multiLevelCellSizeStr, ' ');
+
 	//JHUAPL section end
 
 	parameters_ = parameters;
@@ -457,12 +474,18 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 
 			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
 			semanticOctomap_->updateOccupancyMapStruct();
+			// configure association of labels id with multi-level map
+			semanticOctomap_->setMultiLevelOctreeConfig(mlCellSizeStrList.size());
 
 			if(modelMaskIdColorMap.empty())
 				semanticOctomap_->generateMaskIdColorMap();
 			else
 				semanticOctomap_->setMaskidColorMap(modelMaskIdColorMap);
 			
+		}
+		else
+		{
+			ROS_ERROR("file with Label Name to Id association for semantic segmentation model Not FOUND!!");
 		}
 	}
 	// JHUAPL section end
@@ -1879,16 +1902,18 @@ void MapsManager::publishAPLMaps(
 		(octoMapFullDynamicPub_.getNumSubscribers() && !latched_.at(&octoMapFullDynamicPub_)) ||
 		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)) )
 	{
-		const std::vector<std::string> MULTILEVELNAMES = SemanticOctoMap::MULTILEVELNAMES;
+		std::map<std::string, int> octreeName2OctreeId = semanticOctomap_->getOctreeName2OctreeId();
 		// octoMapFullGroundb_ publishes ground layer
 		SemanticOctoMap::MultiLevelOctrees mlOctrees = semanticOctomap_->multiLevelOctrees();
-		if(mlOctrees[0] && octoMapFullGroundPub_.getNumSubscribers())
+		auto octreeName2OctreeIdPtr = octreeName2OctreeId.find("ground");
+		UASSERT(octreeName2OctreeIdPtr != octreeName2OctreeId.end());
+		if(mlOctrees[octreeName2OctreeIdPtr->second] && octoMapFullGroundPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 
-			if(octomap_msgs::fullMapToMsg(*mlOctrees[0], msg))
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[octreeName2OctreeIdPtr->second], msg))
 				octoMapFullGroundPub_.publish(msg);
 			else
 				ROS_ERROR("ERROR serializing Octomap (%d)", 0);
@@ -1897,13 +1922,15 @@ void MapsManager::publishAPLMaps(
 			
 		}
 		// octoMapFullCeilingPub_ publishes ceiling layer
-		if(mlOctrees[1] && octoMapFullCeilingPub_.getNumSubscribers())
+		octreeName2OctreeIdPtr = octreeName2OctreeId.find("ceiling");
+		UASSERT(octreeName2OctreeIdPtr != octreeName2OctreeId.end());
+		if(mlOctrees[octreeName2OctreeIdPtr->second] && octoMapFullCeilingPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 
-			if(octomap_msgs::fullMapToMsg(*mlOctrees[1], msg))
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[octreeName2OctreeIdPtr->second], msg))
 				octoMapFullCeilingPub_.publish(msg);
 			else
 				ROS_ERROR("ERROR serializing Octomap (%d)", 1);
@@ -1911,13 +1938,15 @@ void MapsManager::publishAPLMaps(
 			latched_.at(&octoMapFullCeilingPub_) = true;
 		}
 		// octoMapFullStaticPub_ publishes static layer
-		if(mlOctrees[2] && octoMapFullStaticPub_.getNumSubscribers())
+		octreeName2OctreeIdPtr = octreeName2OctreeId.find("static");
+		UASSERT(octreeName2OctreeIdPtr != octreeName2OctreeId.end());
+		if(mlOctrees[octreeName2OctreeIdPtr->second] && octoMapFullStaticPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			
-			if(octomap_msgs::fullMapToMsg(*mlOctrees[2], msg))
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[octreeName2OctreeIdPtr->second], msg))
 				octoMapFullStaticPub_.publish(msg);
 			else
 				ROS_ERROR("ERROR serializing Octomap (%d)", 2);
@@ -1925,13 +1954,15 @@ void MapsManager::publishAPLMaps(
 			latched_.at(&octoMapFullStaticPub_) = true;
 		}
 		// octoMapFullMovablePub_ publishes movable layer
-		if(mlOctrees[3] && octoMapFullMovablePub_.getNumSubscribers())
+		octreeName2OctreeIdPtr = octreeName2OctreeId.find("movable");
+		UASSERT(octreeName2OctreeIdPtr != octreeName2OctreeId.end());
+		if(mlOctrees[octreeName2OctreeIdPtr->second] && octoMapFullMovablePub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			
-			if(octomap_msgs::fullMapToMsg(*mlOctrees[3], msg))
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[octreeName2OctreeIdPtr->second], msg))
 				octoMapFullMovablePub_.publish(msg);
 			else
 				ROS_ERROR("ERROR serializing Octomap (%d)", 3);
@@ -1939,13 +1970,15 @@ void MapsManager::publishAPLMaps(
 			latched_.at(&octoMapFullMovablePub_) = true;
 		}
 		// octoMapFullDynamicPub_ publishes dynamic layer
-		if(mlOctrees[4] && octoMapFullDynamicPub_.getNumSubscribers())
+		octreeName2OctreeIdPtr = octreeName2OctreeId.find("dynamic");
+		UASSERT(octreeName2OctreeIdPtr != octreeName2OctreeId.end());
+		if(mlOctrees[octreeName2OctreeIdPtr->second] && octoMapFullDynamicPub_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			
-			if(octomap_msgs::fullMapToMsg(*mlOctrees[4], msg))
+			if(octomap_msgs::fullMapToMsg(*mlOctrees[octreeName2OctreeIdPtr->second], msg))
 				octoMapFullDynamicPub_.publish(msg);
 			else
 				ROS_ERROR("ERROR serializing Octomap (%d)", 4);
@@ -1958,12 +1991,12 @@ void MapsManager::publishAPLMaps(
 			sensor_msgs::PointCloud2 msg;
 			std::list<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 			
-			for (int i = 0; i < MULTILEVELNAMES.size(); ++i) {
+			for (auto n : octreeName2OctreeId) {
 				pcl::IndicesPtr occupiedIndices(new std::vector<int>);
 				pcl::IndicesPtr emptyIndices(new std::vector<int>);
 
-				std::string layerName = MULTILEVELNAMES.at(i);
-				//UDEBUG("MULTILEVELNAMES: \"%s\"", layerName.c_str());
+				std::string layerName = n.first;
+				UDEBUG("octree name: \"%s\"", layerName.c_str());
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = semanticOctomap_->createCloud(layerName, octomapTreeDepth_, occupiedIndices.get(), emptyIndices.get(), true);
 
 				clouds.push_back(cloud);
