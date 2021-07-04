@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(rtabmap_ros)
 
-SET(RTABMAP_ROS_PATH "${PROJECT_SOURCE_DIR}/repository/rtabmap_ros")
+SET(RTABMAP_ROS_PATH "${PROJECT_SOURCE_DIR}/third_party/rtabmap_ros")
 
 # Policy CMP0043 introduced in cmake version 3.0 IGNORES the use of COMPILE_DEFINITIONS suffixed variables, e.g. COMPILE_DEFINITIONS_DEBUG
 # Set to OLD behavior until minimum cmake version >= 2.8.10 (version that COMPILE_DEFINITIONS can be set by generator expressions instead)
