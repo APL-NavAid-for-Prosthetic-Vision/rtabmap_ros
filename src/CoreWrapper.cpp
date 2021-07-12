@@ -1480,7 +1480,7 @@ void CoreWrapper::publishLandmarksMap(const rtabmap::Memory * memory, const std:
                 {
 					visualization_msgs::Marker marker;
                     // this is the actual landmark id
-					int landMarkId = lIter->second.getId();
+					int landMarkId = -1*lIter->first;
 
 					// check if marker has already been added to markers array
                     bool markerExist = false;
@@ -1585,7 +1585,8 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 	for(std::map<int, rtabmap::Link>::iterator lIter = landmarks.begin(); lIter != landmarks.end(); ++lIter, ++index)
 	{
 		rtabmap_ros::Landmark landmark;
-		landmark.landmarkId = lIter->second.getId();
+		// the landmarks are negative in rtabmap, correcting to actual landmark id
+		landmark.landmarkId = -1*lIter->first;
 		landmark.description = lIter->second.getDescription();
 		landmark.landmarkMapId = lIter->first;
 		landmark.signatureId = lIter->second.from();
