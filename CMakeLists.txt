@@ -153,7 +153,7 @@ add_message_files(
    RGBDSemanticDetection.msg
    SemanticClassIdElement.msg 
    SemanticClassIdMap.msg
-   SemanticOccupancyGrid.msg
+   RegisteredData.msg
    Landmark.msg
    Landmarks.msg
 )

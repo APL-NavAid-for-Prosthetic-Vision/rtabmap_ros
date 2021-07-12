@@ -20,7 +20,7 @@ from geometry_msgs.msg import Transform
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Quaternion
 
-from rtabmap_ros.msg import SemanticOccupancyGrid
+from rtabmap_ros.msg import RegisteredData
 from rtabmap_ros.msg import Landmarks
 from rtabmap_ros.msg import Landmark
 from rtabmap_ros.srv import LandmarksInsert, LandmarksInsertRequest, LandmarksInsertResponse
@@ -39,7 +39,7 @@ class LandmarksTest:
         rospy.loginfo(" targetLandmarksSize: %d ", self.targetLandmarksSize)
 
         # Subscriber
-        rospy.Subscriber("rtabmap/semantic_occupancy_grid", SemanticOccupancyGrid, callback=self.semanticOccupancyGridCallback)
+        rospy.Subscriber("rtabmap/registered_data_WM", RegisteredData, callback=self.landmarkDectectionCallback)
 
 
         # Publisher
@@ -52,38 +52,40 @@ class LandmarksTest:
         # spin
         rospy.spin()
         
-    def semanticOccupancyGridCallback(self, msg):
+    def landmarkDectectionCallback(self, msg):
         # send out targetLandmarksSize into Rtabmap node
         #   Unit Test for the landmark functionality
-        rospy.loginfo("  OccupancyGrid data receieved")
+        rospy.loginfo("  Rtabmap registered data receieved")
 
         if self.targetLandmarksSize > self.counter:
-            # find landmark pose from labels
-            index = 0
-            for labelKey in msg.semanticOccupancyMapKeys:
-                index += 1 
-                if labelKey == self.targetLabelKey:
-                    break
+            # #find landmark pose from labels (base on)
+            # index = 0
+            # for labelKey in msg.objectsMapKeys:
+            #     index += 1 
+            #     if labelKey == self.targetLabelKey:
+            #         break
 
-            rospy.loginfo(" signature ID %d; label index: %d", msg.signatureId, index)
-            bridge = CvBridge()
+            # rospy.loginfo(" signature ID %d; label index: %d", msg.signatureId, index)
+            # bridge = CvBridge()
 
-            cv_data = bridge.imgmsg_to_cv2(msg.semanticOccupancyMapValues[index],  desired_encoding="32FC4")
-            (rows,cols,channels) = cv_data.shape
-            # grab the first element of then index label
-            print("rows= {0}, cols= {1}, channel{2}".format(rows, cols, channels))
-            position = cv_data[0,0,0:3]
-            
+            # cv_data = bridge.imgmsg_to_cv2(msg.semanticOccupancyMapValues[index],  desired_encoding="32FC4")
+            # (rows,cols,channels) = cv_data.shape
+            # # grab the first element of then index label
+            # print("rows= {0}, cols= {1}, channel{2}".format(rows, cols, channels))
+            # position = cv_data[0,0,0:3]
+
+            position = [msg.pose.position.x + 4, msg.pose.position.y + 0.5,  msg.pose.position.y + 0.3]
+
             self.counter = self.counter + 1
 
             rospy.loginfo("============ (%d)", self.counter)
             
             landmark = Landmark()
-            landmark.landmarkId = 8
+            landmark.landmarkId = 31
             landmark.description = "tags example"
             #timeStamp of the image (type: double)
             landmark.timeStamp = msg.rgbImage.header.stamp.to_sec()
-            landmark.signatureId = msg.signatureId
+            landmark.nodeId = msg.nodeId
 
             transform = Transform()
             transform.translation.x = position[0]

@@ -97,7 +97,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /// JHUAPL section
 
 #include "rtabmap_ros/utils_mapping.h"
-#include "rtabmap_ros/SemanticOccupancyGrid.h"
+#include "rtabmap_ros/RegisteredData.h"
 
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/Link.h>
@@ -245,6 +245,7 @@ void CoreWrapper::onInit()
 	}
 
 	// JHUAPL section
+
 #ifdef OPENCV_CUDA
 	NODELET_INFO("rtabmap: OPENCV_CUDA: Enabled");
 #else	
@@ -253,7 +254,8 @@ void CoreWrapper::onInit()
 
 	pnh.param("depth_Filters", depthFilters_, depthFilters_);
 
-	semanticOccupancyGridPub_ = nh.advertise<rtabmap_ros::SemanticOccupancyGrid>("semantic_occupancy_grid", 1);
+	publishRegisteredDataWMPub_ = nh.advertise<rtabmap_ros::RegisteredData>("registered_data_WM", 1);
+
 	// JHUAPL section end
 
 	infoPub_ = nh.advertise<rtabmap_ros::Info>("info", 1);
@@ -1364,22 +1366,20 @@ void CoreWrapper::commonDepthCallbackImpl(
 	covariance_ = cv::Mat();
 }
 
-void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const double & stamp)
+void CoreWrapper::publishRegisteredDataWM(const int & id, const rtabmap::SensorData & data, const double & stamp, const rtabmap::Transform & pose)
 {
-	rtabmap_ros::SemanticOccupancyGrid msg;
+	rtabmap_ros::RegisteredData msg;
 	cv::Mat rgb, depth;
-	std::map<unsigned int, cv::Mat> obstacleCellsMap;
-	if(!data.gridObstacleCellsMapRaw().empty() && !data.imageRaw().empty() && !data.depthOrRightRaw().empty())
+	//std::map<unsigned int, cv::Mat> obstacleCellsMap;
+	if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty())
 	{
-		obstacleCellsMap = data.gridObstacleCellsMapRaw();
 		rgb = data.imageRaw();
-		depth = data.depthOrRightRaw();
-		UDEBUG(" semantic occupancy Grid Raw");
+		UDEBUG(" WM Registered Data");
 	}
 	else 
 	{
-		UDEBUG(" semantic occupancy Grid compressed ... uncompressing");
-		data.uncompressDataConst(&rgb, &depth, 0, &obstacleCellsMap);
+		UDEBUG(" WM Registered Data compressed ... uncompressing");
+		data.uncompressDataConst(&rgb, &depth);
 	}
 	
 	// add to message
@@ -1390,41 +1390,44 @@ void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::Se
 	// add rgb image to the msg out
 	rgbImgCv.toImageMsg(msg.rgbImage);
 
-	cv_bridge::CvImage depthImgCv;
-	depthImgCv.header.stamp = ros::Time(stamp);
-	depthImgCv.image = depth;
-	depthImgCv.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
-	// add depth image to the msg out
-	depthImgCv.toImageMsg(msg.depthImage);
+	// cv_bridge::CvImage depthImgCv;
+	// depthImgCv.header.stamp = ros::Time(stamp);
+	// depthImgCv.image = depth;
+	// depthImgCv.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
+	// // add depth image to the msg out
+	// depthImgCv.toImageMsg(msg.depthImage);
 
 	// add occupancy grip corresponding to rgb and depth image
-	std::vector<unsigned int> semanticOccupancyMapKeys;
-	std::vector<sensor_msgs::Image> semanticOccupancyMapValues;
-	for (std::map<unsigned int, cv::Mat>::const_iterator iter = obstacleCellsMap.begin(); iter != obstacleCellsMap.end(); ++iter) 
-	{
-		semanticOccupancyMapKeys.push_back(iter->first);
+	// std::vector<unsigned int> semanticOccupancyMapKeys;
+	// std::vector<sensor_msgs::Image> semanticOccupancyMapValues;
+	// for (std::map<unsigned int, cv::Mat>::const_iterator iter = obstacleCellsMap.begin(); iter != obstacleCellsMap.end(); ++iter) 
+	// {
+	// 	semanticOccupancyMapKeys.push_back(iter->first);
 
-		sensor_msgs::Image objectCellsMsg;
-		cv_bridge::CvImage objectCellsCv;
-		objectCellsCv.header.stamp = ros::Time(stamp);
-		objectCellsCv.image = iter->second;
-		objectCellsCv.encoding = sensor_msgs::image_encodings::TYPE_32FC4;
+	// 	sensor_msgs::Image objectCellsMsg;
+	// 	cv_bridge::CvImage objectCellsCv;
+	// 	objectCellsCv.header.stamp = ros::Time(stamp);
+	// 	objectCellsCv.image = iter->second;
+	// 	objectCellsCv.encoding = sensor_msgs::image_encodings::TYPE_32FC4;
 
-		objectCellsCv.toImageMsg(objectCellsMsg);
+	// 	objectCellsCv.toImageMsg(objectCellsMsg);
 
-		semanticOccupancyMapValues.push_back(objectCellsMsg);
-	}
-	msg.semanticOccupancyMapKeys = semanticOccupancyMapKeys;
-	msg.semanticOccupancyMapValues = semanticOccupancyMapValues;	
+	// 	semanticOccupancyMapValues.push_back(objectCellsMsg);
+	// }
+	// msg.semanticOccupancyMapKeys = semanticOccupancyMapKeys;
+	// msg.semanticOccupancyMapValues = semanticOccupancyMapValues;
 
 	// signatureId is the same as the node id
-	msg.signatureId = id;
+	msg.nodeId = id;
+
+	// pose TF to msg { geometry_msgs::Pose }
+	transformToPoseMsg(pose, msg.pose);
 
 	// msg header 
 	msg.header.stamp = ros::Time::now();
 
 	// publish message
-	semanticOccupancyGridPub_.publish(msg);
+	publishRegisteredDataWMPub_.publish(msg);
 
 }
 
@@ -1542,7 +1545,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 	for(int i = 0; i < req.landmarks.size(); ++i)
 	{
 		rtabmap_ros::Landmark landmarkMsg = req.landmarks.at(i);
-		int signatureId = landmarkMsg.signatureId;
+		int signatureId = landmarkMsg.nodeId;
 		double timeStamp = landmarkMsg.timeStamp;
 		int landmarkId = landmarkMsg.landmarkId;
 		std::string description = landmarkMsg.description;
@@ -1589,11 +1592,11 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 		landmark.landmarkId = -1*lIter->first;
 		landmark.description = lIter->second.getDescription();
 		landmark.landmarkMapId = lIter->first;
-		landmark.signatureId = lIter->second.from();
+		landmark.nodeId = lIter->second.from();
 
 		// compute the pose of landmark with respect to map reference frame
 		// assuming the landmark's node is in the optimized map.
-		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.signatureId);
+		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.nodeId);
 		//check if the node id pose was found; if not found, it would be all zeros
 		if(map2NodePose.isNull())
 		{
@@ -1601,7 +1604,8 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 			ROS_WARN("signature id POSE not found!!! in optimized node map.");
 			if(rtabmap_.getMemory()) 
 			{
-				const rtabmap::Signature * s = rtabmap_.getMemory()->getSignature(landmark.signatureId);
+				// nodeid is the same as the signatureId
+				const rtabmap::Signature * s = rtabmap_.getMemory()->getSignature(landmark.nodeId);
 				map2NodePose = s->getPose();
 
 				if(map2NodePose.isNull())
@@ -2585,20 +2589,39 @@ void CoreWrapper::process(
 				// JHUAPL section
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 				{ 
-					int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
-					double stampLastWS = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
-					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, true);
-					
-					// publish the grid + depth + RGB from register node
-					publishSemanticOccupancyGrid(id, sd, stampLastWS);
-
 					// publish the newest semantic mask added to map
 					mapsManager_.publishSemanticMask(data);
+					
 				}
 				else 
 				{
 					/// TODO: support for when in depth mode
 				}
+
+				// publish last working map node, for landmark insertion
+				// 	and be used in all modes
+				if(publishRegisteredDataWMPub_.getNumSubscribers()) 
+				{
+					int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
+					double stampLastWS = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
+					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, false);
+
+					rtabmap::Transform map2NodePose = rtabmap_.getMemory()->getLastWorkingSignature()->getPose();
+					
+					//check if the node id pose was found; if not found, try an alternative
+					if(map2NodePose.isNull())
+					{
+						map2NodePose = rtabmap_.getPose(id);
+						if(map2NodePose.isNull())
+						{
+							ROS_ERROR("		Last working Signature POSE not found !!");
+						}
+					}
+					
+					// publish the register data node in last working node (added to database)
+					publishRegisteredDataWM(id, sd, stampLastWS, map2NodePose);
+				}
+
 				// JHUAPL section end
 
 				// Publish local graph, info
