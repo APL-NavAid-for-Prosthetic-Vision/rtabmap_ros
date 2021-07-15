@@ -1,14 +1,18 @@
 Header header
 
-# nodeId is the same as the signature id -- seq from depth Image
+# lastNodeId is the last added node id (gets merged into when very similar)
+# nodeId is the same as the signature id (actual id used the map)
 #        
 # rgbImage - visual image in RGB format (RAW format)
 # depthImage - depth image in meters [m] 
+# semanticMaskImage - semantic mask image corresponding to rgb image
 # pose - pose of the current node id - includes map corrections
 #
+int32  lastNodeId
 int32  nodeId
 sensor_msgs/Image rgbImage
 sensor_msgs/Image depthImage
+sensor_msgs/Image semanticMaskImage
 geometry_msgs/Pose pose
 
 #

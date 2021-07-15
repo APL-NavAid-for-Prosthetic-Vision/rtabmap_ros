@@ -148,7 +148,7 @@ private:
 				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d,
 				const std::vector<cv::Mat> & localDescriptors);
 
-	void publishRegisteredDataWM(const int & id, const rtabmap::SensorData & data, const double & stamp, const rtabmap::Transform & pose);
+	void publishRegisteredData(const int nodeId, const int lastNodeId, const rtabmap::SensorData & data, const double stamp, const rtabmap::Transform & pose);
 				
 	void publishLandmarksMap(const rtabmap::Memory * memory, const std::string & mapFrameId);
 	
@@ -424,7 +424,7 @@ private:
 
 	//  JHUAPL section
 	
-	ros::Publisher publishRegisteredDataWMPub_;
+	ros::Publisher publishRegisteredDataPub_;
 	ros::Publisher landmarksMapPub_;
 	
 	ros::ServiceServer landmarkInsertSrv_;
