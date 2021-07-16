@@ -200,9 +200,14 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 			
 			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap, modelMaskIdColorMap))
 			{
-				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
+				ROS_WARN("parseModelConfig FAILED to parse the semantic segmentation ocupacy to label id to name association file");
 			}
 
+			// occupancy grid (3D) needs to create label to occupancy association
+			occupancyGrid_->setModelAssociationMap(moduleConfigMap);
+			occupancyGrid_->updateOccupancyMapStruct();
+
+			// semantic octomap nees to create label to occupancy association
 			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
 			semanticOctomap_->updateOccupancyMapStruct();
 			// configure association of labels id with multi-level map
@@ -472,6 +477,11 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
 			}
 
+			// occupancy grid (3D) needs to create label to occupancy association
+			occupancyGrid_->setModelAssociationMap(moduleConfigMap);
+			occupancyGrid_->updateOccupancyMapStruct();
+
+			// semantic octomap nees to create label to occupancy association
 			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
 			semanticOctomap_->updateOccupancyMapStruct();
 			// configure association of labels id with multi-level map
@@ -750,6 +760,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					if(findIter != signatures.end())
 					{
 						data = findIter->second.sensorData();
+						UDEBUG("	data from signature -> id: %d; stamp:%f; grid: %f", data.id(), data.stamp(), data.gridCellSizes().at(0));
 					}
 					else if(memory)
 					{
@@ -760,108 +771,57 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					cv::Point3f viewPoint;
 					cv::Mat emptyCells;
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
-					if(iter->first > 0)
+					
+					cv::Mat rgb, depth, semanticMask;
+					bool generateGrid = true;
+					if(data.gridCellSizes().size() > 0) 
 					{
-						cv::Mat rgb, depth, semanticMask;
-						bool generateGrid = true;
-						if(data.gridCellSizes().size() > 0) 
-						{
-							// just looking that there is at least one octree with grid size greater than zero
-							generateGrid = data.gridCellSizes().at(0) == 0.0f;
-						}
-						static bool warningShown = false;
-						if(occupancySavedInDB && generateGrid && !warningShown)
-						{
-							warningShown = true;
-							UWARN("Occupancy grid for location %d should be added to global map (e..g, a ROS node is subscribed to "
-									"any occupancy grid output) but it cannot be found "
-									"in memory. For convenience, the occupancy "
-									"grid is regenerated. Make sure parameter \"%s\" is true to "
-									"avoid this warning for the next locations added to map. For older "
-									"locations already in database without an occupancy grid map, you can use the "
-									"\"rtabmap-databaseViewer\" to regenerate the missing occupancy grid maps and "
-									"save them back in the database for next sessions. This warning is only shown once.",
-									data.id(), Parameters::kRGBDCreateOccupancyGrid().c_str());
-						}
-						if(memory && occupancySavedInDB && generateGrid)
-						{
-							// if we are here, it is because we loaded a database with old nodes not having occupancy grid set
-							// try reload again
-							data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth(), !occupancyGrid_->isGridFromDepth(), false, false);
-						}
-						data.uncompressData(
-								occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
-								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
-								semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
-								generateGrid?0:&obstaclesCellsMap,
-								generateGrid?0:&emptyCells);
-						
-						if(generateGrid)
-						{
-							Signature tmp(data);
-							tmp.setPose(iter->second);
-							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
-							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
-						}
-						else
-						{
-							viewPoint = data.gridViewPoint();
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
-							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
-						}
+						// just looking that there is at least one octree with grid size greater than zero
+						generateGrid = data.gridCellSizes().at(0) == 0.0f;
+					}
+					static bool warningShown = false;
+					if(occupancySavedInDB && generateGrid && !warningShown)
+					{
+						warningShown = true;
+						UWARN("Occupancy grid for location %d should be added to global map (e..g, a ROS node is subscribed to "
+								"any occupancy grid output) but it cannot be found "
+								"in memory. For convenience, the occupancy "
+								"grid is regenerated. Make sure parameter \"%s\" is true to "
+								"avoid this warning for the next locations added to map. For older "
+								"locations already in database without an occupancy grid map, you can use the "
+								"\"rtabmap-databaseViewer\" to regenerate the missing occupancy grid maps and "
+								"save them back in the database for next sessions. This warning is only shown once.",
+								data.id(), Parameters::kRGBDCreateOccupancyGrid().c_str());
+					}
+					if(memory && occupancySavedInDB && generateGrid)
+					{
+						// if we are here, it is because we loaded a database with old nodes not having occupancy grid set
+						// try reload again
+						data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth(), !occupancyGrid_->isGridFromDepth(), false, false);
+					}
+					data.uncompressData(
+							occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
+							occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
+							semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
+							generateGrid?0:&obstaclesCellsMap,
+							generateGrid?0:&emptyCells);
+					
+					if(generateGrid)
+					{
+						UDEBUG("generateGrid");
+						Signature tmp(data);
+						tmp.setPose(iter->second);
+						occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
+						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+						uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 					}
 					else
 					{
-						// generate tmp occupancy grid for latest id (assuming data is already uncompressed)
-						// For negative laser scans, fill empty space?
-						bool unknownSpaceFilled = Parameters::defaultGridScan2dUnknownSpaceFilled();
-						Parameters::parse(parameters_, Parameters::kGridScan2dUnknownSpaceFilled(), unknownSpaceFilled);
-
-						if(unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_)
-						{
-							ParametersMap parameters;
-							parameters.insert(ParametersPair(Parameters::kGridScan2dUnknownSpaceFilled(), uBool2Str(scanEmptyRayTracing_)));
-							occupancyGrid_->parseParameters(parameters);
-						}
-
-						cv::Mat rgb, depth, semanticMask;
-						bool generateGrid = true;
-						if(data.gridCellSizes().size() > 0) 
-						{
-							generateGrid = data.gridCellSizes().at(0) == 0.0f || (unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_);
-						}
-						
-						data.uncompressData(
-								occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
-								occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
-								semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
-								generateGrid?0:&obstaclesCellsMap,
-								generateGrid?0:&emptyCells);
-						
-						if(generateGrid)
-						{
-							Signature tmp(data);
-							tmp.setPose(iter->second);
-							occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
-							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
-						}
-						else
-						{	
-							viewPoint = data.gridViewPoint();
-							uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
-							uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
-						}
-
-						// put back
-						if(unknownSpaceFilled != scanEmptyRayTracing_ && scanEmptyRayTracing_)
-						{
-							ParametersMap parameters;
-							parameters.insert(ParametersPair(Parameters::kGridScan2dUnknownSpaceFilled(), uBool2Str(unknownSpaceFilled)));
-							occupancyGrid_->parseParameters(parameters);
-						}
+						viewPoint = data.gridViewPoint();
+						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+						uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 					}
+				
 				}
 				else if(updateGridCache && !semanticSegmentationEnable_ && (iter->first == 0 || !uContains(gridMaps_, iter->first)))
 				{
@@ -2118,7 +2078,17 @@ void MapsManager::publishSemanticMask(const rtabmap::SensorData & data)
 {
 	if(semanticMaskPub_.getNumSubscribers())
 	{
-		cv::Mat semanticMask = data.imageSemanticMaskRaw();
+		cv::Mat rgb, depth;
+		cv::Mat semanticMask;
+		if(!data.imageSemanticMaskRaw().empty())
+		{
+			semanticMask = data.imageSemanticMaskRaw();
+		}
+		else 
+		{
+			data.uncompressDataConst(&rgb, &depth, &semanticMask);
+		}
+
 		if(semanticMask.empty()) 
 		{
 			ROS_ERROR("semantic mask is empty!! ");

@@ -97,7 +97,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /// JHUAPL section
 
 #include "rtabmap_ros/utils_mapping.h"
-#include "rtabmap_ros/SemanticOccupancyGrid.h"
+#include "rtabmap_ros/RegisteredData.h"
 
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/Link.h>
@@ -245,6 +245,7 @@ void CoreWrapper::onInit()
 	}
 
 	// JHUAPL section
+
 #ifdef OPENCV_CUDA
 	NODELET_INFO("rtabmap: OPENCV_CUDA: Enabled");
 #else	
@@ -253,7 +254,8 @@ void CoreWrapper::onInit()
 
 	pnh.param("depth_Filters", depthFilters_, depthFilters_);
 
-	semanticOccupancyGridPub_ = nh.advertise<rtabmap_ros::SemanticOccupancyGrid>("semantic_occupancy_grid", 1);
+	publishRegisteredDataPub_ = nh.advertise<rtabmap_ros::RegisteredData>("registered_data", 1);
+
 	// JHUAPL section end
 
 	infoPub_ = nh.advertise<rtabmap_ros::Info>("info", 1);
@@ -610,12 +612,27 @@ void CoreWrapper::onInit()
 	}
 
 	// JHUAPL section
-
+	bool enableSemanticSegmentation = false;
 	if(parameters_.find(Parameters::kGridEnableSemanticSegmentation()) != parameters_.end())
 	{
-		bool enableSemanticSegmentation = false;
 		Parameters::parse(parameters_, Parameters::kGridEnableSemanticSegmentation(), enableSemanticSegmentation);
 		NODELET_INFO("rtabmap: parameter EnableSemanticSegmentation: %s", enableSemanticSegmentation?"true":"false");
+	}
+
+	std::string semanticSegmentationModelFilePath;
+	pnh.param("model_classes_file_path", semanticSegmentationModelFilePath, semanticSegmentationModelFilePath);
+	NODELET_INFO(" model_classes_file_path = %s", semanticSegmentationModelFilePath.empty()?"NOT_PATH":
+				semanticSegmentationModelFilePath.c_str());
+
+	// set the model class map if available
+	std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
+	std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
+	if(enableSemanticSegmentation && !semanticSegmentationModelFilePath.empty())
+	{
+		if(!utils::parseModelConfig(semanticSegmentationModelFilePath, moduleConfigMap, modelMaskIdColorMap))
+		{
+			ROS_WARN("parseModelConfig FAILED to parse the semantic segmentation ocupacy to label id to name association file");
+		}
 	}
 
 	// JHUAPL section end
@@ -633,6 +650,12 @@ void CoreWrapper::onInit()
 		{
 			NODELET_INFO("rtabmap: 2D occupancy grid map loaded (%dx%d).", map.cols, map.rows);
 			mapsManager_.set2DMap(map, xMin, yMin, gridCellSize, rtabmap_.getLocalOptimizedPoses(), rtabmap_.getMemory());
+		}
+
+		// IN Semantic Segmentation mode this needs to be configured.
+		if(enableSemanticSegmentation)
+		{
+			rtabmap_.setOccupancyObjectAssociation(moduleConfigMap);
 		}
 	}
 
@@ -1364,22 +1387,22 @@ void CoreWrapper::commonDepthCallbackImpl(
 	covariance_ = cv::Mat();
 }
 
-void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::SensorData & data, const double & stamp)
+void CoreWrapper::publishRegisteredData(const int nodeId, const int lastNodeId, const rtabmap::SensorData & data, const double stamp, const rtabmap::Transform & pose)
 {
-	rtabmap_ros::SemanticOccupancyGrid msg;
-	cv::Mat rgb, depth;
-	std::map<unsigned int, cv::Mat> obstacleCellsMap;
-	if(!data.gridObstacleCellsMapRaw().empty() && !data.imageRaw().empty() && !data.depthOrRightRaw().empty())
+	rtabmap_ros::RegisteredData msg;
+	cv::Mat rgb, depth, semanticMask;
+
+	if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty() && !data.imageSemanticMaskRaw().empty())
 	{
-		obstacleCellsMap = data.gridObstacleCellsMapRaw();
 		rgb = data.imageRaw();
 		depth = data.depthOrRightRaw();
-		UDEBUG(" semantic occupancy Grid Raw");
+		semanticMask = data.imageSemanticMaskRaw();
+		UDEBUG(" Registered Data");
 	}
 	else 
 	{
-		UDEBUG(" semantic occupancy Grid compressed ... uncompressing");
-		data.uncompressDataConst(&rgb, &depth, 0, &obstacleCellsMap);
+		UDEBUG(" Registered Data compressed ... uncompressing");
+		data.uncompressDataConst(&rgb, &depth, &semanticMask);
 	}
 	
 	// add to message
@@ -1397,34 +1420,37 @@ void CoreWrapper::publishSemanticOccupancyGrid(const int & id, const rtabmap::Se
 	// add depth image to the msg out
 	depthImgCv.toImageMsg(msg.depthImage);
 
-	// add occupancy grip corresponding to rgb and depth image
-	std::vector<unsigned int> semanticOccupancyMapKeys;
-	std::vector<sensor_msgs::Image> semanticOccupancyMapValues;
-	for (std::map<unsigned int, cv::Mat>::const_iterator iter = obstacleCellsMap.begin(); iter != obstacleCellsMap.end(); ++iter) 
-	{
-		semanticOccupancyMapKeys.push_back(iter->first);
+	cv_bridge::CvImage semanticMaskImgCv;
+	semanticMaskImgCv.header.stamp = ros::Time(stamp);
+	semanticMaskImgCv.image = semanticMask;
+	semanticMaskImgCv.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
+	// add semantic mask image to the msg out
+	semanticMaskImgCv.toImageMsg(msg.semanticMaskImage);
 
-		sensor_msgs::Image objectCellsMsg;
-		cv_bridge::CvImage objectCellsCv;
-		objectCellsCv.header.stamp = ros::Time(stamp);
-		objectCellsCv.image = iter->second;
-		objectCellsCv.encoding = sensor_msgs::image_encodings::TYPE_32FC4;
+	// map association of object id and occupancy type
+	std::map<unsigned int, std::string> object2occupancyMap = data.getOccupancyAssociation();
+	for(auto iter = object2occupancyMap.begin(); iter != object2occupancyMap.end(); ++iter) {
+		int objectId = iter->first;
+		std::string occupancy = iter->second;
 
-		objectCellsCv.toImageMsg(objectCellsMsg);
-
-		semanticOccupancyMapValues.push_back(objectCellsMsg);
+		msg.occupancyMapkeys.push_back(occupancy); 
+		msg.occupancyMapObjectValue.push_back(objectId); 
 	}
-	msg.semanticOccupancyMapKeys = semanticOccupancyMapKeys;
-	msg.semanticOccupancyMapValues = semanticOccupancyMapValues;	
 
-	// signatureId is the same as the node id
-	msg.signatureId = id;
+	// last nodeId is the id of last received data
+	msg.lastNodeId = lastNodeId;
+
+	// signatureId is the same as the node id. This is the id on the nodeId added to the graph.
+	msg.nodeId = nodeId;
+
+	// pose TF to msg { geometry_msgs::Pose }
+	transformToPoseMsg(pose, msg.pose);
 
 	// msg header 
 	msg.header.stamp = ros::Time::now();
 
 	// publish message
-	semanticOccupancyGridPub_.publish(msg);
+	publishRegisteredDataPub_.publish(msg);
 
 }
 
@@ -1542,7 +1568,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 	for(int i = 0; i < req.landmarks.size(); ++i)
 	{
 		rtabmap_ros::Landmark landmarkMsg = req.landmarks.at(i);
-		int signatureId = landmarkMsg.signatureId;
+		int signatureId = landmarkMsg.nodeId;
 		double timeStamp = landmarkMsg.timeStamp;
 		int landmarkId = landmarkMsg.landmarkId;
 		std::string description = landmarkMsg.description;
@@ -1589,11 +1615,11 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 		landmark.landmarkId = -1*lIter->first;
 		landmark.description = lIter->second.getDescription();
 		landmark.landmarkMapId = lIter->first;
-		landmark.signatureId = lIter->second.from();
+		landmark.nodeId = lIter->second.from();
 
 		// compute the pose of landmark with respect to map reference frame
 		// assuming the landmark's node is in the optimized map.
-		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.signatureId);
+		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.nodeId);
 		//check if the node id pose was found; if not found, it would be all zeros
 		if(map2NodePose.isNull())
 		{
@@ -1601,7 +1627,8 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 			ROS_WARN("signature id POSE not found!!! in optimized node map.");
 			if(rtabmap_.getMemory()) 
 			{
-				const rtabmap::Signature * s = rtabmap_.getMemory()->getSignature(landmark.signatureId);
+				// nodeid is the same as the signatureId
+				const rtabmap::Signature * s = rtabmap_.getMemory()->getSignature(landmark.nodeId);
 				map2NodePose = s->getPose();
 
 				if(map2NodePose.isNull())
@@ -2584,21 +2611,28 @@ void CoreWrapper::process(
 			{
 				// JHUAPL section
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
-				{ 
-					int id = rtabmap_.getMemory()->getLastWorkingSignature()->id();
-					double stampLastWS = rtabmap_.getMemory()->getLastWorkingSignature()->getStamp();
-					rtabmap::SensorData sd = rtabmap_.getMemory()->getNodeData(id, true, false, false, true);
-					
-					// publish the grid + depth + RGB from register node
-					publishSemanticOccupancyGrid(id, sd, stampLastWS);
+				{
+					rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
+		
+					if(publishRegisteredDataPub_.getNumSubscribers()) 
+					{
+						int nodeId = rtabmap_.getMemory()->getLastWorkingSignature()->id();
+						int lastNodeId = rtabmap_.getMemory()->getLastSignatureId();
 
-					// publish the newest semantic mask added to map
-					mapsManager_.publishSemanticMask(data);
+						rtabmap::Transform map2NodePose = mapToOdom_*odom;
+						
+						publishRegisteredData(nodeId, lastNodeId, sd, data.stamp(), map2NodePose);
+					}
+
+					// publish the newest semantic mask added to map 
+					mapsManager_.publishSemanticMask(sd);
+
 				}
 				else 
 				{
 					/// TODO: support for when in depth mode
 				}
+
 				// JHUAPL section end
 
 				// Publish local graph, info
@@ -2623,18 +2657,29 @@ void CoreWrapper::process(
 
 				// create a tmp signature with latest sensory data if latest signature was ignored
 				std::map<int, rtabmap::Signature> tmpSignature;
-				if(rtabmap_.getMemory() == 0 ||
-					filteredPoses.size() == 0 ||
-					rtabmap_.getMemory()->getLastSignatureId() != filteredPoses.rbegin()->first ||
-					rtabmap_.getMemory()->getLastWorkingSignature() == 0 ||
-					rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridCellSize() == 0 ||
-					(!mapsManager_.getOccupancyGrid()->isGridFromDepth() && data.laserScanRaw().is2d())) // 2d laser scan would fill empty space for latest data
+				if(rtabmap_.getMemory() == 0)
 				{
+					UDEBUG("");
 					SensorData tmpData = data;
 					tmpData.setId(0);
 					tmpSignature.insert(std::make_pair(0, Signature(0, -1, 0, data.stamp(), "", odom, Transform(), tmpData)));
 					filteredPoses.insert(std::make_pair(0, mapToOdom_*odom));
 				}
+				/// JHUAPL section
+				else if(filteredPoses.size() == 0 ||
+					rtabmap_.getMemory()->getLastSignatureId() != filteredPoses.rbegin()->first ||
+					rtabmap_.getMemory()->getLastWorkingSignature() == 0 ||
+					rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridCellSize() == 0 ||
+					(!mapsManager_.getOccupancyGrid()->isGridFromDepth() && data.laserScanRaw().is2d())) // 2d laser scan would fill empty space for latest data
+				{
+					UDEBUG("	incoming node id: %d", rtabmap_.getMemory()->getLastAddedData().id());
+					SensorData tmpData = rtabmap_.getMemory()->getLastAddedData();
+					tmpData.setId(0);
+					tmpData.setStamp(data.stamp());
+					tmpSignature.insert(std::make_pair(0, Signature(0, -1, 0, data.stamp(), "", odom, Transform(), tmpData)));
+					filteredPoses.insert(std::make_pair(0, mapToOdom_*odom));
+				}
+				/// JHUAPL section end
 
 				if(maxMappingNodes_ > 0 && filteredPoses.size()>1)
 				{

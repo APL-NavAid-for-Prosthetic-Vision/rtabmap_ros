@@ -130,6 +130,7 @@ private:
 	ros::Publisher octoMapProj_;
 
 	// JHUAPL section
+	
 	ros::Publisher octoMapFullGroundPub_;
 	ros::Publisher octoMapFullCeilingPub_;
 	ros::Publisher octoMapFullStaticPub_;
