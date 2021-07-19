@@ -159,6 +159,8 @@ private:
 	bool landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request & req, rtabmap_ros::LandmarksQuery::Response & res);
 	bool landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res);
 
+	void publishVisualDepthImages(const rtabmap::SensorData & data);
+
 	/// ******************************************
 	///	JHUAPL section end
 	///
@@ -432,6 +434,10 @@ private:
 	ros::ServiceServer landmarksRemoveSrv_;
 
 	bool depthFilters_;
+
+	image_transport::Publisher visualImagePub_;
+	image_transport::Publisher depthImagePub_;
+
 	
 	//  JHUAPL section end
 };
