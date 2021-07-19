@@ -635,6 +635,16 @@ void CoreWrapper::onInit()
 		}
 	}
 
+	bool publishVisualImage = false;
+	pnh.param("publish_visual_image", publishVisualImage, publishVisualImage);
+	
+	NODELET_INFO("rtabmap: parameter PublishVisualImage: %s", publishVisualImage?"true":"false");
+	
+	bool publishDepthImage = false;
+	pnh.param("publish_depth_image", publishDepthImage, publishDepthImage);
+	
+	NODELET_INFO("rtabmap: parameter PublishDethImage: %s", publishDepthImage?"true":"false");
+	
 	// JHUAPL section end
 
 	mapsManager_.setParameters(parameters_);
@@ -812,6 +822,20 @@ void CoreWrapper::onInit()
 	landmarkInsertSrv_ = nh.advertiseService("landmarks_insert", &CoreWrapper::landmarksInsertSrvCallback, this);
 	landmarksQuerySrv_ = nh.advertiseService("landmarks_available", &CoreWrapper::landmarksQuerySrvCallback, this);
 	landmarksRemoveSrv_ = nh.advertiseService("landmarks_remove", &CoreWrapper::landmarksRemoveSrvCallback, this);
+
+	if(publishVisualImage)
+	{
+		ros::NodeHandle visual_nh(nh, "rgb");
+		image_transport::ImageTransport visual_it(visual_nh);
+		visualImagePub_ = visual_it.advertise("rgb_image_rect", 1);
+	}
+
+	if(publishDepthImage)
+	{
+		ros::NodeHandle depth_nh(nh, "depth");
+		image_transport::ImageTransport depth_it(depth_nh);
+		depthImagePub_ = depth_it.advertise("depth_image_rect", 1);
+	}
 	
 	// JHUAPL section end
 }
@@ -1416,7 +1440,14 @@ void CoreWrapper::publishRegisteredData(const int nodeId, const int lastNodeId, 
 	cv_bridge::CvImage depthImgCv;
 	depthImgCv.header.stamp = ros::Time(stamp);
 	depthImgCv.image = depth;
-	depthImgCv.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
+	if(depth.type() == CV_16UC1)
+	{
+		depthImgCv.encoding =  sensor_msgs::image_encodings::TYPE_16UC1;
+	}
+	else // CV_32FC1
+	{
+		depthImgCv.encoding =  sensor_msgs::image_encodings::TYPE_32FC1;
+	}
 	// add depth image to the msg out
 	depthImgCv.toImageMsg(msg.depthImage);
 
@@ -2626,6 +2657,9 @@ void CoreWrapper::process(
 
 					// publish the newest semantic mask added to map 
 					mapsManager_.publishSemanticMask(sd);
+
+					// publish visual and depth image 
+					publishVisualDepthImages(sd);
 
 				}
 				else 
@@ -4515,6 +4549,60 @@ bool CoreWrapper::octomapFullCallback(
 }
 #endif
 #endif
+
+
+// JHUAPL section
+
+void CoreWrapper::publishVisualDepthImages(const rtabmap::SensorData & data)
+{
+	if(visualImagePub_.getNumSubscribers() || depthImagePub_.getNumSubscribers())
+	{
+		cv::Mat rgb, depth;
+		cv::Mat semanticMask;
+		if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty())
+		{
+			rgb = data.imageRaw();
+			depth = data.depthOrRightRaw();
+		}
+		else 
+		{
+			data.uncompressDataConst(&rgb, &depth, &semanticMask);
+		}
+
+		if(visualImagePub_.getNumSubscribers())
+		{
+			if(rgb.empty()) 
+			{
+				ROS_ERROR("rgb image is empty!! ");
+			}
+
+			cv::Mat img_rgb;
+			cv::cvtColor(rgb, img_rgb, cv::COLOR_RGB2BGR);
+
+			sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", img_rgb).toImageMsg();
+			visualImagePub_.publish(msg);
+		}
+
+		if(depthImagePub_.getNumSubscribers())
+		{
+			if(depth.empty()) 
+			{
+				ROS_ERROR("depth image is empty!! ");
+			}
+
+			cv::Mat img_depth;
+			double min;
+			double max;
+			cv::minMaxIdx(depth, &min, &max);
+			cv::convertScaleAbs(depth, img_depth, 255 / max);
+						
+			sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", img_depth).toImageMsg();
+			depthImagePub_.publish(msg);
+		}
+	}
+}
+
+// JHUAPL section end
 
 PLUGINLIB_EXPORT_CLASS(rtabmap_ros::CoreWrapper, nodelet::Nodelet);
 

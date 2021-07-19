@@ -72,6 +72,9 @@
   <arg name="orb_cuda"                                   default="true" />
   <arg name="depth_Filters"                              default="true"/>
   <arg name="publish_semantic_mask"                      default="true"/>
+  <arg name="publish_depth_image"                        default="true"/>
+  <arg name="publish_visual_image"                       default="true"/>
+  
   <!-- JHU APL : end -->
 
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
@@ -490,6 +493,8 @@
 
       <param name="model_classes_file_path"  type="string" value="$(arg model_classes_file_path)" />
       <param name="publish_semantic_mask"    type="bool"   value="$(arg publish_semantic_mask)" />
+      <param name="publish_depth_image"      type="bool"   value="$(arg publish_depth_image)" />
+      <param name="publish_visual_image"     type="bool"   value="$(arg publish_visual_image)" />
       
     </node>
   
