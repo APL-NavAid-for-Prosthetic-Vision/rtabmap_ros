@@ -107,6 +107,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap_ros/Landmarks.h>
 #include <visualization_msgs/MarkerArray.h>
 
+//boost
+#include <boost/chrono.hpp>
+
 /// JHUAPL section end
 
 using namespace rtabmap;
@@ -149,7 +152,10 @@ CoreWrapper::CoreWrapper() :
 		maxMappingNodes_(Parameters::defaultGridGlobalMaxNodes()),
 		previousStamp_(0),
 		mbClient_(0),
-		depthFilters_(false)
+		depthFilters_(false),
+		mapManagerUpdateThread_(0),
+		mapManagerUpdateThreadRunning_(false),
+		publishMapThreadRunning_(false)
 {
 	char * rosHomePath = getenv("ROS_HOME");
 	std::string workingDir = rosHomePath?rosHomePath:UDirectory::homeDir()+"/.ros";
@@ -644,6 +650,9 @@ void CoreWrapper::onInit()
 	pnh.param("publish_depth_image", publishDepthImage, publishDepthImage);
 	
 	NODELET_INFO("rtabmap: parameter PublishDethImage: %s", publishDepthImage?"true":"false");
+
+	double mapManagerUpdateRate = 0.5;
+	pnh.param("map_manager_update_rate", mapManagerUpdateRate, mapManagerUpdateRate);
 	
 	// JHUAPL section end
 
@@ -836,7 +845,10 @@ void CoreWrapper::onInit()
 		image_transport::ImageTransport depth_it(depth_nh);
 		depthImagePub_ = depth_it.advertise("depth_image_rect", 1);
 	}
-	
+
+	mapManagerUpdateThreadRunning_ = true;
+	mapManagerUpdateThread_ = new boost::thread(boost::bind(&CoreWrapper::MapManagerUpdateThread, this, mapManagerUpdateRate));
+
 	// JHUAPL section end
 }
 
@@ -847,6 +859,13 @@ CoreWrapper::~CoreWrapper()
 		tfThreadRunning_ = false;
 		transformThread_->join();
 		delete transformThread_;
+	}
+
+	if(mapManagerUpdateThread_)
+	{
+		mapManagerUpdateThreadRunning_ = false;
+		mapManagerUpdateThread_->join();
+		delete mapManagerUpdateThread_;
 	}
 
 	this->saveParameters(configPath_);
@@ -2581,7 +2600,7 @@ void CoreWrapper::process(
 
 		double timeRtabmap = 0.0;
 		double timeUpdateMaps = 0.0;
-		double timePublishMaps = 0.0;
+		//double timePublishMaps = 0.0;
 
 		cv::Mat covariance = odomCovariance;
 		if(covariance.empty() || !uIsFinite(covariance.at<double>(0,0)) || covariance.at<double>(0,0)<=0.0f)
@@ -2660,7 +2679,6 @@ void CoreWrapper::process(
 
 					// publish visual and depth image 
 					publishVisualDepthImages(sd);
-
 				}
 				else 
 				{
@@ -2749,138 +2767,157 @@ void CoreWrapper::process(
 					filteredPoses = nearestPoses;
 				}
 
-				// Update maps
-				filteredPoses = mapsManager_.updateMapCaches(
-						filteredPoses,
-						rtabmap_.getMemory(),
-						false,
-						false,
-						tmpSignature);
-				
+				boost::mutex::scoped_lock lock(mmu_data_mtx_);
+				filteredPoses_ = filteredPoses;
+				tmpSignature_ = tmpSignature;
+				stamp_ = stamp;
+				lock.unlock();
+
+				this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
+
 				timeUpdateMaps = timer.ticks();
 
-				UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
+				// Update maps
+				// filteredPoses = mapsManager_.updateMapCaches(
+				// 		filteredPoses,
+				// 		rtabmap_.getMemory(),
+				// 		false,
+				// 		false,
+				// 		tmpSignature);
+				
+				// timeUpdateMaps = timer.ticks();
 
-				if(!mapsManager_.isSemanticSegmentationEnabled())
-				{
-					mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId_);
-				}
-				else
-				{
-					// publish maps in semantic segmentation mode
-					mapsManager_.publishAPLMaps(stamp, mapFrameId_);	
-				}
-				this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
+				// UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
+
+				// if(!mapsManager_.isSemanticSegmentationEnabled())
+				// {
+				// 	mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId_);
+				// }
+				// else
+				// {
+				// 	// publish maps in semantic segmentation mode
+				// 	mapsManager_.publishAPLMaps(stamp, mapFrameId_);	
+				// }
+				// this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
 				
 				// update goal if planning is enabled
-				if(!currentMetricGoal_.isNull())
-				{
-					if(rtabmap_.getPath().size() == 0)
-					{
-						// Don't send status yet if move_base actionlib is used unless it failed,
-						// let move_base finish reaching the goal
-						if(mbClient_ == 0 || rtabmap_.getPathStatus() <= 0)
-						{
-							if(rtabmap_.getPathStatus() > 0)
-							{
-								// Goal reached
-								NODELET_INFO("Planning: Publishing goal reached!");
-							}
-							else if(rtabmap_.getPathStatus() <= 0)
-							{
-								NODELET_WARN("Planning: Plan failed!");
-								if(mbClient_ && mbClient_->isServerConnected())
-								{
-									mbClient_->cancelGoal();
-								}
-							}
+				// if(!currentMetricGoal_.isNull())
+				// {
+				// 	if(rtabmap_.getPath().size() == 0)
+				// 	{
+				// 		// Don't send status yet if move_base actionlib is used unless it failed,
+				// 		// let move_base finish reaching the goal
+				// 		if(mbClient_ == 0 || rtabmap_.getPathStatus() <= 0)
+				// 		{
+				// 			if(rtabmap_.getPathStatus() > 0)
+				// 			{
+				// 				// Goal reached
+				// 				NODELET_INFO("Planning: Publishing goal reached!");
+				// 			}
+				// 			else if(rtabmap_.getPathStatus() <= 0)
+				// 			{
+				// 				NODELET_WARN("Planning: Plan failed!");
+				// 				if(mbClient_ && mbClient_->isServerConnected())
+				// 				{
+				// 					mbClient_->cancelGoal();
+				// 				}
+				// 			}
 
-							if(goalReachedPub_.getNumSubscribers())
-							{
-								std_msgs::Bool result;
-								result.data = rtabmap_.getPathStatus() > 0;
-								goalReachedPub_.publish(result);
-							}
-							currentMetricGoal_.setNull();
-							lastPublishedMetricGoal_.setNull();
-							goalFrameId_.clear();
-							latestNodeWasReached_ = false;
-						}
-					}
-					else
-					{
-						currentMetricGoal_ = rtabmap_.getPose(rtabmap_.getPathCurrentGoalId());
-						if(!currentMetricGoal_.isNull())
-						{
-							// Adjust the target pose relative to last node
-							if(rtabmap_.getPathCurrentGoalId() == rtabmap_.getPath().back().first && rtabmap_.getLocalOptimizedPoses().size())
-							{
-								if(latestNodeWasReached_ ||
-								   rtabmap_.getLastLocalizationPose().getDistance(currentMetricGoal_) < rtabmap_.getLocalRadius())
-								{
-									latestNodeWasReached_ = true;
-									Transform goalLocalTransform = Transform::getIdentity();
-									if(!goalFrameId_.empty() && goalFrameId_.compare(frameId_) != 0)
-									{
-										Transform localT = rtabmap_ros::getTransform(frameId_, goalFrameId_, ros::Time::now(), tfListener_, waitForTransform_?waitForTransformDuration_:0.0);
-										if(!localT.isNull())
-										{
-											goalLocalTransform = localT.inverse().to3DoF();
-										}
-									}
-									currentMetricGoal_ *= rtabmap_.getPathTransformToGoal()*goalLocalTransform;
-								}
-							}
+				// 			if(goalReachedPub_.getNumSubscribers())
+				// 			{
+				// 				std_msgs::Bool result;
+				// 				result.data = rtabmap_.getPathStatus() > 0;
+				// 				goalReachedPub_.publish(result);
+				// 			}
+				// 			currentMetricGoal_.setNull();
+				// 			lastPublishedMetricGoal_.setNull();
+				// 			goalFrameId_.clear();
+				// 			latestNodeWasReached_ = false;
+				// 		}
+				// 	}
+				// 	else
+				// 	{
+				// 		currentMetricGoal_ = rtabmap_.getPose(rtabmap_.getPathCurrentGoalId());
+				// 		if(!currentMetricGoal_.isNull())
+				// 		{
+				// 			// Adjust the target pose relative to last node
+				// 			if(rtabmap_.getPathCurrentGoalId() == rtabmap_.getPath().back().first && rtabmap_.getLocalOptimizedPoses().size())
+				// 			{
+				// 				if(latestNodeWasReached_ ||
+				// 				   rtabmap_.getLastLocalizationPose().getDistance(currentMetricGoal_) < rtabmap_.getLocalRadius())
+				// 				{
+				// 					latestNodeWasReached_ = true;
+				// 					Transform goalLocalTransform = Transform::getIdentity();
+				// 					if(!goalFrameId_.empty() && goalFrameId_.compare(frameId_) != 0)
+				// 					{
+				// 						Transform localT = rtabmap_ros::getTransform(frameId_, goalFrameId_, ros::Time::now(), tfListener_, waitForTransform_?waitForTransformDuration_:0.0);
+				// 						if(!localT.isNull())
+				// 						{
+				// 							goalLocalTransform = localT.inverse().to3DoF();
+				// 						}
+				// 					}
+				// 					currentMetricGoal_ *= rtabmap_.getPathTransformToGoal()*goalLocalTransform;
+				// 				}
+				// 			}
 
-							// publish next goal with updated currentMetricGoal_
-							publishCurrentGoal(stamp);
+				// 			// publish next goal with updated currentMetricGoal_
+				// 			publishCurrentGoal(stamp);
 
-							// publish local path
-							publishLocalPath(stamp);
+				// 			// publish local path
+				// 			publishLocalPath(stamp);
 
-							// publish global path
-							publishGlobalPath(stamp);
-						}
-						else
-						{
-							NODELET_ERROR("Planning: Local map broken, current goal id=%d (the robot may have moved to far from planned nodes)",
-									rtabmap_.getPathCurrentGoalId());
-							rtabmap_.clearPath(-1);
-							if(goalReachedPub_.getNumSubscribers())
-							{
-								std_msgs::Bool result;
-								result.data = false;
-								goalReachedPub_.publish(result);
-							}
-							currentMetricGoal_.setNull();
-							lastPublishedMetricGoal_.setNull();
-							goalFrameId_.clear();
-							latestNodeWasReached_ = false;
-						}
-					}
-				}
+				// 			// publish global path
+				// 			publishGlobalPath(stamp);
+				// 		}
+				// 		else
+				// 		{
+				// 			NODELET_ERROR("Planning: Local map broken, current goal id=%d (the robot may have moved to far from planned nodes)",
+				// 					rtabmap_.getPathCurrentGoalId());
+				// 			rtabmap_.clearPath(-1);
+				// 			if(goalReachedPub_.getNumSubscribers())
+				// 			{
+				// 				std_msgs::Bool result;
+				// 				result.data = false;
+				// 				goalReachedPub_.publish(result);
+				// 			}
+				// 			currentMetricGoal_.setNull();
+				// 			lastPublishedMetricGoal_.setNull();
+				// 			goalFrameId_.clear();
+				// 			latestNodeWasReached_ = false;
+				// 		}
+				// 	}
+				// }
 
-				timePublishMaps = timer.ticks();
+				//timePublishMaps = timer.ticks();
 			}
 		}
 		else
 		{
 			timeRtabmap = timer.ticks();
 		}
-		NODELET_INFO("rtabmap (%d): Rate=%.2fs, Limit=%.3fs, RTAB-Map=%.4fs, Maps update=%.4fs pub=%.4fs (local map=%d, WM=%d)",
+		// NODELET_INFO("rtabmap (%d): Rate=%.2fs, Limit=%.3fs, RTAB-Map=%.4fs, Maps update=%.4fs pub=%.4fs (local map=%d, WM=%d)",
+		// 		rtabmap_.getLastLocationId(),
+		// 		rate_>0?1.0f/rate_:0,
+		// 		rtabmap_.getTimeThreshold()/1000.0f,
+		// 		timeRtabmap,
+		// 		timeUpdateMaps,
+		// 		timePublishMaps,
+		// 		(int)rtabmap_.getLocalOptimizedPoses().size(),
+		// 		rtabmap_.getWMSize()+rtabmap_.getSTMSize());
+		NODELET_INFO("rtabmap (%d): Rate=%.2fs, Limit=%.3fs, RTAB-Map=%.4fs, pub landmarks=%.4fs total=%.4fs (local map=%d, WM=%d)",
 				rtabmap_.getLastLocationId(),
 				rate_>0?1.0f/rate_:0,
 				rtabmap_.getTimeThreshold()/1000.0f,
 				timeRtabmap,
 				timeUpdateMaps,
-				timePublishMaps,
+				timeRtabmap + timeUpdateMaps,
 				(int)rtabmap_.getLocalOptimizedPoses().size(),
 				rtabmap_.getWMSize()+rtabmap_.getSTMSize());
 		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/HasSubscribers/"), mapsManager_.hasSubscribers()?1:0));
 		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeRtabmap/ms"), timeRtabmap*1000.0f));
-		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeUpdatingMaps/ms"), timeUpdateMaps*1000.0f));
-		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimePublishing/ms"), timePublishMaps*1000.0f));
-		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeTotal/ms"), (timeRtabmap+timeUpdateMaps+timePublishMaps)*1000.0f));
+		//rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeUpdatingMaps/ms"), timeUpdateMaps*1000.0f));
+		//rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimePublishing/ms"), timePublishMaps*1000.0f));
+		//rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeTotal/ms"), (timeRtabmap+timeUpdateMaps+timePublishMaps)*1000.0f));
 	}
 	else if(!rtabmap_.isIDsGenerated())
 	{
@@ -3673,6 +3710,7 @@ bool CoreWrapper::publishMapCallback(rtabmap_ros::PublishMap::Request& req, rtab
 			}
 			if(signatures.size())
 			{
+				boost::mutex::scoped_lock lock(mmu_mtx_);
 				filteredPoses = mapsManager_.updateMapCaches(
 						filteredPoses,
 						rtabmap_.getMemory(),
@@ -4510,7 +4548,9 @@ bool CoreWrapper::octomapBinaryCallback(
 		poses = nearestPoses;
 	}
 
+	boost::mutex::scoped_lock lock(mmu_mtx_);
 	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true);
+	lock.unlock();
 
 	const rtabmap::OctoMap * octomap = mapsManager_.getOctomap();
 	bool success = octomap->octree()->size() && octomap_msgs::binaryMapToMsg(*octomap->octree(), res.map);
@@ -4541,7 +4581,9 @@ bool CoreWrapper::octomapFullCallback(
 		poses = nearestPoses;
 	}
 
+	boost::mutex::scoped_lock lock(mmu_mtx_);
 	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true);
+	lock.unlock();
 
 	const rtabmap::OctoMap * octomap = mapsManager_.getOctomap();
 	bool success = octomap->octree()->size() && octomap_msgs::fullMapToMsg(*octomap->octree(), res.map);
@@ -4601,6 +4643,91 @@ void CoreWrapper::publishVisualDepthImages(const rtabmap::SensorData & data)
 		}
 	}
 }
+
+void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
+{
+	if( threadDelay == 0 )
+		return;
+	ros::Rate rate(1.0 / threadDelay);
+	ROS_INFO("map manager update thread, update rate: %f", rate.cycleTime().toSec());
+	boost::thread publishMapThread;
+	
+	while(mapManagerUpdateThreadRunning_)
+	{
+		ros::WallTime startTime = ros::WallTime::now();
+  		ros::Time rostime = ros::Time::now();
+	
+		std::map<int, rtabmap::Transform> filteredPoses;
+		std::map<int, rtabmap::Signature> tmpSignature;
+		ros::Time stamp;
+		boost::mutex::scoped_lock lock_data(mmu_data_mtx_);
+		filteredPoses = filteredPoses_;
+		tmpSignature = tmpSignature_;
+		stamp = stamp_;
+		lock_data.unlock();
+
+		if(!filteredPoses.empty())
+		{
+			boost::mutex::scoped_lock lock(mmu_mtx_);
+			filteredPoses = mapsManager_.updateMapCaches(
+							filteredPoses,
+							rtabmap_.getMemory(),
+							false,
+							false,
+							tmpSignature);
+			lock.unlock();
+		
+			UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
+
+			double total_elapsed = (ros::WallTime::now() - startTime).toSec();
+			NODELET_INFO("		Map manager update in took %f sec", total_elapsed);
+
+			if(!publishMapThreadRunning_)
+			{
+				// the thread has finished , creating a new one.
+				publishMapThreadRunning_ = true;
+				publishMapThread = boost::thread(boost::bind(&CoreWrapper::publishMapThread, this, filteredPoses, stamp, mapFrameId_));
+				
+				std::string threadId = boost::lexical_cast<std::string>(publishMapThread.get_id());
+				UDEBUG(" created new thread for publishing map! (%s)", threadId.c_str());
+			}
+		}
+		rate.sleep();
+	}
+
+	publishMapThread.interrupt();
+	// exiting thread - wait for publish map thread to finish before ending this thread.
+	publishMapThread.join();
+}
+
+void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & filteredPoses, const ros::Time & stamp, const std::string & mapFrameId)
+{
+	try
+	{
+		ros::WallTime startTime = ros::WallTime::now();
+				
+		if(!mapsManager_.isSemanticSegmentationEnabled())
+		{
+			// function is tread safe internally
+			mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId);
+		}
+		else
+		{
+			// function is tread safe internally
+			// publish maps in semantic segmentation mode
+			mapsManager_.publishAPLMaps(stamp, mapFrameId);	
+		}
+
+		
+		double total_elapsed = (ros::WallTime::now() - startTime).toSec();
+  		NODELET_INFO("		publishing map took %f sec", total_elapsed);
+
+	}
+	catch (boost::thread_interrupted&) {}
+
+	publishMapThreadRunning_ = false;
+}
+
 
 // JHUAPL section end
 
