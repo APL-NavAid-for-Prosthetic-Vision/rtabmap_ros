@@ -461,6 +461,7 @@ private:
 
 	ros::Time stamp_;
 	bool publishMapThreadRunning_;
+	mutable boost::mutex pflag_mtx_;
 
 	//  JHUAPL section end
 };

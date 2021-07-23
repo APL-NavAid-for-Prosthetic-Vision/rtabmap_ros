@@ -2045,7 +2045,7 @@ void MapsManager::publishAPLMaps(
 				octoMapFullMovablePub_.publish(msg);
 			else
 				ROS_ERROR("ERROR serializing Octomap (%d)", 3);
-
+			
 			latched_.at(&octoMapFullMovablePub_) = true;
 		}
 		// octoMapFullDynamicPub_ publishes dynamic layer
@@ -2056,7 +2056,7 @@ void MapsManager::publishAPLMaps(
 			octomap_msgs::Octomap msg;
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
-			
+		
 			if(octomap_msgs::fullMapToMsg(*mlOctreesTemp[octreeName2OctreeIdPtr->second], msg))
 				octoMapFullDynamicPub_.publish(msg);
 			else
@@ -2070,7 +2070,7 @@ void MapsManager::publishAPLMaps(
 			sensor_msgs::PointCloud2 msg;
 			std::list<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 			
-			boost::mutex::scoped_lock lock_m(octomap_mtx_);
+			lock_m.lock();
 			for (auto n : octreeName2OctreeId) {
 				pcl::IndicesPtr occupiedIndices(new std::vector<int>);
 				pcl::IndicesPtr emptyIndices(new std::vector<int>);
@@ -2158,6 +2158,7 @@ void MapsManager::publishAPLMaps(
 	{
 		boost::mutex::scoped_lock lock_m(octomap_mtx_);
 		semanticOctomap_->clear();
+		lock_m.unlock();
 	}
 
 	if(octoMapPubBin_.getNumSubscribers() == 0)
@@ -2201,6 +2202,7 @@ void MapsManager::publishAPLMaps(
 		boost::mutex::scoped_lock lock_g(grid_mtx_);
 		gridAPLMaps_.clear();
 		gridMapsViewpoints_.clear();
+		lock_g.unlock();
 	}
 }
 

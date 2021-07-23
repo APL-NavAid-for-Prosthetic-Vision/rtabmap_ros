@@ -4682,9 +4682,13 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 			double total_elapsed = (ros::WallTime::now() - startTime).toSec();
 			NODELET_INFO("		Map manager update in took %f sec", total_elapsed);
 
-			if(!publishMapThreadRunning_)
+			boost::mutex::scoped_lock lock_f(pflag_mtx_);
+			bool publishMapThreadRunning = publishMapThreadRunning_;
+			lock_f.unlock();
+
+			if(!publishMapThreadRunning)
 			{
-				// the thread has finished , creating a new one.
+				// the thread has finished, creating a new one. no need to lock for variable
 				publishMapThreadRunning_ = true;
 				publishMapThread = boost::thread(boost::bind(&CoreWrapper::publishMapThread, this, filteredPoses, stamp, mapFrameId_));
 				
@@ -4718,14 +4722,16 @@ void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & fil
 			mapsManager_.publishAPLMaps(stamp, mapFrameId);	
 		}
 
-		
 		double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-  		NODELET_INFO("		publishing map took %f sec", total_elapsed);
+  		ROS_INFO("       publishing map took %lf sec", total_elapsed);
 
 	}
 	catch (boost::thread_interrupted&) {}
 
+	boost::mutex::scoped_lock lock_f(pflag_mtx_);
 	publishMapThreadRunning_ = false;
+	lock_f.unlock();
+
 }
 
 
