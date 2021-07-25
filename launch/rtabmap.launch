@@ -74,6 +74,8 @@
   <arg name="publish_semantic_mask"                      default="true"/>
   <arg name="publish_depth_image"                        default="true"/>
   <arg name="publish_visual_image"                       default="true"/>
+  <arg name="map_manager_update_rate"                    default="0.5"/>  <!-- map manager update rate is the thread processing rate. Ex: 2 Hz, use 1/2 = 0.5 -->
+  
   
   <!-- JHU APL : end -->
 
@@ -495,6 +497,7 @@
       <param name="publish_semantic_mask"    type="bool"   value="$(arg publish_semantic_mask)" />
       <param name="publish_depth_image"      type="bool"   value="$(arg publish_depth_image)" />
       <param name="publish_visual_image"     type="bool"   value="$(arg publish_visual_image)" />
+      <param name="map_manager_update_rate"  type="double" value="$(arg map_manager_update_rate)" />
       
     </node>
   

@@ -42,6 +42,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <image_transport/image_transport.h>
 
+// JHUAPL section
+
+//boost
+#include <boost/thread/mutex.hpp>
+
+// JHUAPL section end
+
 namespace rtabmap {
 class OctoMap;
 class SemanticOctoMap;
@@ -173,6 +180,10 @@ private:
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
+
+	mutable boost::mutex octomap_mtx_;
+	mutable boost::mutex octomap_u_mtx_;
+	mutable boost::mutex grid_mtx_;
 
 	// JHUAPL section end
 };

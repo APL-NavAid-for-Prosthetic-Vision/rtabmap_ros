@@ -95,6 +95,10 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 // system
 #include <string>
 
+//boost
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/thread.hpp>
+
 /// JHUAPL section end
 namespace rtabmap {
 class StereoDense;
@@ -160,6 +164,15 @@ private:
 	bool landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res);
 
 	void publishVisualDepthImages(const rtabmap::SensorData & data);
+
+	/// @brief function for map manager update as a thread, it is called from the thread binding
+	///
+	void MapManagerUpdateThread(const double & threadDelay);
+
+	/// @brief function thread for publishing maps, it is called and managed from MapManagerUpdateThread
+	///
+	void publishMapThread(const std::map<int, rtabmap::Transform> & filteredPoses, const ros::Time & stamp, const std::string & mapFrameId);
+
 
 	/// ******************************************
 	///	JHUAPL section end
@@ -438,7 +451,18 @@ private:
 	image_transport::Publisher visualImagePub_;
 	image_transport::Publisher depthImagePub_;
 
-	
+	boost::thread* mapManagerUpdateThread_;
+	bool mapManagerUpdateThreadRunning_;
+	mutable boost::mutex mmu_mtx_;
+	mutable boost::mutex mmu_data_mtx_;
+
+	std::map<int, rtabmap::Transform> filteredPoses_;
+	std::map<int, rtabmap::Signature> tmpSignature_;
+
+	ros::Time stamp_;
+	bool publishMapThreadRunning_;
+	mutable boost::mutex pflag_mtx_;
+
 	//  JHUAPL section end
 };
 
