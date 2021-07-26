@@ -59,7 +59,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_OCTOMAP
 #include <octomap/ColorOcTree.h>
 #include <rtabmap/core/OctoMap.h>
-#include <rtabmap/core/SemanticOctoMap.h>
 #endif
 #endif
 
@@ -68,10 +67,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //system
 #include <string>
 #include <fmt/format.h>
-
-// #ifdef RTK
-// #include <RTK/Map/Maps/OcTreeDist.h>
-// #endif
 
 using namespace rtabmap;
 
@@ -1688,7 +1683,7 @@ void MapsManager::publishMaps(
 		octoMapObstacleCloud_.getNumSubscribers() == 0 &&
 		octoMapGroundCloud_.getNumSubscribers() == 0 &&
 		octoMapEmptySpace_.getNumSubscribers() == 0 &&
-		octoMapProj_.getNumSubscribers() == 0)
+		octoMapProj_.getNumSubscribers() == 0 )
 	{
 		boost::mutex::scoped_lock lock(octomap_mtx_);
 		octomap_->clear();
@@ -1941,12 +1936,7 @@ void MapsManager::publishAPLMaps(
 			auto octreeId2OctreeNamePtr = octreeId2OctreeName.find(layerId);
 			UASSERT(octreeId2OctreeNamePtr != octreeId2OctreeName.end());
 
-			if((octoMapPubBin_.getNumSubscribers() > 0 || octoMapPubFull_.getNumSubscribers() > 0) &&
-				(octreeId2OctreeNamePtr->second == "static" ||
-				octreeId2OctreeNamePtr->second == "movable" ||
-				octreeId2OctreeNamePtr->second == "dynamic"))
-				copyOctree = true;
-			else if(octoMapFullGroundPub_.getNumSubscribers() > 0 && octreeId2OctreeNamePtr->second == "ground")
+			if(octoMapFullGroundPub_.getNumSubscribers() > 0 && octreeId2OctreeNamePtr->second == "ground")
 				copyOctree = true;
 			else if(octoMapFullCeilingPub_.getNumSubscribers() > 0 && octreeId2OctreeNamePtr->second == "ceiling")
 				copyOctree = true;
@@ -2096,46 +2086,59 @@ void MapsManager::publishAPLMaps(
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-// #ifdef RTK
-// 			// init rtk octree with some hard coded settings
-// 			octomap::OcTreeDist rtkOctree(0.05);
+#ifdef RTK
+			// init rtk octree with some hard coded settings
+			octomap::OcTreeDist rtkOctree(0.05);
 
-// 			rtkOctree.setOccupancyThres(0.5);
-// 			rtkOctree.setProbHit(0.7);
-// 			rtkOctree.setProbMiss(0.4);
-// 			rtkOctree.setClampingThresMin(0.1192);
-// 			rtkOctree.setClampingThresMax(0.971);
+			rtkOctree.setOccupancyThres(0.5);
+			rtkOctree.setProbHit(0.7);
+			rtkOctree.setProbMiss(0.4);
+			rtkOctree.setClampingThresMin(0.1192);
+			rtkOctree.setClampingThresMax(0.971);
 
-// 			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
+			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
+
+			// needs to use mutex since using actual pointers to the octrees,
+			// which are use in the other thread
+			lock_m.lock();
+			mergerOctrees2RtkOctree(&rtkOctree, mlOctrees, octreeName2OctreeId, multiLevelOctreeName);
+			lock_m.unlock();
 			
-// 			octomap_msgs::fullMapToMsg(rtkOctree, msg);
-// 			msg.header.frame_id = mapFrameId;
-// 			msg.header.stamp = stamp;
-// 			octoMapPubFull_.publish(msg);
-// 			latched_.at(&octoMapPubFull_) = true;
-// #endif
+			octomap_msgs::fullMapToMsg(rtkOctree, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubFull_.publish(msg);
+			latched_.at(&octoMapPubFull_) = true;
+#endif
 		}
 		// octoMapPubBin_ publishes layers {static,movable,dynamic} as OcTreeDist Binary map
 		if(octoMapPubBin_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-// #ifdef RTK
-// 			// init rtk octree with some hard coded settings
-// 			octomap::OcTreeDist rtkOctree(0.05);
+#ifdef RTK
+			// init rtk octree with some hard coded settings
+			octomap::OcTreeDist rtkOctree(0.05);
 
-// 			rtkOctree.setOccupancyThres(0.5);
-// 			rtkOctree.setProbHit(0.7);
-// 			rtkOctree.setProbMiss(0.4);
-// 			rtkOctree.setClampingThresMin(0.1192);
-// 			rtkOctree.setClampingThresMax(0.971);
+			rtkOctree.setOccupancyThres(0.5);
+			rtkOctree.setProbHit(0.7);
+			rtkOctree.setProbMiss(0.4);
+			rtkOctree.setClampingThresMin(0.1192);
+			rtkOctree.setClampingThresMax(0.971);
 
-// 			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
-// 			octomap_msgs::binaryMapToMsg(rtkOctree, msg);
-// 			msg.header.frame_id = mapFrameId;
-// 			msg.header.stamp = stamp;
-// 			octoMapPubBin_.publish(msg);
-// 			latched_.at(&octoMapPubBin_) = true;
-// #endif
+			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
+
+			// needs to use mutex since using actual pointers to the octrees,
+			// which are use in the other thread
+			lock_m.lock();
+			mergerOctrees2RtkOctree(&rtkOctree, mlOctrees, octreeName2OctreeId, multiLevelOctreeName);
+			lock_m.unlock();
+
+			octomap_msgs::binaryMapToMsg(rtkOctree, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubBin_.publish(msg);
+			latched_.at(&octoMapPubBin_) = true;
+#endif
 		}
 
 		// remove local copy of octree from memory
@@ -2268,5 +2271,52 @@ void MapsManager::publishSemanticMask(const rtabmap::SensorData & data)
 	}
 
 }
+
+
+#ifdef RTK
+void MapsManager::mergerOctrees2RtkOctree(octomap::OcTreeDist* rtkOctree, 
+											rtabmap::SemanticOctoMap::MultiLevelOctrees & mlOctrees,
+											std::map<std::string, int> & octreeName2OctreeId, 
+											std::list<std::string> & multiLevelTreeName) 
+{
+	UASSERT(rtkOctree);
+	UASSERT(!mlOctrees.empty());
+	UASSERT(mlOctrees.size() >= multiLevelTreeName.size());
+
+	UTimer timer;
+	timer.start();
+
+	for(auto iter = multiLevelTreeName.begin(); iter != multiLevelTreeName.end(); ++iter) {
+		std::string octreeName = *iter;
+		
+		auto octreeName2TreeIdPtr = octreeName2OctreeId.find(octreeName);
+		UASSERT_MSG(octreeName2TreeIdPtr != octreeName2OctreeId.end(), "octree name does not match the one in octreeName2TreeId");
+
+		auto multiLevelOctreePtr = mlOctrees.find(octreeName2TreeIdPtr->second);
+		UASSERT_MSG(multiLevelOctreePtr != mlOctrees.end(), "octree was not found in multi-level octrees map");
+
+		RtabmapAPLColorOcTree* octreePtr = multiLevelOctreePtr->second;
+		
+		if(octreePtr) {
+			for(RtabmapAPLColorOcTree::iterator it = octreePtr->begin(); it != octreePtr->end(); ++it) {
+				octomap::point3d pt;
+				pt = octreePtr->keyToCoord(it.getKey());
+
+				RtabmapAPLColorOcTreeNode * n = octreePtr->search(it.getKey());
+				if(n) { 
+					if(n->getOccupancyType() > 0) {
+						rtkOctree->updateNode(pt, true, true);
+					}
+					else {
+						rtkOctree->updateNode(pt, false, true);
+					}
+				}
+			}
+		}
+	}
+	rtkOctree->updateInnerOccupancy();
+	ROS_INFO("	Octree type Merge: Time=%fs", timer.ticks());
+}
+#endif
 
 // JHUAPL section end

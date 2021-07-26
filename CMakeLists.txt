@@ -31,15 +31,15 @@ find_package(apriltag_ros)
 find_package(rviz)
 find_package(find_object_2d)
 
-# option(WITH_RTK           "Include RTK support"                  ON)
-# IF(WITH_RTK)
-#    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /usr/local/lib/cmake/RTK)
-#    find_package(RTK)
-#    IF(RTK_FOUND)
-#       MESSAGE("Found RTK : ${RTK_LIBRARIES}")
-#       ADD_DEFINITIONS("-DRTK")
-#    ENDIF(RTK_FOUND)
-# ENDIF(WITH_RTK)
+option(WITH_RTK           "Include RTK support"                  ON)
+IF(WITH_RTK)
+   #set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /usr/local/lib/cmake/RTK)
+   find_package(RTK)
+   IF(RTK_FOUND)
+      MESSAGE("Found RTK : ${RTK_LIBRARIES}")
+      ADD_DEFINITIONS("-DRTK")
+   ENDIF(RTK_FOUND)
+ENDIF(WITH_RTK)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -328,15 +328,15 @@ SET(Libraries
 ADD_DEFINITIONS("-DWITH_OCTOMAP_MSGS")
 ENDIF(octomap_msgs_FOUND)
 
-# IF(RTK_FOUND)
-#    include_directories(
-#       ${RTK_INCLUDE_DIRS}
-#    )
-# 	SET(Libraries
-#       ${RTK_LIBRARIES}
-# 		${Libraries}
-# 	)
-# ENDIF(RTK_FOUND)
+IF(RTK_FOUND)
+   include_directories(
+      ${RTK_INCLUDE_DIRS}
+   )
+	SET(Libraries
+      ${RTK_LIBRARIES}
+		${Libraries}
+	)
+ENDIF(RTK_FOUND)
 
 # If apriltag_ros is found, add definition
 IF(apriltag_ros_FOUND)

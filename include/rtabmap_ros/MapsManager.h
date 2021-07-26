@@ -47,6 +47,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //boost
 #include <boost/thread/mutex.hpp>
 
+#ifdef RTABMAP_OCTOMAP
+#include <rtabmap/core/SemanticOctoMap.h>
+#endif
+
+#ifdef RTK
+#include <RTK/Map/Maps/OcTreeDist.h>
+#endif
+
 // JHUAPL section end
 
 namespace rtabmap {
@@ -105,6 +113,16 @@ public:
 						const std::string & mapFrameId);
 
 	void publishSemanticMask(const rtabmap::SensorData & data);
+
+#ifdef RTK
+	///
+	///	@brief creates a RTK octree, it is not thread safe.
+	///
+	void mergerOctrees2RtkOctree(octomap::OcTreeDist* rtkOctree, 
+								rtabmap::SemanticOctoMap::MultiLevelOctrees & mlOctrees,
+								std::map<std::string, int> & octreeName2OctreeId,
+								std::list<std::string> & multiLevelTreeName);
+#endif
 	
 	// JHUAPL section end
 
