@@ -1929,7 +1929,7 @@ void MapsManager::publishAPLMaps(
 			RtabmapAPLColorOcTree* octreePtr = nter->second;
 			RtabmapAPLColorOcTree* newOcTree = new RtabmapAPLColorOcTree(octreePtr->getResolution());
 			std::string octreeName = octreePtr->getOctTreeName();
-			newOcTree->setOctTreeName(octreeName);
+			
 
 			// only copy the layers that would be used for publishing.
 			bool copyOctree = false;
@@ -1953,24 +1953,11 @@ void MapsManager::publishAPLMaps(
 			{
 				UDEBUG("copying %d", layerId);
 				// copy the whole octree into a local tree temporally
-				for(auto iter = octreePtr->begin(); iter != octreePtr->end(); ++iter)
-				{
-					RtabmapAPLColorOcTreeNode & nOld = *iter;
-					octomap::point3d pt;
-					pt = octreePtr->keyToCoord(iter.getKey());
-					RtabmapAPLColorOcTreeNode * nNew = newOcTree->setNodeValue(pt, nOld.getLogOdds());
-
-					if(nNew)
-					{ 
-						nNew->setNodeRefId(nOld.getNodeRefId());
-						nNew->setPointRef(nOld.getPointRef());
-						nNew->setOccupancyType(nOld.getOccupancyType());
-						nNew->setColor(nOld.getColor());
-						nNew->setClassLabel(nOld.getClassLabel());
-						nNew->setMaskColor(nOld.getMaskColor());
-					}
-				}
+				std::list<std::string> multiLevelOctreeName = {octreeId2OctreeNamePtr->second};
+				semanticOctomap_->multiOctreesToMergeOctree(newOcTree, multiLevelOctreeName);
 			}
+			newOcTree->setOctTreeName(octreeName);
+
 			mlOctreesTemp.insert({layerId, newOcTree});
 		}
 		lock_m.unlock();
