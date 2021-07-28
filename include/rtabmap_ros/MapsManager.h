@@ -47,6 +47,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //boost
 #include <boost/thread/mutex.hpp>
 
+#ifdef RTABMAP_OCTOMAP
+#include <rtabmap/core/SemanticOctoMap.h>
+#endif
+
 // JHUAPL section end
 
 namespace rtabmap {

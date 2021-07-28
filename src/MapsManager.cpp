@@ -59,7 +59,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_OCTOMAP
 #include <octomap/ColorOcTree.h>
 #include <rtabmap/core/OctoMap.h>
-#include <rtabmap/core/SemanticOctoMap.h>
 #endif
 #endif
 
@@ -68,10 +67,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //system
 #include <string>
 #include <fmt/format.h>
-
-// #ifdef RTK
-// #include <RTK/Map/Maps/OcTreeDist.h>
-// #endif
 
 using namespace rtabmap;
 
@@ -1688,7 +1683,7 @@ void MapsManager::publishMaps(
 		octoMapObstacleCloud_.getNumSubscribers() == 0 &&
 		octoMapGroundCloud_.getNumSubscribers() == 0 &&
 		octoMapEmptySpace_.getNumSubscribers() == 0 &&
-		octoMapProj_.getNumSubscribers() == 0)
+		octoMapProj_.getNumSubscribers() == 0 )
 	{
 		boost::mutex::scoped_lock lock(octomap_mtx_);
 		octomap_->clear();
@@ -1934,19 +1929,14 @@ void MapsManager::publishAPLMaps(
 			RtabmapAPLColorOcTree* octreePtr = nter->second;
 			RtabmapAPLColorOcTree* newOcTree = new RtabmapAPLColorOcTree(octreePtr->getResolution());
 			std::string octreeName = octreePtr->getOctTreeName();
-			newOcTree->setOctTreeName(octreeName);
+			
 
 			// only copy the layers that would be used for publishing.
 			bool copyOctree = false;
 			auto octreeId2OctreeNamePtr = octreeId2OctreeName.find(layerId);
 			UASSERT(octreeId2OctreeNamePtr != octreeId2OctreeName.end());
 
-			if((octoMapPubBin_.getNumSubscribers() > 0 || octoMapPubFull_.getNumSubscribers() > 0) &&
-				(octreeId2OctreeNamePtr->second == "static" ||
-				octreeId2OctreeNamePtr->second == "movable" ||
-				octreeId2OctreeNamePtr->second == "dynamic"))
-				copyOctree = true;
-			else if(octoMapFullGroundPub_.getNumSubscribers() > 0 && octreeId2OctreeNamePtr->second == "ground")
+			if(octoMapFullGroundPub_.getNumSubscribers() > 0 && octreeId2OctreeNamePtr->second == "ground")
 				copyOctree = true;
 			else if(octoMapFullCeilingPub_.getNumSubscribers() > 0 && octreeId2OctreeNamePtr->second == "ceiling")
 				copyOctree = true;
@@ -1963,24 +1953,11 @@ void MapsManager::publishAPLMaps(
 			{
 				UDEBUG("copying %d", layerId);
 				// copy the whole octree into a local tree temporally
-				for(auto iter = octreePtr->begin(); iter != octreePtr->end(); ++iter)
-				{
-					RtabmapAPLColorOcTreeNode & nOld = *iter;
-					octomap::point3d pt;
-					pt = octreePtr->keyToCoord(iter.getKey());
-					RtabmapAPLColorOcTreeNode * nNew = newOcTree->setNodeValue(pt, nOld.getLogOdds());
-
-					if(nNew)
-					{ 
-						nNew->setNodeRefId(nOld.getNodeRefId());
-						nNew->setPointRef(nOld.getPointRef());
-						nNew->setOccupancyType(nOld.getOccupancyType());
-						nNew->setColor(nOld.getColor());
-						nNew->setClassLabel(nOld.getClassLabel());
-						nNew->setMaskColor(nOld.getMaskColor());
-					}
-				}
+				std::list<std::string> multiLevelOctreeName = {octreeId2OctreeNamePtr->second};
+				semanticOctomap_->multiOctreesToMergeOctree(newOcTree, multiLevelOctreeName);
 			}
+			newOcTree->setOctTreeName(octreeName);
+
 			mlOctreesTemp.insert({layerId, newOcTree});
 		}
 		lock_m.unlock();
@@ -2096,46 +2073,56 @@ void MapsManager::publishAPLMaps(
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-// #ifdef RTK
-// 			// init rtk octree with some hard coded settings
-// 			octomap::OcTreeDist rtkOctree(0.05);
 
-// 			rtkOctree.setOccupancyThres(0.5);
-// 			rtkOctree.setProbHit(0.7);
-// 			rtkOctree.setProbMiss(0.4);
-// 			rtkOctree.setClampingThresMin(0.1192);
-// 			rtkOctree.setClampingThresMax(0.971);
+			RtabmapAPLColorOcTree m_octree(0.05);
+			m_octree.setOccupancyThres(0.5);
+			m_octree.setProbHit(0.7);
+			m_octree.setProbMiss(0.4);
+			m_octree.setClampingThresMin(0.1192);
+			m_octree.setClampingThresMax(0.971);
+			std::string octreeName = "Dynamic_Map";
+			m_octree.setOctTreeName(octreeName);
 
-// 			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
+			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
+
+			// multiOctreesToMergeOctree uses the actual map, needs to be locked
+			lock_m.lock();
+			semanticOctomap_->multiOctreesToMergeOctree(&m_octree, multiLevelOctreeName);
+			lock_m.unlock();
 			
-// 			octomap_msgs::fullMapToMsg(rtkOctree, msg);
-// 			msg.header.frame_id = mapFrameId;
-// 			msg.header.stamp = stamp;
-// 			octoMapPubFull_.publish(msg);
-// 			latched_.at(&octoMapPubFull_) = true;
-// #endif
+			octomap_msgs::fullMapToMsg(m_octree, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubFull_.publish(msg);
+			latched_.at(&octoMapPubFull_) = true;
+
 		}
 		// octoMapPubBin_ publishes layers {static,movable,dynamic} as OcTreeDist Binary map
 		if(octoMapPubBin_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-// #ifdef RTK
-// 			// init rtk octree with some hard coded settings
-// 			octomap::OcTreeDist rtkOctree(0.05);
 
-// 			rtkOctree.setOccupancyThres(0.5);
-// 			rtkOctree.setProbHit(0.7);
-// 			rtkOctree.setProbMiss(0.4);
-// 			rtkOctree.setClampingThresMin(0.1192);
-// 			rtkOctree.setClampingThresMax(0.971);
+			RtabmapAPLColorOcTree m_octree(0.05);
+			m_octree.setOccupancyThres(0.5);
+			m_octree.setProbHit(0.7);
+			m_octree.setProbMiss(0.4);
+			m_octree.setClampingThresMin(0.1192);
+			m_octree.setClampingThresMax(0.971);
+			std::string octreeName = "Dynamic_Map";
+			m_octree.setOctTreeName(octreeName);
 
-// 			semanticOctomap_->mergerOctrees2RtkOctree(&rtkOctree);
-// 			octomap_msgs::binaryMapToMsg(rtkOctree, msg);
-// 			msg.header.frame_id = mapFrameId;
-// 			msg.header.stamp = stamp;
-// 			octoMapPubBin_.publish(msg);
-// 			latched_.at(&octoMapPubBin_) = true;
-// #endif
+			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
+
+			// multiOctreesToMergeOctree uses the actual map, needs to be locked
+			lock_m.lock();
+			semanticOctomap_->multiOctreesToMergeOctree(&m_octree, multiLevelOctreeName);
+			lock_m.unlock();
+
+			octomap_msgs::binaryMapToMsg(m_octree, msg);
+			msg.header.frame_id = mapFrameId;
+			msg.header.stamp = stamp;
+			octoMapPubBin_.publish(msg);
+			latched_.at(&octoMapPubBin_) = true;
 		}
 
 		// remove local copy of octree from memory
