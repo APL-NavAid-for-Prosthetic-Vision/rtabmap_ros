@@ -129,6 +129,7 @@
   <arg name="queue_size_rgbd"              default="30" />
   <arg name="queue_size_stereo"            default="30" />
   <arg name="raytracing"                   default="false" />
+  <arg name="OctoMapNumThreads"            default="6" />
   <arg name="initial_pose"                 default="0 0 0 0 0 0" />         <!-- x y z roll pitch yaw -->
   <arg name="time_threshold"               default="0" />
   <arg name="memory_threshold"             default="0" />
@@ -416,8 +417,10 @@
       <param name="Mem/STMSize"              type="string"  value="$(arg mem_STMSize)"/>
       <param name="Mem/NotLinkedNodesKept"   type="string"  value="false"/>
       <param name="Mem/RehearsalSimilarity"  type="string"  value="0.60"/>
-      <param name="Mem/UseOdomFeatures"      type="string"  value="false"/>                 <!-- Use odometry features instead of regenerating them. -->
+      <param name="Mem/UseOdomFeatures"      type="string"  value="false"/>            <!-- Use odometry features instead of regenerating them. -->
       <param name="Mem/BinDataKept"          type="string"  value="true"/>
+      <param name="Mem/ImagePreDecimation"   type="string"  value="2"/>                <!-- Image decimation (>=1) before features extraction -->
+      <param name="Mem/ImagePostDecimation"  type="string"  value="1"/>                <!-- Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image.-->
 
       <param name="RGBD/CreateOccupancyGrid"          type="string"   value="true"/>                    <!--params to get rtab to output octomap-->
       <param name="RGBD/AngularUpdate"                type="string"   value="0.1" />
@@ -458,6 +461,7 @@
       <param name="Grid/3D"                         type="string"   value="true"/>
       <param name="Grid/CellSize"                   type="string"   value="$(arg map_resolution)"/> <!--Param: Grid/CellSize = "0.1"   [Resolution of the occupancy grid.]-->
       <param name="Grid/RayTracing"                 type="string"   value="$(arg raytracing)"/>
+      <param name="Grid/OctoMapNumThreads"          type="string"   value="$(arg OctoMapNumThreads)"/>
       <param name="Grid/RangeMax"                   type="string"   value="$(arg grid_rangeMax)" />
       <param name="Grid/NoiseFilteringMinNeighbors" type="string"   value="5" />
       <param name="Grid/NoiseFilteringRadius"       type="string"   value="0.0"/>
