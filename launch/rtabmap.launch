@@ -465,7 +465,7 @@
       <param name="Grid/RangeMax"                   type="string"   value="$(arg grid_rangeMax)" />
       <param name="Grid/NoiseFilteringMinNeighbors" type="string"   value="5" />
       <param name="Grid/NoiseFilteringRadius"       type="string"   value="0.0"/>
-      <param name="Grid/DepthDecimation"            type="string"   value="2"/>
+      <param name="Grid/DepthDecimation"            type="string"   value="4"/>
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>
@@ -473,7 +473,6 @@
       <param name="Grid/MultiLevelCellSize"         type="string"   value="$(arg multi_level_cell_size)"/>
       <param name="Grid/MultiLevelTreeName"         type="string"   value="$(arg multi_level_cell_name)"/>
       
-     
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />
       <param name="Kp/MaxFeatures"      type="string" value="500" />
