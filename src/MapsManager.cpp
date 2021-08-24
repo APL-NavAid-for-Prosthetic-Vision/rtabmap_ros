@@ -782,8 +782,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 
 					UDEBUG("Adding grid map %d to cache...", iter->first);
 					cv::Point3f viewPoint;
-					cv::Mat emptyCells;
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
+					std::map<unsigned int, cv::Mat> emptyCellsMap;
 					
 					cv::Mat rgb, depth, semanticMask;
 					bool generateGrid = true;
@@ -817,21 +817,21 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 							occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
 							semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
 							generateGrid?0:&obstaclesCellsMap,
-							generateGrid?0:&emptyCells);
+							generateGrid?0:&emptyCellsMap);
 					
 					if(generateGrid)
 					{
 						UDEBUG("generateGrid");
 						Signature tmp(data);
 						tmp.setPose(iter->second);
-						occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
-						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+						occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCellsMap, viewPoint);
+						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
 						uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 					}
 					else
 					{
 						viewPoint = data.gridViewPoint();
-						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
 						uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 					}
 				
@@ -975,12 +975,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
 				{
 					lock_g.lock();
-					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > >::iterator mter = gridAPLMaps_.find(iter->first);
+					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<unsigned int, cv::Mat> > >::iterator mter = gridAPLMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
 					if(mter != gridAPLMaps_.end() && pter != gridMapsViewpoints_.end())
 					{
 						if( (mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
-						   (mter->second.second.empty() || mter->second.second.channels() > 2) )
+						   (mter->second.second.begin()->second.empty() || mter->second.second.begin()->second.channels() > 2) )
 						{
 							semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
 						}
@@ -1102,7 +1102,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		{
 			// In Semantic Segmentation Mode
 			boost::mutex::scoped_lock lock_g(grid_mtx_);
-			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
+			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<unsigned int, cv::Mat> > >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
 			{
 				if(!uContains(poses, iter->first))
 				{
