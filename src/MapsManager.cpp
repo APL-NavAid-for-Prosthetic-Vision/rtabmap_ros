@@ -178,6 +178,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	ROS_INFO("%s(maps): Grid/MultiLevelTreeName = %s", name.c_str(), multiLevelTreeNameStr.c_str());
 	std::list<std::string> multiLevelTreeName = uSplit(multiLevelTreeNameStr, ' ');
 
+	int octoMapNumThreads = 2;
+	pnh.param("Grid/OctoMapNumThreads", octoMapNumThreads, octoMapNumThreads);
+
 	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
@@ -185,25 +188,26 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	// JHUAPL section
 	if(semanticSegmentationEnable_)
 	{
-		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError());
+		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError(), octoMapNumThreads);
 	
 		// set the model class map if available
 		if(!semanticSegmentationModelFilePath_.empty())
 		{
-			std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
+			std::map<std::string, std::map<unsigned int, std::string>> networkModelMap;
 			std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
 			
-			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap, modelMaskIdColorMap))
+			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, networkModelMap, modelMaskIdColorMap))
 			{
-				ROS_WARN("parseModelConfig FAILED to parse the semantic segmentation ocupacy to label id to name association file");
+				ROS_WARN("parsing network model Config FAILED to parse the semantic segmentation ocupacy to label id to name association file");
 			}
 
 			// occupancy grid (3D) needs to create label to occupancy association
-			occupancyGrid_->setModelAssociationMap(moduleConfigMap);
+			occupancyGrid_->setModelAssociationMap(networkModelMap);
 			occupancyGrid_->updateOccupancyMapStruct();
+			occupancyGrid_->setMaskidColorMap(modelMaskIdColorMap);
 
-			// semantic octomap nees to create label to occupancy association
-			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
+			// semantic octomap needs to create label to occupancy association
+			semanticOctomap_->setModelNameIdMap(networkModelMap);
 			semanticOctomap_->updateOccupancyMapStruct();
 			// configure association of labels id with multi-level map
 			semanticOctomap_->setMultiLevelOctreeConfig(multiLevelCellSize.size());
@@ -212,6 +216,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 				semanticOctomap_->generateMaskIdColorMap();
 			else
 				semanticOctomap_->setMaskidColorMap(modelMaskIdColorMap);
+
+			std::map<unsigned int, int> labelId2octreeId = semanticOctomap_->getObjectIdToOctreeId();
+			occupancyGrid_->setObjectIdToOctreeId(labelId2octreeId);
 		}
 		else
 		{
@@ -464,20 +471,21 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 		// set the model class map if available
 		if(!semanticSegmentationModelFilePath_.empty())
 		{
-			std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
+			std::map<std::string, std::map<unsigned int, std::string>> networkModelMap;
 			std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
 
-			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, moduleConfigMap, modelMaskIdColorMap))
+			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, networkModelMap, modelMaskIdColorMap))
 			{
-				ROS_WARN("parseModelConfig FAILED to parse the semantic semantation name architecture file");
+				ROS_WARN("parseModelConfig {network model config} FAILED to parse the semantic semantation name architecture file");
 			}
 
 			// occupancy grid (3D) needs to create label to occupancy association
-			occupancyGrid_->setModelAssociationMap(moduleConfigMap);
+			occupancyGrid_->setModelAssociationMap(networkModelMap);
 			occupancyGrid_->updateOccupancyMapStruct();
+			occupancyGrid_->setMaskidColorMap(modelMaskIdColorMap);
 
-			// semantic octomap nees to create label to occupancy association
-			semanticOctomap_->setModelNameIdMap(moduleConfigMap);
+			// semantic octomap needs to create label to occupancy association
+			semanticOctomap_->setModelNameIdMap(networkModelMap);
 			semanticOctomap_->updateOccupancyMapStruct();
 			// configure association of labels id with multi-level map
 			semanticOctomap_->setMultiLevelOctreeConfig(mlCellSizeStrList.size());
@@ -487,6 +495,8 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 			else
 				semanticOctomap_->setMaskidColorMap(modelMaskIdColorMap);
 			
+			std::map<unsigned int, int> labelId2octreeId = semanticOctomap_->getObjectIdToOctreeId();
+			occupancyGrid_->setObjectIdToOctreeId(labelId2octreeId);
 		}
 		else
 		{
@@ -726,6 +736,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			}
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
+			boost::mutex::scoped_lock lock_m(octomap_mtx_);
 			if(semanticSegmentationEnable_)
 			{
 				if(updateOctomap && semanticOctomap_ && semanticOctomap_->addedNodes().size() < 5)
@@ -742,6 +753,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					longUpdate = true;
 				}
 			}
+			lock_m.unlock();
 #endif
 #endif
 		}
@@ -770,8 +782,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 
 					UDEBUG("Adding grid map %d to cache...", iter->first);
 					cv::Point3f viewPoint;
-					cv::Mat emptyCells;
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
+					std::map<unsigned int, cv::Mat> emptyCellsMap;
 					
 					cv::Mat rgb, depth, semanticMask;
 					bool generateGrid = true;
@@ -805,21 +817,21 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 							occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
 							semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
 							generateGrid?0:&obstaclesCellsMap,
-							generateGrid?0:&emptyCells);
+							generateGrid?0:&emptyCellsMap);
 					
 					if(generateGrid)
 					{
 						UDEBUG("generateGrid");
 						Signature tmp(data);
 						tmp.setPose(iter->second);
-						occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
-						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+						occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCellsMap, viewPoint);
+						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
 						uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 					}
 					else
 					{
 						viewPoint = data.gridViewPoint();
-						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
 						uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 					}
 				
@@ -963,12 +975,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
 				{
 					lock_g.lock();
-					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > >::iterator mter = gridAPLMaps_.find(iter->first);
+					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<unsigned int, cv::Mat> > >::iterator mter = gridAPLMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
 					if(mter != gridAPLMaps_.end() && pter != gridMapsViewpoints_.end())
 					{
 						if( (mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
-						   (mter->second.second.empty() || mter->second.second.channels() > 2) )
+						   (mter->second.second.begin()->second.empty() || mter->second.second.begin()->second.channels() > 2) )
 						{
 							semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
 						}
@@ -1037,8 +1049,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			octomapUpdated_ = octomap_->update(filteredPoses);
 			ROS_INFO("Octomap update time = %fs", time.ticks());
 		}
-		lock.unlock();
 		lock_u.unlock();
+		lock.unlock();
 #endif
 #endif
 
@@ -1090,7 +1102,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		{
 			// In Semantic Segmentation Mode
 			boost::mutex::scoped_lock lock_g(grid_mtx_);
-			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
+			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<unsigned int, cv::Mat> > >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
 			{
 				if(!uContains(poses, iter->first))
 				{
@@ -1930,7 +1942,6 @@ void MapsManager::publishAPLMaps(
 			RtabmapAPLColorOcTree* newOcTree = new RtabmapAPLColorOcTree(octreePtr->getResolution());
 			std::string octreeName = octreePtr->getOctTreeName();
 			
-
 			// only copy the layers that would be used for publishing.
 			bool copyOctree = false;
 			auto octreeId2OctreeNamePtr = octreeId2OctreeName.find(layerId);

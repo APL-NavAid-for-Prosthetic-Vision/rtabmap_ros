@@ -631,11 +631,11 @@ void CoreWrapper::onInit()
 				semanticSegmentationModelFilePath.c_str());
 
 	// set the model class map if available
-	std::map<std::string, std::map<unsigned int, std::string>> moduleConfigMap;
+	std::map<std::string, std::map<unsigned int, std::string>> networkModelMap;
 	std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
 	if(enableSemanticSegmentation && !semanticSegmentationModelFilePath.empty())
 	{
-		if(!utils::parseModelConfig(semanticSegmentationModelFilePath, moduleConfigMap, modelMaskIdColorMap))
+		if(!utils::parseModelConfig(semanticSegmentationModelFilePath, networkModelMap, modelMaskIdColorMap))
 		{
 			ROS_WARN("parseModelConfig FAILED to parse the semantic segmentation ocupacy to label id to name association file");
 		}
@@ -674,7 +674,8 @@ void CoreWrapper::onInit()
 		// IN Semantic Segmentation mode this needs to be configured.
 		if(enableSemanticSegmentation)
 		{
-			rtabmap_.setOccupancyObjectAssociation(moduleConfigMap);
+			std::map<unsigned int, int> labelId2octreeId = mapsManager_.getSemanticOctomap()->getObjectIdToOctreeId();
+			rtabmap_.setOccupancyObjectAssociation(networkModelMap, labelId2octreeId);
 		}
 	}
 
@@ -878,6 +879,7 @@ CoreWrapper::~CoreWrapper()
 	nh.deleteParam("is_rtabmap_paused");
 
 	printf("rtabmap: Saving database/long-term memory... (located at %s)\n", databasePath_.c_str());
+	boost::mutex::scoped_lock lock(rtabmap_mtx_);
 	if(rtabmap_.getMemory())
 	{
 		// save the grid map
@@ -891,6 +893,7 @@ CoreWrapper::~CoreWrapper()
 	}
 
 	rtabmap_.close();
+	lock.unlock();
 	printf("rtabmap: Saving database/long-term memory...done! (located at %s, %ld MB)\n", databasePath_.c_str(), UFile::length(databasePath_)/(1024*1024));
 
 	delete interOdomSync_;
@@ -1016,7 +1019,7 @@ void CoreWrapper::defaultCallback(const sensor_msgs::ImageConstPtr & imageMsg)
 				1.0f/rate_,
 				rtabmap_.getTimeThreshold()/1000.0f,
 				timer.ticks(),
-				rtabmap_.getWMSize()+rtabmap_.getSTMSize());
+				rtabmap_.getWMSize()+rtabmap_.getSTMSize());		
 	}
 }
 
@@ -1349,7 +1352,8 @@ void CoreWrapper::commonDepthCallbackImpl(
 		scan = LaserScan(rtabmap::util3d::laserScan2dFromPointCloud(*scanCloud2d), 0, genScanMaxDepth_, LaserScan::kXY);
 	}
 	else if(!scan2dMsg.ranges.empty())
-	{
+	{	
+		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_ros::convertScanMsg(
 				scan2dMsg,
 				frameId_,
@@ -1537,10 +1541,11 @@ void CoreWrapper::publishLandmarksMap(const rtabmap::Memory * memory, const std:
             }
 
             if(!landmarksLinkMap.empty()) 
-            {
+            {	
 				// compute the pose of landmark with respect to map reference frame
 				// assuming the landmark's node is in the optimized map.
 				rtabmap::Transform map2NodePose = rtabmap_.getPose(signatureId);
+			
 				//check if the node id pose was found; if not found, it would be all zeros
 				if(map2NodePose.isNull())
 				{
@@ -1640,11 +1645,13 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 			continue;
 		}
 
+		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_.insertLandmark(signatureId, landmarkId, description, pose, covariance))
 		{
 			ROS_WARN("adding landmark (%d) in signature id (%d) failed!", landmarkId, signatureId);
 			res.added.push_back(false);
 		}
+		lock.unlock();
 		res.added.push_back(true);
 	}
 	return true;
@@ -1655,7 +1662,9 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 {
 	std::map<int, rtabmap::Link> landmarks;
 	// gets all landmarks in the working map
+	boost::mutex::scoped_lock lock(rtabmap_mtx_);
 	rtabmap_.getLandmarks(landmarks, req.maxRange, req.lookInDB);
+	lock.unlock();
 
 	int index = 0;
 	for(std::map<int, rtabmap::Link>::iterator lIter = landmarks.begin(); lIter != landmarks.end(); ++lIter, ++index)
@@ -1669,6 +1678,7 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 
 		// compute the pose of landmark with respect to map reference frame
 		// assuming the landmark's node is in the optimized map.
+		lock.lock();
 		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.nodeId);
 		//check if the node id pose was found; if not found, it would be all zeros
 		if(map2NodePose.isNull())
@@ -1693,7 +1703,7 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 				return false;
 			}
 		}
-		
+		lock.unlock();
 		rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
 
 		transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.transform);
@@ -1713,7 +1723,7 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 
 bool CoreWrapper::landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res)
 {
-	
+	boost::mutex::scoped_lock lock(rtabmap_mtx_);
 	if(req.removeAll)
 	{
 		std::vector<int> landmarkMapIds;
@@ -1891,6 +1901,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 	}
 	else if(!scan2dMsg.ranges.empty())
 	{
+		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_ros::convertScanMsg(
 				scan2dMsg,
 				frameId_,
@@ -2103,6 +2114,7 @@ void CoreWrapper::commonStereoCallback(
 	LaserScan scan;
 	if(!scan2dMsg.ranges.empty())
 	{
+		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_ros::convertScanMsg(
 				scan2dMsg,
 				frameId_,
@@ -2236,6 +2248,7 @@ void CoreWrapper::commonLaserScanCallback(
 	LaserScan scan;
 	if(!scan2dMsg.ranges.empty())
 	{
+		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_ros::convertScanMsg(
 				scan2dMsg,
 				frameId_,
@@ -2480,7 +2493,9 @@ void CoreWrapper::process(
 							odomVelocity[5] = yaw/info.interval;
 						}
 					}
+					boost::mutex::scoped_lock lock(rtabmap_mtx_);
 					rtabmap_.process(interData, interOdom, covariance, odomVelocity, externalStats);
+					lock.unlock();
 				}
 				interOdoms_.erase(iter++);
 			}
@@ -2645,7 +2660,11 @@ void CoreWrapper::process(
 			rtabmapROSStats_.clear();
 		}
 
-		if(rtabmap_.process(data, odom, covariance, odomVelocity, externalStats))
+		// mutex to sync with map manager thread
+		boost::mutex::scoped_lock lock(rtabmap_mtx_);
+		bool rtabmapProcessed = rtabmap_.process(data, odom, covariance, odomVelocity, externalStats);
+		lock.unlock();
+		if(rtabmapProcessed)
 		{
 			timeRtabmap = timer.ticks();
 			mapToOdomMutex_.lock();
@@ -3710,7 +3729,6 @@ bool CoreWrapper::publishMapCallback(rtabmap_ros::PublishMap::Request& req, rtab
 			}
 			if(signatures.size())
 			{
-				boost::mutex::scoped_lock lock(mmu_mtx_);
 				filteredPoses = mapsManager_.updateMapCaches(
 						filteredPoses,
 						rtabmap_.getMemory(),
@@ -4548,9 +4566,7 @@ bool CoreWrapper::octomapBinaryCallback(
 		poses = nearestPoses;
 	}
 
-	boost::mutex::scoped_lock lock(mmu_mtx_);
 	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true);
-	lock.unlock();
 
 	const rtabmap::OctoMap * octomap = mapsManager_.getOctomap();
 	bool success = octomap->octree()->size() && octomap_msgs::binaryMapToMsg(*octomap->octree(), res.map);
@@ -4581,9 +4597,7 @@ bool CoreWrapper::octomapFullCallback(
 		poses = nearestPoses;
 	}
 
-	boost::mutex::scoped_lock lock(mmu_mtx_);
 	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true);
-	lock.unlock();
 
 	const rtabmap::OctoMap * octomap = mapsManager_.getOctomap();
 	bool success = octomap->octree()->size() && octomap_msgs::fullMapToMsg(*octomap->octree(), res.map);
@@ -4668,7 +4682,7 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 
 		if(!filteredPoses.empty())
 		{
-			boost::mutex::scoped_lock lock(mmu_mtx_);
+			boost::mutex::scoped_lock lock(rtabmap_mtx_);
 			filteredPoses = mapsManager_.updateMapCaches(
 							filteredPoses,
 							rtabmap_.getMemory(),
@@ -4712,12 +4726,10 @@ void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & fil
 				
 		if(!mapsManager_.isSemanticSegmentationEnabled())
 		{
-			// function is tread safe internally
 			mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId);
 		}
 		else
 		{
-			// function is tread safe internally
 			// publish maps in semantic segmentation mode
 			mapsManager_.publishAPLMaps(stamp, mapFrameId);	
 		}
