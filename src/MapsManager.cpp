@@ -818,6 +818,25 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 							semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
 							generateGrid?0:&obstaclesCellsMap,
 							generateGrid?0:&emptyCellsMap);
+
+					// empty cell map might not have all the layers since mat with no elements were not store.
+					// if  the empty cells map is not the same size as the active occupancy layers
+					// the missing one would be added with a mat with not elements.
+					UDEBUG(" emptyCellsMap size=%d", (int)emptyCellsMap.size());
+					if(emptyCellsMap.size() < occupancyGrid_->getLayerIdToLayerName().size()) 
+					{
+						UDEBUG(" empty cells map doesnot contain correct number of layers");
+						std::map<int, std::string> layerIdToLayerNameMap = occupancyGrid_->getLayerIdToLayerName();
+						for(auto ldToLNMapIter = layerIdToLayerNameMap.begin(); ldToLNMapIter != layerIdToLayerNameMap.end(); ++ldToLNMapIter)
+						{
+							auto emptyCellsMapIter = emptyCellsMap.find(ldToLNMapIter->first);
+							if(emptyCellsMapIter == emptyCellsMap.end())
+							{
+								cv::Mat emptyCells;
+								emptyCellsMap.insert({(unsigned int)ldToLNMapIter->first, emptyCells});
+							}
+						}
+					}
 					
 					if(generateGrid)
 					{
