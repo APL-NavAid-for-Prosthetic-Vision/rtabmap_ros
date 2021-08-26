@@ -453,8 +453,8 @@ private:
 
 	boost::thread* mapManagerUpdateThread_;
 	bool mapManagerUpdateThreadRunning_;
-	mutable boost::mutex mmu_mtx_;
 	mutable boost::mutex mmu_data_mtx_;
+	mutable boost::mutex rtabmap_mtx_;
 
 	std::map<int, rtabmap::Transform> filteredPoses_;
 	std::map<int, rtabmap::Signature> tmpSignature_;
