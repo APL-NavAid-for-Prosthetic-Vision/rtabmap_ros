@@ -341,7 +341,7 @@ private:
 
 	rtabmap::Transform mapToOdom_;
 	boost::mutex mapToOdomMutex_;
-
+	
 	MapsManager mapsManager_;
 
 	ros::Publisher infoPub_;
@@ -462,6 +462,8 @@ private:
 	ros::Time stamp_;
 	bool publishMapThreadRunning_;
 	mutable boost::mutex pflag_mtx_;
+	
+	rtabmap::Transform mapToOdomPrev_;
 
 	//  JHUAPL section end
 };

@@ -155,7 +155,8 @@ CoreWrapper::CoreWrapper() :
 		depthFilters_(false),
 		mapManagerUpdateThread_(0),
 		mapManagerUpdateThreadRunning_(false),
-		publishMapThreadRunning_(false)
+		publishMapThreadRunning_(false),
+		mapToOdomPrev_(rtabmap::Transform::getIdentity())
 {
 	char * rosHomePath = getenv("ROS_HOME");
 	std::string workingDir = rosHomePath?rosHomePath:UDirectory::homeDir()+"/.ros";
@@ -2708,19 +2709,25 @@ void CoreWrapper::process(
 
 				// Publish local graph, info
 				this->publishStats(stamp);
-				// JHAPL modification 
+				// JHUAPL modification: pubs pose on every iteration
 				// publish localization with correction regardless whether covariance is available
 				if(localizationPosePub_.getNumSubscribers())
 				{
 					geometry_msgs::PoseWithCovarianceStamped poseMsg;
 					poseMsg.header.frame_id = mapFrameId_;
 					poseMsg.header.stamp = stamp;
-					rtabmap_ros::transformToPoseMsg(mapToOdom_*odom, poseMsg.pose.pose);
+
 					poseMsg.pose.covariance;
-					if(!rtabmap_.getStatistics().localizationCovariance().empty())
+					if(!rtabmap_.getStatistics().localizationCovariance().empty()) 
 					{
+						rtabmap_ros::transformToPoseMsg(mapToOdom_*odom, poseMsg.pose.pose);
 						const cv::Mat & cov = rtabmap_.getStatistics().localizationCovariance();
 						memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total()*sizeof(double));
+						mapToOdomPrev_ = mapToOdom_;
+					}
+					else
+					{
+						rtabmap_ros::transformToPoseMsg(mapToOdomPrev_*odom, poseMsg.pose.pose);
 					}
 					localizationPosePub_.publish(poseMsg);
 				}
