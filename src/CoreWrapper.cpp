@@ -2748,9 +2748,10 @@ void CoreWrapper::process(
 					rtabmap_.getMemory()->getLastSignatureId() != filteredPoses.rbegin()->first ||
 					rtabmap_.getMemory()->getLastWorkingSignature() == 0 ||
 					rtabmap_.getMemory()->getLastWorkingSignature()->sensorData().gridCellSize() == 0 ||
+					mapsManager_.getIsAlwaysUpdateMap() ||
 					(!mapsManager_.getOccupancyGrid()->isGridFromDepth() && data.laserScanRaw().is2d())) // 2d laser scan would fill empty space for latest data
 				{
-					UDEBUG("	incoming node id: %d", rtabmap_.getMemory()->getLastAddedData().id());
+					UDEBUG(" ----------> incoming node id: %d", rtabmap_.getMemory()->getLastAddedData().id());
 					SensorData tmpData = rtabmap_.getMemory()->getLastAddedData();
 					tmpData.setId(0);
 					tmpData.setStamp(data.stamp());
