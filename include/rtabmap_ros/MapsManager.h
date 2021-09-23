@@ -109,6 +109,9 @@ public:
 						const std::string & mapFrameId);
 
 	void publishSemanticMask(const rtabmap::SensorData & data);
+
+	bool getIsAlwaysUpdateMap() {return alwaysUpdateMap_; }
+
 	
 	// JHUAPL section end
 

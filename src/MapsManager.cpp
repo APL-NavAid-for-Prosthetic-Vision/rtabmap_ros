@@ -720,10 +720,11 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			filteredPoses = poses;
 		}
 		
-		if(!alwaysUpdateMap_)
-		{
-			filteredPoses.erase(0);
-		}
+		/// JHUAPL modifucation:  filteredPoses is receiving the latest added sensor data and occupancy
+		// if(!alwaysUpdateMap_)
+		// {
+		// 	filteredPoses.erase(0);
+		// }
 
 		bool longUpdate = false;
 		UTimer longUpdateTimer;
