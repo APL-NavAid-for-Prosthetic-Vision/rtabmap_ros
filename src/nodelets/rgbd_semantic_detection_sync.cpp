@@ -185,7 +185,12 @@ private:
 
 			rtabmap_ros::RGBDSemanticDetection msg;
 			msg.header.frame_id = cameraInfo->header.frame_id;
-			msg.header.stamp = image->header.stamp > depth->header.stamp?image->header.stamp:depth->header.stamp;
+
+			// Down the line, RTabMap ultimately uses the rgb image timestamp
+			// for the consolidated data frame, so use the same timestamp here
+			// for the whole message
+			msg.header.stamp = image->header.stamp;
+			//msg.header.stamp = image->header.stamp > depth->header.stamp?image->header.stamp:depth->header.stamp;
 						
 			msg.rgb_camera_info = *cameraInfo;
 			msg.depth_camera_info = *cameraInfo;
@@ -199,20 +204,21 @@ private:
 
 			if(rgbdSemanticDetectionPub_.getNumSubscribers())
 			{
+				// rgb image
 				cv_bridge::CvImage cvImg;
-				cvImg.header.stamp = depth->header.stamp;
-				cvImg.header.seq = image->header.seq;
-				cvImg.header.frame_id = image->header.frame_id;
+				cvImg.header = image->header;
 				cvImg.image = rgbMat;
 				cvImg.encoding = image->encoding;
-				// add rgb image to the msg out
 				cvImg.toImageMsg(msg.rgb);
 
+				// depth image
 				cv_bridge::CvImage cvDepth;
 				cvDepth.header = depth->header;
+				// set timestamp to the same as rgb image to avoid a local transformation update 
+				// later on (in MsgConversion.cpp::convertRGBDMsgs()) due to a timestamp difference				
+				cvDepth.header.stamp = image->header.stamp;		
 				cvDepth.image = depthMat;
 				cvDepth.encoding = depth->encoding;
-				// add depth image to the msg out
 				cvDepth.toImageMsg(msg.depth);
 
 				// object recognition client server call - blocks until it response 

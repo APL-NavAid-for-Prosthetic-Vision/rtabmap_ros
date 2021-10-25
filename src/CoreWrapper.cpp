@@ -1624,7 +1624,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 	for(int i = 0; i < req.landmarks.size(); ++i)
 	{
 		rtabmap_ros::Landmark landmarkMsg = req.landmarks.at(i);
-		int signatureId = landmarkMsg.nodeId;
+		//int signatureId = landmarkMsg.nodeId;
 		double timeStamp = landmarkMsg.timeStamp;
 		int landmarkId = landmarkMsg.landmarkId;
 		std::string description = landmarkMsg.description;
@@ -1647,9 +1647,9 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 		}
 
 		boost::mutex::scoped_lock lock(rtabmap_mtx_);
-		if(!rtabmap_.insertLandmark(signatureId, landmarkId, description, pose, covariance))
+		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, description, pose, covariance))
 		{
-			ROS_WARN("adding landmark (%d) in signature id (%d) failed!", landmarkId, signatureId);
+			ROS_WARN("adding landmark (%d) timestamped (%lf) failed!", landmarkId, timeStamp);
 			res.added.push_back(false);
 		}
 		lock.unlock();

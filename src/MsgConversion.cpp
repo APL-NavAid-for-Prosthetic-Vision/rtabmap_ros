@@ -1768,7 +1768,7 @@ bool convertRGBDMsgs(
 			stamp = imageMsgs[i]->header.stamp;
 		}
 
-		// use depth's stamp so that geometry is sync to odom, use rgb frame as we assume depth is registered (normally depth msg should have same frame than rgb)
+		// uses depth's timestamp so  geometry is sync to odom, use rgb frame as we assume depth is registered (normally depth msg should have same frame than rgb)
 		rtabmap::Transform localTransform = rtabmap_ros::getTransform(frameId, imageMsgs[i]->header.frame_id, stamp, listener, waitForTransform);
 		if(localTransform.isNull())
 		{
