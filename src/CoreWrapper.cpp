@@ -1624,35 +1624,39 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 	for(int i = 0; i < req.landmarks.size(); ++i)
 	{
 		rtabmap_ros::Landmark landmarkMsg = req.landmarks.at(i);
-		//int signatureId = landmarkMsg.nodeId;
 		double timeStamp = landmarkMsg.timeStamp;
 		int landmarkId = landmarkMsg.landmarkId;
 		std::string description = landmarkMsg.description;
 
-		if(signatureId == 0 || timeStamp == 0)
+		if(timeStamp == 0)
 		{
-			ROS_WARN("landmark (%d) msg is missing signature id or timestamp", landmarkId);
+			ROS_WARN("landmark (%d) msg is missing timestamp", landmarkId);
 			res.added.push_back(false);
 			continue;
 		}
 
-		rtabmap::Transform pose = transformFromGeometryMsg(landmarkMsg.transform);
+		rtabmap::Transform landmarkPose = transformFromGeometryMsg(landmarkMsg.landmarkPose);
+		rtabmap::Transform odometryPose = transformFromGeometryMsg(landmarkMsg.odometryPose);
 		cv::Mat covariance = cv::Mat(6,6, CV_64FC1, (void*)landmarkMsg.covariance.data()).clone();
 
-		if(pose.isNull()) 
+		if(landmarkPose.isNull()) 
 		{
-			ROS_WARN("landmark (%d) msg is missing pose", landmarkId);
+			ROS_WARN("landmark (%d) msg is missing landmarkPose", landmarkId);
 			res.added.push_back(false);
 			continue;
 		}
+		if(odometryPose.isNull()) 
+		{
+			ROS_WARN("landmark (%d) msg is missing odometryPose", landmarkId);
+			res.added.push_back(false);
+			continue;
+		}		
 
-		boost::mutex::scoped_lock lock(rtabmap_mtx_);
-		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, description, pose, covariance))
+		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, description, landmarkPose, covariance, odometryPose))
 		{
 			ROS_WARN("adding landmark (%d) timestamped (%lf) failed!", landmarkId, timeStamp);
 			res.added.push_back(false);
 		}
-		lock.unlock();
 		res.added.push_back(true);
 	}
 	return true;
@@ -1707,7 +1711,7 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 		lock.unlock();
 		rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
 
-		transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.transform);
+		transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.landmarkPose_WorldCoords);
 		
 		if(lIter->second.infMatrix().type() == CV_64FC1 && 
 			lIter->second.infMatrix().cols == 6 && 
@@ -1724,7 +1728,6 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 
 bool CoreWrapper::landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res)
 {
-	boost::mutex::scoped_lock lock(rtabmap_mtx_);
 	if(req.removeAll)
 	{
 		std::vector<int> landmarkMapIds;
