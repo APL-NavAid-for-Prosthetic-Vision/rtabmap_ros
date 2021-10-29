@@ -880,7 +880,7 @@ CoreWrapper::~CoreWrapper()
 	nh.deleteParam("is_rtabmap_paused");
 
 	printf("rtabmap: Saving database/long-term memory... (located at %s)\n", databasePath_.c_str());
-	boost::mutex::scoped_lock lock(rtabmap_mtx_);
+	rtabmap_mtx_.lock();
 	if(rtabmap_.getMemory())
 	{
 		// save the grid map
@@ -894,7 +894,7 @@ CoreWrapper::~CoreWrapper()
 	}
 
 	rtabmap_.close();
-	lock.unlock();
+	rtabmap_mtx_.unlock();
 	printf("rtabmap: Saving database/long-term memory...done! (located at %s, %ld MB)\n", databasePath_.c_str(), UFile::length(databasePath_)/(1024*1024));
 
 	delete interOdomSync_;
@@ -1354,7 +1354,6 @@ void CoreWrapper::commonDepthCallbackImpl(
 	}
 	else if(!scan2dMsg.ranges.empty())
 	{	
-		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_ros::convertScanMsg(
 				scan2dMsg,
 				frameId_,
@@ -1667,9 +1666,9 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 {
 	std::map<int, rtabmap::Link> landmarks;
 	// gets all landmarks in the working map
-	boost::mutex::scoped_lock lock(rtabmap_mtx_);
+	rtabmap_mtx_.lock();
 	rtabmap_.getLandmarks(landmarks, req.maxRange, req.lookInDB);
-	lock.unlock();
+	rtabmap_mtx_.unlock();
 
 	int index = 0;
 	for(std::map<int, rtabmap::Link>::iterator lIter = landmarks.begin(); lIter != landmarks.end(); ++lIter, ++index)
@@ -1683,7 +1682,6 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 
 		// compute the pose of landmark with respect to map reference frame
 		// assuming the landmark's node is in the optimized map.
-		lock.lock();
 		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.nodeId);
 		//check if the node id pose was found; if not found, it would be all zeros
 		if(map2NodePose.isNull())
@@ -1708,7 +1706,6 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 				return false;
 			}
 		}
-		lock.unlock();
 		rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
 
 		transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.landmarkPose_WorldCoords);
@@ -1905,7 +1902,6 @@ void CoreWrapper::commonDepthCallbackImpl(
 	}
 	else if(!scan2dMsg.ranges.empty())
 	{
-		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_ros::convertScanMsg(
 				scan2dMsg,
 				frameId_,
@@ -2118,7 +2114,6 @@ void CoreWrapper::commonStereoCallback(
 	LaserScan scan;
 	if(!scan2dMsg.ranges.empty())
 	{
-		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_ros::convertScanMsg(
 				scan2dMsg,
 				frameId_,
@@ -2252,7 +2247,6 @@ void CoreWrapper::commonLaserScanCallback(
 	LaserScan scan;
 	if(!scan2dMsg.ranges.empty())
 	{
-		boost::mutex::scoped_lock lock(rtabmap_mtx_);
 		if(!rtabmap_ros::convertScanMsg(
 				scan2dMsg,
 				frameId_,
@@ -2497,9 +2491,9 @@ void CoreWrapper::process(
 							odomVelocity[5] = yaw/info.interval;
 						}
 					}
-					boost::mutex::scoped_lock lock(rtabmap_mtx_);
+					rtabmap_mtx_.lock();
 					rtabmap_.process(interData, interOdom, covariance, odomVelocity, externalStats);
-					lock.unlock();
+					rtabmap_mtx_.unlock();
 				}
 				interOdoms_.erase(iter++);
 			}
@@ -2665,9 +2659,9 @@ void CoreWrapper::process(
 		}
 
 		// mutex to sync with map manager thread
-		boost::mutex::scoped_lock lock(rtabmap_mtx_);
+		rtabmap_mtx_.lock();
 		bool rtabmapProcessed = rtabmap_.process(data, odom, covariance, odomVelocity, externalStats);
-		lock.unlock();
+		rtabmap_mtx_.unlock();
 		if(rtabmapProcessed)
 		{
 			timeRtabmap = timer.ticks();
@@ -2685,17 +2679,20 @@ void CoreWrapper::process(
 				// JHUAPL section
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 				{
+					// this is the same as the "data" sent to rtabmap except that it now
+					// contains local occupancy grid information and post-processing
+					// (e.g., decimation) of the sensor data
 					rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
 		
-					if(publishRegisteredDataPub_.getNumSubscribers()) 
-					{
-						int nodeId = rtabmap_.getMemory()->getLastWorkingSignature()->id();
-						int lastNodeId = rtabmap_.getMemory()->getLastSignatureId();
+					// if(publishRegisteredDataPub_.getNumSubscribers()) 
+					// {
+					// 	int nodeId = rtabmap_.getMemory()->getLastWorkingSignature()->id();
+					// 	int lastNodeId = rtabmap_.getMemory()->getLastSignatureId();
 
-						rtabmap::Transform map2NodePose = mapToOdom_*odom;
+					// 	rtabmap::Transform map2NodePose = mapToOdom_*odom;
 						
-						publishRegisteredData(nodeId, lastNodeId, sd, data.stamp(), map2NodePose);
-					}
+					// 	publishRegisteredData(nodeId, lastNodeId, sd, data.stamp(), map2NodePose);
+					// }
 
 					// publish the newest semantic mask added to map 
 					mapsManager_.publishSemanticMask(sd);
@@ -2797,11 +2794,11 @@ void CoreWrapper::process(
 					filteredPoses = nearestPoses;
 				}
 
-				boost::mutex::scoped_lock lock(mmu_data_mtx_);
+				mmu_data_mtx_.lock();
 				filteredPoses_ = filteredPoses;
 				tmpSignature_ = tmpSignature;
 				stamp_ = stamp;
-				lock.unlock();
+				mmu_data_mtx_.unlock();
 
 				this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
 
@@ -3745,6 +3742,7 @@ bool CoreWrapper::publishMapCallback(rtabmap_ros::PublishMap::Request& req, rtab
 						rtabmap_.getMemory(),
 						false,
 						false,
+						rtabmap_mtx_,
 						signatures);
 			}
 			else
@@ -4577,7 +4575,7 @@ bool CoreWrapper::octomapBinaryCallback(
 		poses = nearestPoses;
 	}
 
-	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true);
+	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true, rtabmap_mtx_);
 
 	const rtabmap::OctoMap * octomap = mapsManager_.getOctomap();
 	bool success = octomap->octree()->size() && octomap_msgs::binaryMapToMsg(*octomap->octree(), res.map);
@@ -4608,7 +4606,7 @@ bool CoreWrapper::octomapFullCallback(
 		poses = nearestPoses;
 	}
 
-	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true);
+	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true, rtabmap_mtx_);
 
 	const rtabmap::OctoMap * octomap = mapsManager_.getOctomap();
 	bool success = octomap->octree()->size() && octomap_msgs::fullMapToMsg(*octomap->octree(), res.map);
@@ -4685,31 +4683,32 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 		std::map<int, rtabmap::Transform> filteredPoses;
 		std::map<int, rtabmap::Signature> tmpSignature;
 		ros::Time stamp;
-		boost::mutex::scoped_lock lock_data(mmu_data_mtx_);
+
+		// grab latest signature pose estimates
+		mmu_data_mtx_.lock();
 		filteredPoses = filteredPoses_;
 		tmpSignature = tmpSignature_;
 		stamp = stamp_;
-		lock_data.unlock();
+		mmu_data_mtx_.unlock();
 
 		if(!filteredPoses.empty())
 		{
-			boost::mutex::scoped_lock lock(rtabmap_mtx_);
 			filteredPoses = mapsManager_.updateMapCaches(
 							filteredPoses,
 							rtabmap_.getMemory(),
 							false,
 							false,
+							rtabmap_mtx_,
 							tmpSignature);
-			lock.unlock();
 		
 			UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
 
 			double total_elapsed = (ros::WallTime::now() - startTime).toSec();
 			NODELET_INFO("		Map manager update in took %f sec", total_elapsed);
 
-			boost::mutex::scoped_lock lock_f(pflag_mtx_);
+			pflag_mtx_.lock();
 			bool publishMapThreadRunning = publishMapThreadRunning_;
-			lock_f.unlock();
+			pflag_mtx_.unlock();
 
 			if(!publishMapThreadRunning)
 			{
@@ -4751,9 +4750,9 @@ void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & fil
 	}
 	catch (boost::thread_interrupted&) {}
 
-	boost::mutex::scoped_lock lock_f(pflag_mtx_);
+	pflag_mtx_.lock();
 	publishMapThreadRunning_ = false;
-	lock_f.unlock();
+	pflag_mtx_.unlock();
 
 }
 

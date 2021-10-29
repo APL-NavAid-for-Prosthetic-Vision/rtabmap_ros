@@ -80,6 +80,7 @@ public:
 			const rtabmap::Memory * memory,
 			bool updateGrid,
 			bool updateOctomap,
+			UMutex& memory_mtx,
 			const std::map<int, rtabmap::Signature> & signatures = std::map<int, rtabmap::Signature>());
 
 	void publishMaps(
@@ -188,9 +189,9 @@ private:
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
 
-	mutable boost::mutex octomap_mtx_;
-	mutable boost::mutex octomap_u_mtx_;
-	mutable boost::mutex grid_mtx_;
+	UMutex octomap_mtx_;
+	UMutex octomap_u_mtx_;
+	UMutex grid_mtx_;
 
 	// JHUAPL section end
 };
