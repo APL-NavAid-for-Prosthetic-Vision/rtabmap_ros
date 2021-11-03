@@ -109,7 +109,7 @@ public:
 	void publishAPLMaps(const ros::Time & stamp,
 						const std::string & mapFrameId);
 
-	void publishSemanticMask(const rtabmap::SensorData & data);
+	void publishSemenaticMaskImage(const rtabmap::SensorData & data);
 
 	bool getIsAlwaysUpdateMap() {return alwaysUpdateMap_; }
 

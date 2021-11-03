@@ -1620,6 +1620,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 		return false;
 	}
 	
+	rtabmap_mtx_.lock();
 	for(int i = 0; i < req.landmarks.size(); ++i)
 	{
 		rtabmap_ros::Landmark landmarkMsg = req.landmarks.at(i);
@@ -1658,6 +1659,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 		}
 		res.added.push_back(true);
 	}
+	rtabmap_mtx_.unlock();
 	return true;
 }
 
@@ -1668,7 +1670,6 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 	// gets all landmarks in the working map
 	rtabmap_mtx_.lock();
 	rtabmap_.getLandmarks(landmarks, req.maxRange, req.lookInDB);
-	rtabmap_mtx_.unlock();
 
 	int index = 0;
 	for(std::map<int, rtabmap::Link>::iterator lIter = landmarks.begin(); lIter != landmarks.end(); ++lIter, ++index)
@@ -1719,12 +1720,14 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 
 		res.landmarks.push_back(landmark);	
 	}
+	rtabmap_mtx_.unlock();
 	
 	return true;
 }
 
 bool CoreWrapper::landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res)
 {
+	rtabmap_mtx_.lock();
 	if(req.removeAll)
 	{
 		std::vector<int> landmarkMapIds;
@@ -1750,6 +1753,7 @@ bool CoreWrapper::landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Reque
 			rtabmap_.removeLandmarks(req.landmarkMapIds, res.landmarksRemoved);
 		}
 	}
+	rtabmap_mtx_.unlock();
 	return true;
 }
 
@@ -2677,6 +2681,8 @@ void CoreWrapper::process(
 			else
 			{
 				// JHUAPL section
+
+				// subscribing to this slows down the registration rate.
 				if(rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 				{
 					// this is the same as the "data" sent to rtabmap except that it now
@@ -2695,14 +2701,22 @@ void CoreWrapper::process(
 					// }
 
 					// publish the newest semantic mask added to map 
-					mapsManager_.publishSemanticMask(sd);
+					mapsManager_.publishSemenaticMaskImage(sd);
 
 					// publish visual and depth image 
 					publishVisualDepthImages(sd);
 				}
 				else 
 				{
-					/// TODO: support for when in depth mode
+					// RGBD mode 
+
+					// this is the same as the "data" sent to rtabmap except that it now
+					// contains local occupancy grid information and post-processing
+					// (e.g., decimation) of the sensor data
+					rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
+
+					// publish visual and depth image 
+					publishVisualDepthImages(sd);
 				}
 
 				// JHUAPL section end
@@ -3618,6 +3632,10 @@ bool CoreWrapper::getProbMapCallback(nav_msgs::GetMap::Request  &req, nav_msgs::
 	return false;
 }
 
+///
+/// TODO: need to evaluate use of rtabmap_mtx_ in callback below if using this callback;
+///       (hasn't been fully evaluated at present since we aren't using this callback)
+///
 bool CoreWrapper::publishMapCallback(rtabmap_ros::PublishMap::Request& req, rtabmap_ros::PublishMap::Response& res)
 {
 	NODELET_INFO("rtabmap: Publishing map...");
@@ -3630,6 +3648,7 @@ bool CoreWrapper::publishMapCallback(rtabmap_ros::PublishMap::Request& req, rtab
 		std::multimap<int, rtabmap::Link> constraints;
 		std::map<int, Signature > signatures;
 
+		rtabmap_mtx_.lock();
 		rtabmap_.getGraph(
 				poses,
 				constraints,
@@ -3640,6 +3659,7 @@ bool CoreWrapper::publishMapCallback(rtabmap_ros::PublishMap::Request& req, rtab
 				!req.graphOnly,
 				!req.graphOnly,
 				!req.graphOnly);
+		rtabmap_mtx_.unlock();
 
 		ros::Time now = ros::Time::now();
 		if(mapDataPub_.getNumSubscribers())
@@ -4551,6 +4571,11 @@ void CoreWrapper::publishGlobalPath(const ros::Time & stamp)
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
+
+///
+/// TODO: need to evaluate use of rtabmap_mtx_ in callbacks below if using these callbacks;
+///       (hasn't been fully evaluated at present since we aren't using these callbacks)
+///
 bool CoreWrapper::octomapBinaryCallback(
 		octomap_msgs::GetOctomap::Request  &req,
 		octomap_msgs::GetOctomap::Response &res)
@@ -4559,6 +4584,7 @@ bool CoreWrapper::octomapBinaryCallback(
 	res.map.header.frame_id = mapFrameId_;
 	res.map.header.stamp = ros::Time::now();
 
+	rtabmap_mtx_.lock();
 	std::map<int, Transform> poses = rtabmap_.getLocalOptimizedPoses();
 	if(maxMappingNodes_ > 0 && poses.size()>1)
 	{
@@ -4574,7 +4600,7 @@ bool CoreWrapper::octomapBinaryCallback(
 		}
 		poses = nearestPoses;
 	}
-
+	rtabmap_mtx_.unlock();
 	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true, rtabmap_mtx_);
 
 	const rtabmap::OctoMap * octomap = mapsManager_.getOctomap();
@@ -4590,6 +4616,7 @@ bool CoreWrapper::octomapFullCallback(
 	res.map.header.frame_id = mapFrameId_;
 	res.map.header.stamp = ros::Time::now();
 
+	rtabmap_mtx_.lock();
 	std::map<int, Transform> poses = rtabmap_.getLocalOptimizedPoses();
 	if(maxMappingNodes_ > 0 && poses.size()>1)
 	{
@@ -4605,7 +4632,7 @@ bool CoreWrapper::octomapFullCallback(
 		}
 		poses = nearestPoses;
 	}
-
+	rtabmap_mtx_.unlock();
 	poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true, rtabmap_mtx_);
 
 	const rtabmap::OctoMap * octomap = mapsManager_.getOctomap();

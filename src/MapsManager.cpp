@@ -640,7 +640,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		bool updateGrid,
 		bool updateOctomap,
 		UMutex& memory_mtx,
-		const std::map<int, rtabmap::Signature> & signatures)
+		const std::map<int, rtabmap::Signature> & signaturesIn)
 {
 	bool updateGridCache = updateGrid || updateOctomap;
 	if(!updateGrid && !updateOctomap)
@@ -686,7 +686,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 
 	UDEBUG("Updating map caches...");
 
-	if(!memory && signatures.size() == 0)
+	if(!memory && signaturesIn.size() == 0)
 	{
 		ROS_ERROR("Memory and signatures should not be both null!?");
 		return std::map<int, rtabmap::Transform>();
@@ -724,11 +724,38 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			filteredPoses = poses;
 		}
 		
-		/// JHUAPL modifucation:  filteredPoses is receiving the latest added sensor data and occupancy
+		/// JHUAPL modification:  filteredPoses is receiving the latest added sensor data and occupancy
 		// if(!alwaysUpdateMap_)
 		// {
 		// 	filteredPoses.erase(0);
 		// }
+
+
+		bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
+
+		// JHUAPL section start
+		// Copy all the needed signature data up-front so that we only have to lock one time;
+		// the locks for this same data in the code further below should then never be reached/triggered
+		std::map<int, rtabmap::Signature> signatures = signaturesIn;
+		memory_mtx.lock();
+		for(std::map<int, rtabmap::Transform>::iterator iter=filteredPoses.begin(); iter!=filteredPoses.end(); ++iter)
+		{
+			if(!iter->second.isNull())
+			{
+				if(updateGridCache && (iter->first == 0 || !uContains(gridAPLMaps_, iter->first)))
+				{
+					std::map<int, rtabmap::Signature>::const_iterator findIter = signatures.find(iter->first);
+					if(findIter == signatures.end())
+					{
+						rtabmap::SensorData tmpData = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+						signatures.insert(std::make_pair(iter->first, Signature(iter->first, -1, 0, tmpData.stamp(), "", Transform(), Transform(), tmpData)));
+					}
+				
+				}
+			}
+		}
+		memory_mtx.unlock();
+		// JHUAPL section end
 
 		bool longUpdate = false;
 		UTimer longUpdateTimer;
@@ -763,7 +790,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 #endif
 		}
 		
-		bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
+		// JHUAPL moved this to up above
+		//bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
 
 		for(std::map<int, rtabmap::Transform>::iterator iter=filteredPoses.begin(); iter!=filteredPoses.end(); ++iter)
 		{
@@ -773,7 +801,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				if(updateGridCache && semanticSegmentationEnable_ && (iter->first == 0 || !uContains(gridAPLMaps_, iter->first)))
 				{
 					UDEBUG("Data required for %d", iter->first);
-					memory_mtx.lock();
+					// the argument signature is a local copy, and does not need to be lock for
 					std::map<int, rtabmap::Signature>::const_iterator findIter = signatures.find(iter->first);
 					if(findIter != signatures.end())
 					{
@@ -782,10 +810,11 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 					else if(memory)
 					{
+						memory_mtx.lock();
 						data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+						memory_mtx.unlock();
 					}
-					memory_mtx.unlock();
-
+					
 					UDEBUG("Adding grid map %d to cache...", iter->first);
 					cv::Point3f viewPoint;
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
@@ -873,7 +902,9 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 					else if(memory)
 					{
+						memory_mtx.lock();
 						data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+						memory_mtx.unlock();
 					}
 
 					UDEBUG("Adding grid map %d to cache...", iter->first);
@@ -2188,7 +2219,7 @@ void MapsManager::publishAPLMaps(
 	}
 }
 
-void MapsManager::publishSemanticMask(const rtabmap::SensorData & data)
+void MapsManager::publishSemenaticMaskImage(const rtabmap::SensorData & data)
 {
 	if(semanticMaskPub_.getNumSubscribers())
 	{
