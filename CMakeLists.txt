@@ -397,9 +397,9 @@ add_executable(rtabmap_map_optimizer ${RTABMAP_ROS_PATH}/src/MapOptimizerNode.cp
 target_link_libraries(rtabmap_map_optimizer rtabmap_ros)
 set_target_properties(rtabmap_map_optimizer PROPERTIES OUTPUT_NAME "map_optimizer")
 
-add_executable(rtabmap_map_assembler ${RTABMAP_ROS_PATH}/src/MapAssemblerNode.cpp)
-target_link_libraries(rtabmap_map_assembler rtabmap_ros)
-set_target_properties(rtabmap_map_assembler PROPERTIES OUTPUT_NAME "map_assembler")
+# add_executable(rtabmap_map_assembler ${RTABMAP_ROS_PATH}/src/MapAssemblerNode.cpp)
+# target_link_libraries(rtabmap_map_assembler rtabmap_ros)
+# set_target_properties(rtabmap_map_assembler PROPERTIES OUTPUT_NAME "map_assembler")
 
 add_executable(rtabmap_imu_to_tf ${RTABMAP_ROS_PATH}/src/ImuToTFNode.cpp)
 target_link_libraries(rtabmap_imu_to_tf ${Libraries})
@@ -627,7 +627,7 @@ install(TARGETS
    rtabmap_icp_odometry
    rtabmap_rgbdicp_odometry 
    rtabmap_stereo_odometry
-   rtabmap_map_assembler
+   # rtabmap_map_assembler
    rtabmap_map_optimizer
    rtabmap_data_player
    rtabmap_odom_msg_to_tf

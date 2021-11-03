@@ -453,15 +453,15 @@ private:
 
 	boost::thread* mapManagerUpdateThread_;
 	bool mapManagerUpdateThreadRunning_;
-	mutable boost::mutex mmu_data_mtx_;
-	mutable boost::mutex rtabmap_mtx_;
+	UMutex mmu_data_mtx_;
+	UMutex rtabmap_mtx_;
 
 	std::map<int, rtabmap::Transform> filteredPoses_;
 	std::map<int, rtabmap::Signature> tmpSignature_;
 
 	ros::Time stamp_;
 	bool publishMapThreadRunning_;
-	mutable boost::mutex pflag_mtx_;
+	UMutex pflag_mtx_;
 	
 	rtabmap::Transform mapToOdomPrev_;
 

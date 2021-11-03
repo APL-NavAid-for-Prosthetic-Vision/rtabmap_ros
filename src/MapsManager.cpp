@@ -453,6 +453,8 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
+	octomap_mtx_.lock();
+
 	if(semanticOctomap_)
 	{
 		delete semanticOctomap_;
@@ -508,6 +510,7 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 	{
 		octomap_ = new OctoMap(parameters_);
 	}
+	octomap_mtx_.unlock();
 #endif
 #endif
 }
@@ -562,7 +565,7 @@ void MapsManager::set2DMap(
 
 void MapsManager::clear()
 {
-	boost::mutex::scoped_lock lock_g(grid_mtx_);
+	grid_mtx_.lock();
 	gridAPLMaps_.clear();
 	gridMaps_.clear();
 	gridMapsViewpoints_.clear();
@@ -575,10 +578,10 @@ void MapsManager::clear()
 	groundClouds_.clear();
 	obstacleClouds_.clear();
 	occupancyGrid_->clear();
-	lock_g.unlock();
+	grid_mtx_.unlock();
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-	boost::mutex::scoped_lock lock(octomap_mtx_);
+	octomap_mtx_.lock();
 	if(semanticOctomap_)
 	{
 		semanticOctomap_->clear();
@@ -587,7 +590,7 @@ void MapsManager::clear()
 	{
 		octomap_->clear();
 	}
-	lock.unlock();
+	octomap_mtx_.unlock();
 #endif
 #endif
 	for(std::map<void*, bool>::iterator iter=latched_.begin(); iter!=latched_.end(); ++iter)
@@ -636,7 +639,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		const rtabmap::Memory * memory,
 		bool updateGrid,
 		bool updateOctomap,
-		const std::map<int, rtabmap::Signature> & signatures)
+		UMutex& memory_mtx,
+		const std::map<int, rtabmap::Signature> & signaturesIn)
 {
 	bool updateGridCache = updateGrid || updateOctomap;
 	if(!updateGrid && !updateOctomap)
@@ -675,14 +679,14 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 	updateOctomap = false;
 #endif
 
-	boost::mutex::scoped_lock lock_u(octomap_u_mtx_);
+	octomap_u_mtx_.lock();
 	gridUpdated_ = updateGrid;
 	octomapUpdated_ = updateOctomap;
-	lock_u.unlock();
+	octomap_u_mtx_.unlock();
 
 	UDEBUG("Updating map caches...");
 
-	if(!memory && signatures.size() == 0)
+	if(!memory && signaturesIn.size() == 0)
 	{
 		ROS_ERROR("Memory and signatures should not be both null!?");
 		return std::map<int, rtabmap::Transform>();
@@ -720,14 +724,43 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			filteredPoses = poses;
 		}
 		
-		/// JHUAPL modifucation:  filteredPoses is receiving the latest added sensor data and occupancy
+		/// JHUAPL modification:  filteredPoses is receiving the latest added sensor data and occupancy
 		// if(!alwaysUpdateMap_)
 		// {
 		// 	filteredPoses.erase(0);
 		// }
 
+
+		bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
+
+		// JHUAPL section start
+		// Copy all the needed signature data up-front so that we only have to lock one time;
+		// the locks for this same data in the code further below should then never be reached/triggered
+		std::map<int, rtabmap::Signature> signatures = signaturesIn;
+		memory_mtx.lock();
+		for(std::map<int, rtabmap::Transform>::iterator iter=filteredPoses.begin(); iter!=filteredPoses.end(); ++iter)
+		{
+			if(!iter->second.isNull())
+			{
+				if(updateGridCache && (iter->first == 0 || !uContains(gridAPLMaps_, iter->first)))
+				{
+					std::map<int, rtabmap::Signature>::const_iterator findIter = signatures.find(iter->first);
+					if(findIter == signatures.end())
+					{
+						rtabmap::SensorData tmpData = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+						signatures.insert(std::make_pair(iter->first, Signature(iter->first, -1, 0, tmpData.stamp(), "", Transform(), Transform(), tmpData)));
+					}
+				
+				}
+			}
+		}
+		memory_mtx.unlock();
+		// JHUAPL section end
+
 		bool longUpdate = false;
 		UTimer longUpdateTimer;
+		grid_mtx_.lock();
+		octomap_mtx_.lock();
 		if(filteredPoses.size() > 20)
 		{
 			if(updateGridCache && !semanticSegmentationEnable_ && gridMaps_.size() < 5)
@@ -737,7 +770,6 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			}
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-			boost::mutex::scoped_lock lock_m(octomap_mtx_);
 			if(semanticSegmentationEnable_)
 			{
 				if(updateOctomap && semanticOctomap_ && semanticOctomap_->addedNodes().size() < 5)
@@ -754,22 +786,22 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					longUpdate = true;
 				}
 			}
-			lock_m.unlock();
 #endif
 #endif
 		}
 		
-		bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
+		// JHUAPL moved this to up above
+		//bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
 
 		for(std::map<int, rtabmap::Transform>::iterator iter=filteredPoses.begin(); iter!=filteredPoses.end(); ++iter)
 		{
 			if(!iter->second.isNull())
 			{
 				rtabmap::SensorData data;
-				boost::mutex::scoped_lock lock_g(grid_mtx_);
 				if(updateGridCache && semanticSegmentationEnable_ && (iter->first == 0 || !uContains(gridAPLMaps_, iter->first)))
 				{
 					UDEBUG("Data required for %d", iter->first);
+					// the argument signature is a local copy, and does not need to be lock for
 					std::map<int, rtabmap::Signature>::const_iterator findIter = signatures.find(iter->first);
 					if(findIter != signatures.end())
 					{
@@ -778,9 +810,11 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 					else if(memory)
 					{
+						memory_mtx.lock();
 						data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+						memory_mtx.unlock();
 					}
-
+					
 					UDEBUG("Adding grid map %d to cache...", iter->first);
 					cv::Point3f viewPoint;
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
@@ -811,7 +845,9 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					{
 						// if we are here, it is because we loaded a database with old nodes not having occupancy grid set
 						// try reload again
+						memory_mtx.lock();
 						data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth(), !occupancyGrid_->isGridFromDepth(), false, false);
+						memory_mtx.unlock();
 					}
 					data.uncompressData(
 							occupancyGrid_->isGridFromDepth() && generateGrid?&rgb:0,
@@ -866,7 +902,9 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 					else if(memory)
 					{
+						memory_mtx.lock();
 						data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+						memory_mtx.unlock();
 					}
 
 					UDEBUG("Adding grid map %d to cache...", iter->first);
@@ -985,16 +1023,13 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 						}
 					}
 				}
-				lock_g.unlock();
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-				boost::mutex::scoped_lock lock(octomap_mtx_);
 				if(updateOctomap && semanticSegmentationEnable_ &&
 					(iter->first == 0 || 
 						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
 				{
-					lock_g.lock();
 					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<unsigned int, cv::Mat> > >::iterator mter = gridAPLMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
 					if(mter != gridAPLMaps_.end() && pter != gridMapsViewpoints_.end())
@@ -1009,13 +1044,11 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 							ROS_WARN("Node %d: Cannot update octomap occupancy grids were not added to octomap cache! ", iter->first);
 						}
 					}
-					lock_g.unlock();
 				}
 				else if(updateOctomap && !semanticSegmentationEnable_ &&
 							(iter->first == 0 ||
 						  		octomap_->addedNodes().find(iter->first) == octomap_->addedNodes().end()))
 				{
-					lock_g.lock();
 					std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator mter = gridMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
 					if(mter != gridMaps_.end() && pter!=gridMapsViewpoints_.end())
@@ -1034,9 +1067,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 									iter->first);
 						}
 					}
-					lock_g.unlock();
 				}
-				lock.unlock();
 #endif
 #endif
 			}
@@ -1048,15 +1079,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 
 		if(updateGrid && !semanticSegmentationEnable_)
 		{
-			boost::mutex::scoped_lock lock_g(grid_mtx_);
 			gridUpdated_ = occupancyGrid_->update(filteredPoses);
-			lock_g.unlock();
 		}
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-		boost::mutex::scoped_lock lock(octomap_mtx_);
-		boost::mutex::scoped_lock lock_u(octomap_u_mtx_);
+		octomap_u_mtx_.lock();
 		if(updateOctomap && semanticSegmentationEnable_)
 		{
 			UTimer time;
@@ -1069,14 +1097,14 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			octomapUpdated_ = octomap_->update(filteredPoses);
 			ROS_INFO("Octomap update time = %fs", time.ticks());
 		}
-		lock_u.unlock();
-		lock.unlock();
+		octomap_u_mtx_.unlock();
 #endif
 #endif
+		octomap_mtx_.unlock();
+
 
 		if(!semanticSegmentationEnable_)
 		{
-			boost::mutex::scoped_lock lock_g(grid_mtx_);
 			for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=gridMaps_.begin();
 				iter!=gridMaps_.end();)
 			{	
@@ -1090,7 +1118,6 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					++iter;
 				}
 			}
-			lock_g.unlock();
 
 			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >::iterator iter=groundClouds_.begin();
 				iter!=groundClouds_.end();)
@@ -1121,7 +1148,6 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		else
 		{
 			// In Semantic Segmentation Mode
-			boost::mutex::scoped_lock lock_g(grid_mtx_);
 			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<unsigned int, cv::Mat> > >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
 			{
 				if(!uContains(poses, iter->first))
@@ -1135,6 +1161,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				}
 			}
 		}
+		grid_mtx_.unlock();
 		
 		if(longUpdate)
 		{
@@ -1179,6 +1206,7 @@ void MapsManager::publishMaps(
 {
 	UDEBUG("Publishing maps...");
 
+	grid_mtx_.lock();
 	// publish maps
 	if(cloudMapPub_.getNumSubscribers() ||
 	   scanMapPub_.getNumSubscribers() ||
@@ -1216,7 +1244,7 @@ void MapsManager::publishMaps(
 				   cloudObstaclesPub_.getNumSubscribers();
 		bool graphGroundChanged = updateGround;
 		bool graphObstacleChanged = updateObstacles;
-		boost::mutex::scoped_lock lock_g(grid_mtx_);
+
 		for(std::map<int, Transform>::const_iterator iter=poses.lower_bound(0); iter!=poses.end(); ++iter)
 		{
 			std::map<int, Transform>::const_iterator jter;
@@ -1465,7 +1493,6 @@ void MapsManager::publishMaps(
 				assembledObstacles_ = util3d::voxelize(assembledObstacles_, occupancyGrid_->getCellSize());
 			}
 		}
-		lock_g.unlock();
 
 		ROS_INFO("Assembled %d obstacle and %d ground clouds (%d points, %fs)",
 				countObstacles, countGrounds, (int)(assembledGround_->size() + assembledObstacles_->size()), time.ticks());
@@ -1482,9 +1509,7 @@ void MapsManager::publishMaps(
 			if(cloudGroundPub_.getNumSubscribers())
 			{
 				sensor_msgs::PointCloud2::Ptr cloudMsg(new sensor_msgs::PointCloud2);
-				boost::mutex::scoped_lock lock_g(grid_mtx_);
 				pcl::toROSMsg(*assembledGround_, *cloudMsg);
-				lock_g.unlock();
 				cloudMsg->header.stamp = stamp;
 				cloudMsg->header.frame_id = mapFrameId;
 				cloudGroundPub_.publish(cloudMsg);
@@ -1493,9 +1518,7 @@ void MapsManager::publishMaps(
 			if(cloudObstaclesPub_.getNumSubscribers())
 			{
 				sensor_msgs::PointCloud2::Ptr cloudMsg(new sensor_msgs::PointCloud2);
-				boost::mutex::scoped_lock lock_g(grid_mtx_);
 				pcl::toROSMsg(*assembledObstacles_, *cloudMsg);
-				lock_g.unlock();
 				cloudMsg->header.stamp = stamp;
 				cloudMsg->header.frame_id = mapFrameId;
 				cloudObstaclesPub_.publish(cloudMsg);
@@ -1503,11 +1526,9 @@ void MapsManager::publishMaps(
 			}
 			if(cloudMapPub_.getNumSubscribers() || scanMapPub_.getNumSubscribers())
 			{
-				boost::mutex::scoped_lock lock_g(grid_mtx_);
 				pcl::PointCloud<pcl::PointXYZRGB> cloud = *assembledObstacles_ + *assembledGround_;
 				sensor_msgs::PointCloud2::Ptr cloudMsg(new sensor_msgs::PointCloud2);
 				pcl::toROSMsg(cloud, *cloudMsg);
-				lock_g.unlock();
 				cloudMsg->header.stamp = stamp;
 				cloudMsg->header.frame_id = mapFrameId;
 
@@ -1526,7 +1547,6 @@ void MapsManager::publishMaps(
 	}
 	else if(mapCacheCleanup_)
 	{
-		boost::mutex::scoped_lock lock_g(grid_mtx_);
 		assembledGround_->clear();
 		assembledObstacles_->clear();
 		assembledGroundPoses_.clear();
@@ -1535,7 +1555,6 @@ void MapsManager::publishMaps(
 		assembledObstacleIndex_.release();
 		groundClouds_.clear();
 		obstacleClouds_.clear();
-		lock_g.unlock();
 	}
 	if(cloudMapPub_.getNumSubscribers() == 0)
 	{
@@ -1556,10 +1575,14 @@ void MapsManager::publishMaps(
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-	boost::mutex::scoped_lock lock_u(octomap_u_mtx_);
+	octomap_u_mtx_.lock();
 	bool octomapUpdated = octomapUpdated_;
-	lock_u.unlock();
+	octomap_u_mtx_.unlock();
 
+	/// TODO: need to copy all needed octomap_ data under a single lock rather than
+	///        seperate locks to ensure consistency of different parts of the data;
+	///        using multiple locks spread out over time allows octree data to change between locks
+	octomap_mtx_.lock();
 	if( octomapUpdated ||
 		!latching_ ||
 		(octoMapPubBin_.getNumSubscribers() && !latched_.at(&octoMapPubBin_)) ||
@@ -1570,13 +1593,11 @@ void MapsManager::publishMaps(
 		(octoMapGroundCloud_.getNumSubscribers() && !latched_.at(&octoMapGroundCloud_)) ||
 		(octoMapEmptySpace_.getNumSubscribers() && !latched_.at(&octoMapEmptySpace_)) ||
 		(octoMapProj_.getNumSubscribers() && !latched_.at(&octoMapProj_)))
-	{
+	{	
 		if(octoMapPubBin_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			boost::mutex::scoped_lock lock(octomap_mtx_);
 			octomap_msgs::binaryMapToMsg(*octomap_->octree(), msg);
-			lock.unlock();
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			octoMapPubBin_.publish(msg);
@@ -1585,9 +1606,7 @@ void MapsManager::publishMaps(
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			boost::mutex::scoped_lock lock(octomap_mtx_);
 			octomap_msgs::fullMapToMsg(*octomap_->octree(), msg);
-			lock.unlock();
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			octoMapPubFull_.publish(msg);
@@ -1604,9 +1623,7 @@ void MapsManager::publishMaps(
 			pcl::IndicesPtr frontierIndices(new std::vector<int>);
 			pcl::IndicesPtr emptyIndices(new std::vector<int>);
 			pcl::IndicesPtr groundIndices(new std::vector<int>);
-			boost::mutex::scoped_lock lock(octomap_mtx_);
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap_->createCloud(octomapTreeDepth_, obstacleIndices.get(), emptyIndices.get(), groundIndices.get(), true, frontierIndices.get());
-			lock.unlock();
 
 			if(octoMapCloud_.getNumSubscribers())
 			{
@@ -1665,9 +1682,7 @@ void MapsManager::publishMaps(
 		{
 			// create the projection map
 			float xMin=0.0f, yMin=0.0f, gridCellSize = 0.05f;
-			boost::mutex::scoped_lock lock(octomap_mtx_);
 			cv::Mat pixels = octomap_->createProjectionMap(xMin, yMin, gridCellSize, occupancyGrid_->getMinMapSize(), octomapTreeDepth_);
-			lock.unlock();
 
 			if(!pixels.empty())
 			{
@@ -1717,9 +1732,7 @@ void MapsManager::publishMaps(
 		octoMapEmptySpace_.getNumSubscribers() == 0 &&
 		octoMapProj_.getNumSubscribers() == 0 )
 	{
-		boost::mutex::scoped_lock lock(octomap_mtx_);
 		octomap_->clear();
-		lock.unlock();
 	}
 
 	if(octoMapPubBin_.getNumSubscribers() == 0)
@@ -1754,12 +1767,13 @@ void MapsManager::publishMaps(
 	{
 		latched_.at(&octoMapProj_) = false;
 	}
+
+	octomap_mtx_.unlock();
 	
 #endif
 #endif
-	boost::mutex::scoped_lock lock_g(grid_mtx_);
+
 	bool gridUpdated = gridUpdated_;
-	lock_g.unlock();
 
 	if( gridUpdated ||
 		!latching_ ||
@@ -1788,9 +1802,7 @@ void MapsManager::publishMaps(
 		{
 			// create the grid map
 			float xMin=0.0f, yMin=0.0f, gridCellSize = 0.05f;
-			boost::mutex::scoped_lock lock_g(grid_mtx_);
 			cv::Mat pixels = this->getGridProbMap(xMin, yMin, gridCellSize);
-			lock_g.unlock();
 
 			if(!pixels.empty())
 			{
@@ -1831,9 +1843,7 @@ void MapsManager::publishMaps(
 		{
 			// create the grid map
 			float xMin=0.0f, yMin=0.0f, gridCellSize = 0.05f;
-			boost::mutex::scoped_lock lock_g(grid_mtx_);
 			cv::Mat pixels = this->getGridMap(xMin, yMin, gridCellSize);
-			lock_g.unlock();
 
 			if(!pixels.empty())
 			{
@@ -1892,11 +1902,10 @@ void MapsManager::publishMaps(
 
 	if(!this->hasSubscribers() && mapCacheCleanup_)
 	{
-		boost::mutex::scoped_lock lock_g(grid_mtx_);
 		gridMaps_.clear();
-		gridMapsViewpoints_.clear();
-		lock_g.unlock();
+		gridMapsViewpoints_.clear();		
 	}
+	grid_mtx_.unlock();
 }
 
 cv::Mat MapsManager::getGridMap(
@@ -1932,9 +1941,9 @@ void MapsManager::publishAPLMaps(
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-	boost::mutex::scoped_lock lock_u(octomap_u_mtx_);
+	octomap_u_mtx_.lock();
 	bool octomapUpdated = octomapUpdated_;
-	lock_u.unlock();
+	octomap_u_mtx_.unlock();
 
 	if(octomapUpdated || 
 		!latching_ ||
@@ -1947,7 +1956,7 @@ void MapsManager::publishAPLMaps(
 		(octoMapFullDynamicPub_.getNumSubscribers() && !latched_.at(&octoMapFullDynamicPub_)) ||
 		(octoMapCloud_.getNumSubscribers() && !latched_.at(&octoMapCloud_)))
 	{
-		boost::mutex::scoped_lock lock_m(octomap_mtx_);
+		octomap_mtx_.lock();
 		std::map<std::string, int> octreeName2OctreeId = semanticOctomap_->getOctreeName2OctreeId();
 		std::map<int, std::string> octreeId2OctreeName = semanticOctomap_->getOctreeId2OctreeName();	
 		// octoMapFullGroundb_ publishes ground layer
@@ -1991,7 +2000,24 @@ void MapsManager::publishAPLMaps(
 
 			mlOctreesTemp.insert({layerId, newOcTree});
 		}
-		lock_m.unlock();
+
+		RtabmapAPLColorOcTree m_octree(0.05);
+		if(octoMapPubFull_.getNumSubscribers() > 0 || octoMapPubBin_.getNumSubscribers() > 0)
+		{	
+			m_octree.setOccupancyThres(0.5);
+			m_octree.setProbHit(0.7);
+			m_octree.setProbMiss(0.4);
+			m_octree.setClampingThresMin(0.1192);
+			m_octree.setClampingThresMax(0.971);
+			std::string octreeName = "Dynamic_Map";	// map named expected by RTK
+			m_octree.setOctTreeName(octreeName);
+
+			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
+
+			// multiOctreesToMergeOctree uses the actual map, needs to be locked
+			semanticOctomap_->multiOctreesToMergeOctree(&m_octree, multiLevelOctreeName);
+		}
+		octomap_mtx_.unlock();
 
 		auto octreeName2OctreeIdPtr = octreeName2OctreeId.find("ground");
 		UASSERT(octreeName2OctreeIdPtr != octreeName2OctreeId.end());
@@ -2078,7 +2104,10 @@ void MapsManager::publishAPLMaps(
 			sensor_msgs::PointCloud2 msg;
 			std::list<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
 			
-			lock_m.lock();
+			///
+			/// TODO: not ideal to have data in separate locks, data mayb change in between locks.   
+			///
+			octomap_mtx_.lock();
 			for (auto n : octreeName2OctreeId) {
 				pcl::IndicesPtr occupiedIndices(new std::vector<int>);
 				pcl::IndicesPtr emptyIndices(new std::vector<int>);
@@ -2089,8 +2118,8 @@ void MapsManager::publishAPLMaps(
 
 				clouds.push_back(cloud);
 			}
-			lock_m.unlock();
-
+			octomap_mtx_.unlock();
+			
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudOccupiedSpacePtr;
 			cloudOccupiedSpacePtr = util3d::concatenateClouds(clouds);
 			
@@ -2104,23 +2133,6 @@ void MapsManager::publishAPLMaps(
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-
-			RtabmapAPLColorOcTree m_octree(0.05);
-			m_octree.setOccupancyThres(0.5);
-			m_octree.setProbHit(0.7);
-			m_octree.setProbMiss(0.4);
-			m_octree.setClampingThresMin(0.1192);
-			m_octree.setClampingThresMax(0.971);
-			std::string octreeName = "Dynamic_Map";
-			m_octree.setOctTreeName(octreeName);
-
-			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
-
-			// multiOctreesToMergeOctree uses the actual map, needs to be locked
-			lock_m.lock();
-			semanticOctomap_->multiOctreesToMergeOctree(&m_octree, multiLevelOctreeName);
-			lock_m.unlock();
-			
 			octomap_msgs::fullMapToMsg(m_octree, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
@@ -2132,23 +2144,6 @@ void MapsManager::publishAPLMaps(
 		if(octoMapPubBin_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-
-			RtabmapAPLColorOcTree m_octree(0.05);
-			m_octree.setOccupancyThres(0.5);
-			m_octree.setProbHit(0.7);
-			m_octree.setProbMiss(0.4);
-			m_octree.setClampingThresMin(0.1192);
-			m_octree.setClampingThresMax(0.971);
-			std::string octreeName = "Dynamic_Map";
-			m_octree.setOctTreeName(octreeName);
-
-			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
-
-			// multiOctreesToMergeOctree uses the actual map, needs to be locked
-			lock_m.lock();
-			semanticOctomap_->multiOctreesToMergeOctree(&m_octree, multiLevelOctreeName);
-			lock_m.unlock();
-
 			octomap_msgs::binaryMapToMsg(m_octree, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
@@ -2174,9 +2169,9 @@ void MapsManager::publishAPLMaps(
 		octoMapFullMovablePub_.getNumSubscribers() == 0 &&
 		octoMapFullDynamicPub_.getNumSubscribers() == 0 )
 	{
-		boost::mutex::scoped_lock lock_m(octomap_mtx_);
+		octomap_mtx_.lock();
 		semanticOctomap_->clear();
-		lock_m.unlock();
+		octomap_mtx_.unlock();
 	}
 
 	if(octoMapPubBin_.getNumSubscribers() == 0)
@@ -2217,14 +2212,14 @@ void MapsManager::publishAPLMaps(
 
 	if(!this->hasSubscribers() && mapCacheCleanup_)
 	{
-		boost::mutex::scoped_lock lock_g(grid_mtx_);
+		grid_mtx_.lock();
 		gridAPLMaps_.clear();
 		gridMapsViewpoints_.clear();
-		lock_g.unlock();
+		grid_mtx_.unlock();
 	}
 }
 
-void MapsManager::publishSemanticMask(const rtabmap::SensorData & data)
+void MapsManager::publishSemenaticMaskImage(const rtabmap::SensorData & data)
 {
 	if(semanticMaskPub_.getNumSubscribers())
 	{
