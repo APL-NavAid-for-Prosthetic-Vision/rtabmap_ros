@@ -156,6 +156,7 @@
   <arg name="rectifyOnlyFeatures"          default="false"/>   <!-- If ImagesAlreadyRectified is false and this parameter is true, the whole RGB image will not be rectified, only the features.-->
   <arg name="multi_level_cell_size"        default="0.05 0.05 0.05 0.05 0.05"/>   <!-- ['meters'] 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
   <arg name="multi_level_cell_name"        default="ground ceiling static movable dynamic"/>   <!-- Name of octree per layer. -->
+  <arg name="grid_semanticDepthFusionCorrection"   default="false"/>
    
   <!-- These arguments should not be modified directly, see referred topics without "_relay" suffix above -->
   
@@ -473,6 +474,8 @@
       <param name="Grid/MaxObstacleHeight"          type="string"   value="$(arg grid_maxObstacleHeight)"/>
       <param name="Grid/MultiLevelCellSize"         type="string"   value="$(arg multi_level_cell_size)"/>
       <param name="Grid/MultiLevelTreeName"         type="string"   value="$(arg multi_level_cell_name)"/>
+      <param name="Grid/SemanticDepthFusionCorrection"   type="string"   value="$(arg grid_semanticDepthFusionCorrection)"/>
+      
       
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />
