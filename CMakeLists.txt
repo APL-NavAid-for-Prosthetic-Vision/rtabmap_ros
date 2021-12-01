@@ -169,6 +169,7 @@ add_message_files(
    LandmarksQuery.srv
    LandmarksRemove.srv
    LandmarksInsert.srv
+   SemanticDataAssociation.srv
  )
 
 ## Generate added messages and services with any dependencies listed here

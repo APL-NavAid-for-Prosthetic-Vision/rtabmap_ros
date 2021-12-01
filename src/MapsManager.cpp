@@ -2262,7 +2262,6 @@ void MapsManager::publishSemenaticMaskImage(const rtabmap::SensorData & data)
 
 		for(int h = 0; h < semanticMaskImage.rows; ++h) {
 			for(int w = 0; w < semanticMaskImage.cols; ++w) {
-				//unsigned int classId = semanticMaskImage.at<uint8_t>(h, w);
 				std::map<unsigned int, cv::Point3f>::iterator classIDSemanticMaskMapIter = 
 					classIDSemanticMaskMap.find(semanticMask.at<uint8_t>(h, w));
 				if(classIDSemanticMaskMapIter != classIDSemanticMaskMap.end())
@@ -2279,7 +2278,15 @@ void MapsManager::publishSemenaticMaskImage(const rtabmap::SensorData & data)
 		sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", semanticMaskImage).toImageMsg();
 		semanticMaskPub_.publish(msg);
 	}
+}
 
+std::map<unsigned int, std::string> MapsManager::getOccupancyAssociation() 
+{
+	std::map<unsigned int, std::string> occupancyAssociationMap;
+	// data gets written to argument
+	occupancyGrid_->getOccupancyAssociation(&occupancyAssociationMap);
+
+	return std::move(occupancyAssociationMap);
 }
 
 // JHUAPL section end
