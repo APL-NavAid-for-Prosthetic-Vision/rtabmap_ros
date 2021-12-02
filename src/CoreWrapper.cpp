@@ -1628,6 +1628,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 		rtabmap_ros::Landmark landmarkMsg = req.landmarks.at(i);
 		double timeStamp = landmarkMsg.timeStamp;
 		int landmarkId = landmarkMsg.landmarkId;
+		int signatureId = landmarkMsg.nodeId;
 		std::string description = landmarkMsg.description;
 
 		if(timeStamp == 0)
@@ -1654,7 +1655,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 			continue;
 		}		
 
-		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, description, landmarkPose, covariance, odometryPose))
+		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, signatureId, description, landmarkPose, covariance, odometryPose))
 		{
 			ROS_WARN("adding landmark (%d) timestamped (%lf) failed!", landmarkId, timeStamp);
 			res.added.push_back(false);
@@ -1709,8 +1710,12 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 				return false;
 			}
 		}
+
+		// landmark pose with world coords
 		rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
 
+		transformToGeometryMsg(lIter->second.transform(), landmark.landmarkPose);
+		transformToGeometryMsg(map2NodePose, landmark.odometryPose);
 		transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.landmarkPose_WorldCoords);
 		
 		if(lIter->second.infMatrix().type() == CV_64FC1 && 
