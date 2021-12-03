@@ -59,6 +59,8 @@ class InsertLandmarks:
 
     def format_landmarks_msg_data(self, landmarksDict):
         """
+            convers the landmarks dictonary into list of landmark msgs from rtabmap_ros  
+        return landmarks msg as list of landmark msgs
         """
         landmarks_msg = []
 
@@ -101,13 +103,14 @@ class InsertLandmarks:
 
     def insert_landmarks_client(self):
         """
+            it calls the rtabmap insert landmark serve from client call to insert all the landmarks loaded from a saved file.
         """
         
         reqMsg = LandmarksInsertRequest()
         reqMsg.landmarks = self.landmarks_msg
         # debug print line
-        print(f" size of landmarks:  {len(reqMsg.landmarks)}"  )
-        print(reqMsg)
+        # print(f" size of landmarks:  {len(reqMsg.landmarks)}"  )
+        # print(reqMsg)
         #--- 
 
         try:
@@ -134,10 +137,12 @@ class InsertLandmarks:
 # main function
 if __name__ == '__main__':
     """
+        main executable for insert landmarks ros node.
+        It requires for the target_file_name ros param to be set externally.
     """
     try:
         il = InsertLandmarks()
-        # main execution of the class
+        # main executable for one instance
         il.spinOnce()
     except rospy.ROSInterruptException:
         pass
