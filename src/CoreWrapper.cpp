@@ -833,6 +833,7 @@ void CoreWrapper::onInit()
 	landmarkInsertSrv_ = nh.advertiseService("landmarks_insert", &CoreWrapper::landmarksInsertSrvCallback, this);
 	landmarksQuerySrv_ = nh.advertiseService("landmarks_available", &CoreWrapper::landmarksQuerySrvCallback, this);
 	landmarksRemoveSrv_ = nh.advertiseService("landmarks_remove", &CoreWrapper::landmarksRemoveSrvCallback, this);
+	semanticDataAssociationSrv_ = nh.advertiseService("semantic_data_association_map", &CoreWrapper::semanticDataAssociationSrvCallback, this);
 
 	if(publishVisualImage)
 	{
@@ -1434,6 +1435,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 	covariance_ = cv::Mat();
 }
 
+/// TODO: detemine if to keep this functionality? leaving for now
 void CoreWrapper::publishRegisteredData(const int nodeId, const int lastNodeId, const rtabmap::SensorData & data, const double stamp, const rtabmap::Transform & pose)
 {
 	rtabmap_ros::RegisteredData msg;
@@ -1626,9 +1628,10 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 		rtabmap_ros::Landmark landmarkMsg = req.landmarks.at(i);
 		double timeStamp = landmarkMsg.timeStamp;
 		int landmarkId = landmarkMsg.landmarkId;
+		int signatureId = landmarkMsg.nodeId;
 		std::string description = landmarkMsg.description;
 
-		if(timeStamp == 0)
+		if(timeStamp == 0 && signatureId <= 0)
 		{
 			ROS_WARN("landmark (%d) msg is missing timestamp", landmarkId);
 			res.added.push_back(false);
@@ -1652,7 +1655,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 			continue;
 		}		
 
-		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, description, landmarkPose, covariance, odometryPose))
+		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, signatureId, description, landmarkPose, covariance, odometryPose))
 		{
 			ROS_WARN("adding landmark (%d) timestamped (%lf) failed!", landmarkId, timeStamp);
 			res.added.push_back(false);
@@ -1707,8 +1710,12 @@ bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request
 				return false;
 			}
 		}
+
+		// landmark pose with world coords
 		rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
 
+		transformToGeometryMsg(lIter->second.transform(), landmark.landmarkPose);
+		transformToGeometryMsg(map2NodePose, landmark.odometryPose);
 		transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.landmarkPose_WorldCoords);
 		
 		if(lIter->second.infMatrix().type() == CV_64FC1 && 
@@ -2956,9 +2963,9 @@ void CoreWrapper::process(
 				rtabmap_.getWMSize()+rtabmap_.getSTMSize());
 		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/HasSubscribers/"), mapsManager_.hasSubscribers()?1:0));
 		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeRtabmap/ms"), timeRtabmap*1000.0f));
-		//rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeUpdatingMaps/ms"), timeUpdateMaps*1000.0f));
+		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeUpdatingMaps/ms"), timeUpdateMaps*1000.0f));
 		//rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimePublishing/ms"), timePublishMaps*1000.0f));
-		//rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeTotal/ms"), (timeRtabmap+timeUpdateMaps+timePublishMaps)*1000.0f));
+		rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeTotal/ms"), (timeRtabmap+timeUpdateMaps)*1000.0f));
 	}
 	else if(!rtabmap_.isIDsGenerated())
 	{
@@ -4781,6 +4788,21 @@ void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & fil
 	publishMapThreadRunning_ = false;
 	pflag_mtx_.unlock();
 
+}
+
+bool CoreWrapper::semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAssociation::Request & req, rtabmap_ros::SemanticDataAssociation::Response & res)
+{
+	// map association of object id and occupancy type
+	std::map<unsigned int, std::string> object2occupancyMap = mapsManager_.getOccupancyAssociation();
+	for(auto iter = object2occupancyMap.begin(); iter != object2occupancyMap.end(); ++iter) {
+		int objectId = iter->first;
+		std::string occupancy = iter->second;
+
+		res.occupancyMapkeys.push_back(occupancy); 
+		res.occupancyMapObjectValue.push_back(objectId); 
+	}
+
+	return true;
 }
 
 

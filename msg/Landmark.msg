@@ -1,8 +1,8 @@
 # landmark message 
 #
-#   int id of the landmark (unique identifier)
+#   id [int] of the landmark (unique identifier)
 #   std::string description of the landmark
-#   double timeStamp of the corresponding nodeId {signatureId}
+#   timeStamp [double] of the corresponding nodeId {signatureId}
 #   nodeId is same as signatureId
 #   landmarkPose : pose of landmark in camera frame
 #       c++ type : rtabmap::Transform transform;

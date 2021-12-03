@@ -113,6 +113,8 @@ public:
 
 	bool getIsAlwaysUpdateMap() {return alwaysUpdateMap_; }
 
+	std::map<unsigned int, std::string> getOccupancyAssociation();
+
 	
 	// JHUAPL section end
 
