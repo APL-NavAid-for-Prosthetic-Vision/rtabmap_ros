@@ -1631,7 +1631,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 		int signatureId = landmarkMsg.nodeId;
 		std::string description = landmarkMsg.description;
 
-		if(timeStamp == 0)
+		if(timeStamp == 0 && signatureId <= 0)
 		{
 			ROS_WARN("landmark (%d) msg is missing timestamp", landmarkId);
 			res.added.push_back(false);

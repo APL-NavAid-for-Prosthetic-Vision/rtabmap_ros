@@ -615,6 +615,8 @@ catkin_install_python(PROGRAMS
    ${RTABMAP_ROS_PATH}/scripts/transform_to_tf.py
    ${RTABMAP_ROS_PATH}/scripts/yaml_to_camera_info.py
    scripts/insert_landmarks_test.py
+   scripts/store_landmarks.py
+   scripts/insert_landmarks_saved.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
