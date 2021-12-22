@@ -16,6 +16,12 @@ ground:
   land;ground;soil:
     id: 95
     color: [0, 194, 255]
+  rug;carpet;carpeting:
+    id: 29
+    color: [255, 9, 92]
+  sea: 
+    id: 27
+    color: [9, 7, 230]
 
 ceiling:
   sky:
@@ -68,15 +74,9 @@ static:
   house:
     id: 26
     color: [255, 9, 224]
-  sea: 
-    id: 27
-    color: [9, 7, 230]
   mirror: 
     id: 28
     color: [220, 220, 220]
-  rug;carpet;carpeting:
-    id: 29
-    color: [255, 9, 92]
   field:
     id: 30
     color: [112, 9, 255]

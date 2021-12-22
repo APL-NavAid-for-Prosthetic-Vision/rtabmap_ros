@@ -1,0 +1,13 @@
+#
+#   This services response with the semantic data association occupancyMapkeys
+#
+#   Response: 
+#       - occupancyMapkeys : occupancy type name used in the map, each index matches the index of the occupancyMapObjectValue.
+#       - occupancyMapObjectValue : occupancy id corresponding to the occupancy name, each index matches the index of the occupancyMapkeys.
+
+
+---
+#response
+
+string[] occupancyMapkeys
+uint32[] occupancyMapObjectValue

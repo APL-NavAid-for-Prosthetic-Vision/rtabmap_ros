@@ -20,7 +20,7 @@ from geometry_msgs.msg import Transform
 from geometry_msgs.msg import Vector3
 from geometry_msgs.msg import Quaternion
 
-from rtabmap_ros.msg import RegisteredData
+from rtabmap_ros.msg import RGBDSemanticDetection
 from rtabmap_ros.msg import Landmarks
 from rtabmap_ros.msg import Landmark
 from rtabmap_ros.srv import LandmarksInsert, LandmarksInsertRequest, LandmarksInsertResponse
@@ -39,7 +39,7 @@ class LandmarksTest:
         rospy.loginfo(" targetLandmarksSize: %d ", self.targetLandmarksSize)
 
         # Subscriber
-        rospy.Subscriber("rtabmap/registered_data_WM", RegisteredData, callback=self.landmarkDectectionCallback)
+        rospy.Subscriber("rtabmap/rgbd_semantic_detection_msg", RGBDSemanticDetection, callback=self.landmarkDectectionCallback)
 
 
         # Publisher
@@ -58,23 +58,8 @@ class LandmarksTest:
         rospy.loginfo("  Rtabmap registered data receieved")
 
         if self.targetLandmarksSize > self.counter:
-            # #find landmark pose from labels (base on)
-            # index = 0
-            # for labelKey in msg.objectsMapKeys:
-            #     index += 1 
-            #     if labelKey == self.targetLabelKey:
-            #         break
-
-            # rospy.loginfo(" signature ID %d; label index: %d", msg.signatureId, index)
-            # bridge = CvBridge()
-
-            # cv_data = bridge.imgmsg_to_cv2(msg.semanticOccupancyMapValues[index],  desired_encoding="32FC4")
-            # (rows,cols,channels) = cv_data.shape
-            # # grab the first element of then index label
-            # print("rows= {0}, cols= {1}, channel{2}".format(rows, cols, channels))
-            # position = cv_data[0,0,0:3]
-
-            position = [msg.pose.position.x + 4, msg.pose.position.y + 0.5,  msg.pose.position.y + 0.3]
+            
+            position = [4, 0.5, 0.3]
 
             self.counter = self.counter + 1
 
@@ -83,10 +68,9 @@ class LandmarksTest:
             landmark = Landmark()
             landmark.landmarkId = 31
             landmark.description = "tags example"
-            #timeStamp of the image (type: double)
-            landmark.timeStamp = msg.rgbImage.header.stamp.to_sec()
-            landmark.nodeId = msg.nodeId
-
+            #timeStamp of the image (type: double) : need to use the rgb timestamp
+            landmark.timeStamp = msg.rgb.header.stamp.to_sec()
+            
             transform = Transform()
             transform.translation.x = position[0]
             transform.translation.y = position[1]
@@ -95,7 +79,17 @@ class LandmarksTest:
             transform.rotation.y = 0
             transform.rotation.z = 0
             transform.rotation.w = 1
-            landmark.transform = transform
+            landmark.landmarkPose = transform
+
+            transform = Transform()
+            transform.translation.x = msg.odom.pose.pose.position.x
+            transform.translation.y = msg.odom.pose.pose.position.y
+            transform.translation.z = msg.odom.pose.pose.position.z
+            transform.rotation.x = msg.odom.pose.pose.orientation.x
+            transform.rotation.y = msg.odom.pose.pose.orientation.y
+            transform.rotation.z = msg.odom.pose.pose.orientation.z
+            transform.rotation.w = msg.odom.pose.pose.orientation.w
+            landmark.odometryPose = transform
 
             # It's requires for the landmark to have convariance with diagonal of non-zero
             convariance = np.zeros((6, 6), dtype=np.double)

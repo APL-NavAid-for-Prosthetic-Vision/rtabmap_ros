@@ -91,6 +91,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 #include <rtabmap_ros/LandmarksQuery.h>
 #include <rtabmap_ros/LandmarksRemove.h>
 #include <rtabmap_ros/LandmarksInsert.h>
+#include <rtabmap_ros/SemanticDataAssociation.h>
 
 // system
 #include <string>
@@ -162,6 +163,7 @@ private:
 	bool landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Request & req, rtabmap_ros::LandmarksInsert::Response & res);
 	bool landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request & req, rtabmap_ros::LandmarksQuery::Response & res);
 	bool landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res);
+	bool semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAssociation::Request & req, rtabmap_ros::SemanticDataAssociation::Response & res);
 
 	void publishVisualDepthImages(const rtabmap::SensorData & data);
 
@@ -445,6 +447,7 @@ private:
 	ros::ServiceServer landmarkInsertSrv_;
 	ros::ServiceServer landmarksQuerySrv_;
 	ros::ServiceServer landmarksRemoveSrv_;
+	ros::ServiceServer semanticDataAssociationSrv_;
 
 	bool depthFilters_;
 
