@@ -85,7 +85,6 @@
 
   <!-- added by APL -->
   <build_depend>objectrecognition</build_depend>
-
   <run_depend>objectrecognition</run_depend>
 
 
