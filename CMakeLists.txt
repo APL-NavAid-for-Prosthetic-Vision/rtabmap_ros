@@ -170,6 +170,7 @@ add_message_files(
    LandmarksRemove.srv
    LandmarksInsert.srv
    SemanticDataAssociation.srv
+   SelectedLandmarks.srv
  )
 
 ## Generate added messages and services with any dependencies listed here
