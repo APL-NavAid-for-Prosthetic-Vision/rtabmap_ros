@@ -75,8 +75,8 @@
   <arg name="publish_depth_image"                        default="true"/>
   <arg name="publish_visual_image"                       default="true"/>
   <arg name="map_manager_update_rate"                    default="0.5"/>  <!-- map manager update rate is the thread processing rate. Ex: 2 Hz, use 1/2 = 0.5 -->
-  
-  
+  <arg name="landmark_to_multi_signature_id"             default="false"/>
+
   <!-- JHU APL : end -->
 
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
@@ -502,6 +502,7 @@
       <param name="publish_depth_image"      type="bool"   value="$(arg publish_depth_image)" />
       <param name="publish_visual_image"     type="bool"   value="$(arg publish_visual_image)" />
       <param name="map_manager_update_rate"  type="double" value="$(arg map_manager_update_rate)" />
+      <param name="landmark_to_multi_signature_id"  type="bool" value="$(arg landmark_to_multi_signature_id)" />
       
     </node>
   
