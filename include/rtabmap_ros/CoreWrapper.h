@@ -467,6 +467,7 @@ private:
 	UMutex pflag_mtx_;
 	
 	rtabmap::Transform mapToOdomPrev_;
+	bool LandmarkToMultiSignatureId_;
 
 	//  JHUAPL section end
 };

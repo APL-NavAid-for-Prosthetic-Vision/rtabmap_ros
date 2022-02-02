@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
              cv_bridge roscpp rospy sensor_msgs std_msgs std_srvs nav_msgs geometry_msgs visualization_msgs
              image_transport tf tf_conversions tf2_ros eigen_conversions laser_geometry pcl_conversions 
              pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs
-             genmsg stereo_msgs move_base_msgs image_geometry pluginlib objectrecognition
+             genmsg stereo_msgs move_base_msgs image_geometry pluginlib
 )
 
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /usr/local/rtabmap_apl/lib/cmake/rtabmap_apl)
@@ -30,6 +30,9 @@ find_package(octomap_msgs)
 find_package(apriltag_ros)
 find_package(rviz)
 find_package(find_object_2d)
+
+# apl added
+find_package(objectrecognition)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -170,6 +173,7 @@ add_message_files(
    LandmarksRemove.srv
    LandmarksInsert.srv
    SemanticDataAssociation.srv
+   SelectedLandmarks.srv
  )
 
 ## Generate added messages and services with any dependencies listed here
@@ -208,13 +212,18 @@ IF(find_object_2d_FOUND)
    SET(optional_dependencies ${optional_dependencies} find_object_2d)
 ENDIF(find_object_2d_FOUND)
 
+# APL Added
+IF(objectrecognition_FOUND)
+   SET(optional_dependencies ${optional_dependencies} objectrecognition)
+ENDIF(objectrecognition_FOUND)
+
 catkin_package(
   INCLUDE_DIRS ${RTABMAP_ROS_PATH}/include include
   LIBRARIES rtabmap_ros rtabmap_sync rtabmap_plugins
   CATKIN_DEPENDS cv_bridge roscpp rospy sensor_msgs std_msgs std_srvs nav_msgs geometry_msgs visualization_msgs
                  image_transport tf tf_conversions tf2_ros eigen_conversions laser_geometry pcl_conversions 
                  pcl_ros nodelet dynamic_reconfigure message_filters class_loader rosgraph_msgs pluginlib
-                 stereo_msgs move_base_msgs image_geometry ${optional_dependencies} objectrecognition 
+                 stereo_msgs move_base_msgs image_geometry ${optional_dependencies} 
   DEPENDS rtabmap_apl OpenCV
 )
 
@@ -297,11 +306,11 @@ SET(rtabmap_plugins_lib_src
 
 IF(${cv_bridge_VERSION_MAJOR} GREATER 1 OR ${cv_bridge_VERSION_MINOR} GREATER 10)
    SET(rtabmap_plugins_lib_src 
-   ${rtabmap_plugins_lib_src} 
-   ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_sync.cpp 
-   ${RTABMAP_ROS_PATH}/src/nodelets/stereo_sync.cpp 
-   ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_relay.cpp
-   src/nodelets/rgbd_semantic_detection_sync.cpp)
+      ${rtabmap_plugins_lib_src} 
+      ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_sync.cpp 
+      ${RTABMAP_ROS_PATH}/src/nodelets/stereo_sync.cpp 
+      ${RTABMAP_ROS_PATH}/src/nodelets/rgbd_relay.cpp
+   )
 ELSE()
    ADD_DEFINITIONS("-DCV_BRIDGE_HYDRO")
 ENDIF()   
@@ -332,15 +341,36 @@ SET(Libraries
 ADD_DEFINITIONS("-DWITH_APRILTAG_ROS")
 ENDIF(apriltag_ros_FOUND)
 
+# ---- APL Added
 if(yaml-cpp_FOUND)
    include_directories(
       ${YAML_CPP_INCLUDE_DIR}
    )
    set(Libraries
-      ${YAML_CPP_LIBRARIES}
       ${Libraries}
+      ${YAML_CPP_LIBRARIES}
    )
 endif(yaml-cpp_FOUND)
+
+
+if(objectrecognition_FOUND)
+   MESSAGE(STATUS "WITH objectrecognition")
+   include_directories(
+      ${objectrecognition_INCLUDE_DIRS}
+   )
+   set(Libraries
+      ${Libraries}
+      ${objectrecognition_LIBRARIES}
+   )
+
+   SET(rtabmap_plugins_lib_src 
+      ${rtabmap_plugins_lib_src} 
+      src/nodelets/rgbd_semantic_detection_sync.cpp
+   )
+endif(objectrecognition_FOUND)
+
+# ---- 
+
 
 ############################
 ## Declare a cpp library
