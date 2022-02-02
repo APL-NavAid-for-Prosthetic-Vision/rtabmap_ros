@@ -654,6 +654,9 @@ void CoreWrapper::onInit()
 
 	double mapManagerUpdateRate = 0.5;
 	pnh.param("map_manager_update_rate", mapManagerUpdateRate, mapManagerUpdateRate);
+
+	LandmarkToMultiSignatureId_ = false;
+	pnh.param("landmark_to_multi_signature_id", LandmarkToMultiSignatureId_, LandmarkToMultiSignatureId_);
 	
 	// JHUAPL section end
 
@@ -1655,7 +1658,7 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 			continue;
 		}		
 
-		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, signatureId, description, landmarkPose, covariance, odometryPose))
+		if(!rtabmap_.insertLandmark(landmarkId, timeStamp, signatureId, description, landmarkPose, covariance, odometryPose, LandmarkToMultiSignatureId_))
 		{
 			ROS_WARN("adding landmark (%d) timestamped (%lf) failed!", landmarkId, timeStamp);
 			res.added.push_back(false);
@@ -1669,63 +1672,68 @@ bool CoreWrapper::landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Reque
 
 bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request & req, rtabmap_ros::LandmarksQuery::Response & res)
 {
-	std::map<int, rtabmap::Link> landmarks;
+	std::map<int, std::vector<rtabmap::Link> > landmarks;
 	// gets all landmarks in the working map
 	rtabmap_mtx_.lock();
 	rtabmap_.getLandmarks(landmarks, req.maxRange, req.lookInDB);
 
 	int index = 0;
-	for(std::map<int, rtabmap::Link>::iterator lIter = landmarks.begin(); lIter != landmarks.end(); ++lIter, ++index)
+	for(std::map<int,  std::vector<rtabmap::Link> >::iterator lIter = landmarks.begin(); lIter != landmarks.end(); ++lIter, ++index)
 	{
-		rtabmap_ros::Landmark landmark;
-		// the landmarks are negative in rtabmap, correcting to actual landmark id
-		landmark.landmarkId = -1*lIter->first;
-		landmark.description = lIter->second.getDescription();
-		landmark.landmarkMapId = lIter->first;
-		landmark.nodeId = lIter->second.from();
-
-		// compute the pose of landmark with respect to map reference frame
-		// assuming the landmark's node is in the optimized map.
-		rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.nodeId);
-		//check if the node id pose was found; if not found, it would be all zeros
-		if(map2NodePose.isNull())
+		// the "landmarks" map structure holds a list of link objects, corresponding to every signature id linkting to this (instance) landmark
+		for(auto setLinkIter = lIter->second.begin(); setLinkIter != lIter->second.end(); ++setLinkIter)
 		{
-			// node with landmarks should always be in the optimized map ... 
-			ROS_WARN("signature id POSE not found!!! in optimized node map.");
-			if(rtabmap_.getMemory()) 
-			{
-				// nodeid is the same as the signatureId
-				const rtabmap::Signature * s = rtabmap_.getMemory()->getSignature(landmark.nodeId);
-				map2NodePose = s->getPose();
+			rtabmap_ros::Landmark landmark;
+			// the landmarks are negative in rtabmap, correcting to actual landmark id
+			landmark.landmarkId = -1*lIter->first;
+			landmark.landmarkMapId = lIter->first;
 
-				if(map2NodePose.isNull())
+			landmark.description = setLinkIter->getDescription();
+			landmark.nodeId = setLinkIter->from();
+
+			// compute the pose of landmark with respect to map reference frame
+			// assuming the landmark's node is in the optimized map.
+			rtabmap::Transform map2NodePose = rtabmap_.getPose(landmark.nodeId);
+			//check if the node id pose was found; if not found, it would be all zeros
+			if(map2NodePose.isNull())
+			{
+				// node with landmarks should always be in the optimized map ... 
+				ROS_WARN("signature id POSE not found!!! in optimized node map.");
+				if(rtabmap_.getMemory()) 
 				{
-					ROS_ERROR("signature id POSE not found in memory!!! THIS SHOULD NOT HAPPEN");
+					// nodeid is the same as the signatureId
+					const rtabmap::Signature * s = rtabmap_.getMemory()->getSignature(landmark.nodeId);
+					map2NodePose = s->getPose();
+
+					if(map2NodePose.isNull())
+					{
+						ROS_ERROR("signature id POSE not found in memory!!! THIS SHOULD NOT HAPPEN");
+						return false;
+					}
+				}
+				else
+				{
+					ROS_ERROR("signature id POSE not found!!! THIS SHOULD NOT HAPPEN");
 					return false;
 				}
 			}
-			else
+
+			// landmark pose with world coords
+			rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * setLinkIter->transform();
+
+			transformToGeometryMsg(setLinkIter->transform(), landmark.landmarkPose);
+			transformToGeometryMsg(map2NodePose, landmark.odometryPose);
+			transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.landmarkPose_WorldCoords);
+			
+			if(setLinkIter->infMatrix().type() == CV_64FC1 && 
+				setLinkIter->infMatrix().cols == 6 && 
+				setLinkIter->infMatrix().rows == 6)
 			{
-				ROS_ERROR("signature id POSE not found!!! THIS SHOULD NOT HAPPEN");
-				return false;
+				memcpy(landmark.covariance.data(), setLinkIter->infMatrix().data, 36*sizeof(double));
 			}
-		}
 
-		// landmark pose with world coords
-		rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
-
-		transformToGeometryMsg(lIter->second.transform(), landmark.landmarkPose);
-		transformToGeometryMsg(map2NodePose, landmark.odometryPose);
-		transformToGeometryMsg(mapPose2landmarkPoseTf, landmark.landmarkPose_WorldCoords);
-		
-		if(lIter->second.infMatrix().type() == CV_64FC1 && 
-			lIter->second.infMatrix().cols == 6 && 
-			lIter->second.infMatrix().rows == 6)
-		{
-			memcpy(landmark.covariance.data(), lIter->second.infMatrix().data, 36*sizeof(double));
-		}
-
-		res.landmarks.push_back(landmark);	
+			res.landmarks.push_back(landmark);	
+		}	
 	}
 	rtabmap_mtx_.unlock();
 	
