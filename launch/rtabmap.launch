@@ -468,6 +468,11 @@
       <param name="Grid/NoiseFilteringMinNeighbors" type="string"   value="5" />
       <param name="Grid/NoiseFilteringRadius"       type="string"   value="0.0"/>
       <param name="Grid/DepthDecimation"            type="string"   value="4"/>
+      <param name="Grid/MaxGroundAngle"             type="string"   value="45"/>   <!--  Maximum angle (degrees) between point's normal to ground's normal to label it as ground. -->
+      <param name="Grid/NormalRadiusSearch"         type="string"   value="0.1"/>  <!-- Use all or k nearest neighbors in a sphere of radius in meters. -->
+      <param name="Grid/MaxGroundHeight"            type="string"   value="0.05"/>
+      <param name="Grid/MinClusterSize"             type="string"   value="5"/>
+      <param name="Grid/ClusterRadius"              type="string"   value="0.1"/>
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>
@@ -475,7 +480,6 @@
       <param name="Grid/MultiLevelCellSize"         type="string"   value="$(arg multi_level_cell_size)"/>
       <param name="Grid/MultiLevelTreeName"         type="string"   value="$(arg multi_level_cell_name)"/>
       <param name="Grid/SemanticDepthFusionCorrection"   type="string"   value="$(arg grid_semanticDepthFusionCorrection)"/>
-      
       
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />
