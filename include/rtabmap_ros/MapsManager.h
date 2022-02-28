@@ -190,6 +190,7 @@ private:
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
+	float gridMaxObstacleHeight_;
 
 	UMutex octomap_mtx_;
 	UMutex octomap_u_mtx_;
