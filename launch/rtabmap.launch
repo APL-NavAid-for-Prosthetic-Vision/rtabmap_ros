@@ -458,11 +458,11 @@
       <param name="GridGlobal/FullUpdate"     type="string" value="true" />
       
       <param if="$(arg subscribe_rgbd_semantic_detection)" name="Grid/EnableSemanticSegmentation" type="bool" value="true"/>
+      <param name="Grid/OctoMapNumThreads"          type="int"      value="$(arg OctoMapNumThreads)"/>
       <param name="Grid/FromDepth"                  type="string"   value="true"/> <!-- Create occupancy grid from depth image(s) -->
       <param name="Grid/3D"                         type="string"   value="true"/>
       <param name="Grid/CellSize"                   type="string"   value="$(arg map_resolution)"/> <!--Param: Grid/CellSize = "0.1"   [Resolution of the occupancy grid.]-->
       <param name="Grid/RayTracing"                 type="string"   value="$(arg raytracing)"/>
-      <param name="Grid/OctoMapNumThreads"          type="string"   value="$(arg OctoMapNumThreads)"/>
       <param name="Grid/RangeMax"                   type="string"   value="$(arg grid_rangeMax)" />
       <param name="Grid/NoiseFilteringMinNeighbors" type="string"   value="5" />
       <param name="Grid/NoiseFilteringRadius"       type="string"   value="0.0"/>
