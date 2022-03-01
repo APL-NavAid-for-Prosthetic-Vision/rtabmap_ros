@@ -1343,7 +1343,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 		//UTimer filterTimer;
 		//filterTimer.start();
 		utils::depthEdgeFilter(depth);
-		//ROS_INFO("===> depth Edge filter time: %f", filterTimer.ticks());
+		//NODELET_INFO("===> depth Edge filter time: %f", filterTimer.ticks());
 	}
 
 	LaserScan scan;
@@ -4717,7 +4717,7 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 	if( threadDelay == 0 )
 		return;
 	ros::Rate rate(1.0 / threadDelay);
-	ROS_INFO("map manager update thread, update rate: %f", rate.cycleTime().toSec());
+	NODELET_INFO(" map manager update thread, expected update rate: %fsecs", rate.expectedCycleTime().toSec());
 	boost::thread publishMapThread;
 	
 	while(mapManagerUpdateThreadRunning_)
@@ -4749,7 +4749,7 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 			UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
 
 			double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-			NODELET_INFO("		Map manager update in took %f sec", total_elapsed);
+			NODELET_INFO("  Map manager update in took %f sec", total_elapsed);
 
 			pflag_mtx_.lock();
 			bool publishMapThreadRunning = publishMapThreadRunning_;
@@ -4790,7 +4790,7 @@ void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & fil
 		}
 
 		double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-  		ROS_INFO("       publishing map took %lf sec", total_elapsed);
+  		NODELET_INFO("       publishing map took %lf secs", total_elapsed);
 
 	}
 	catch (boost::thread_interrupted&) {}
