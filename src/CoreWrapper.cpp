@@ -1337,10 +1337,13 @@ void CoreWrapper::commonDepthCallbackImpl(
 		}
 	}
 
-	// depth post processing 
+	// depth pre-processing 
 	if(depthFilters_)
-	{
+	{	
+		//UTimer filterTimer;
+		//filterTimer.start();
 		utils::depthEdgeFilter(depth);
+		//ROS_INFO("===> depth Edge filter time: %f", filterTimer.ticks());
 	}
 
 	LaserScan scan;
@@ -1898,7 +1901,7 @@ void CoreWrapper::commonDepthCallbackImpl(
 
 	// JHUAPL section
 
-	// depth post processing 
+	// depth pre-processing 
 	if(depthFilters_)
 	{
 		utils::depthEdgeFilter(depth);

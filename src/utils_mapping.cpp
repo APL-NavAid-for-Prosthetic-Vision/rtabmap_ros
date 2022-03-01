@@ -99,13 +99,14 @@ namespace utils
 
     void depthEdgeFilter(cv::Mat& depthImg)
     {
-        int ksize = 5;
+        int ksize = 3; // selects the separable kernel to use to calculate the derivative , 5 works better at 0.005 0.01 more of processing.
         int ddepth = CV_32F;
         cv::Mat cv_image_dx, cv_image_dy, grad_mag;
 
+        /// TODO: would a multi thread or CUDA based Sobel would improve computation?
         // computes the horizontal changes
         cv::Sobel(depthImg, cv_image_dx, ddepth, 1, 0, ksize);
-        // computes the vertical cahnges
+        // computes the vertical changes
         cv::Sobel(depthImg, cv_image_dy, ddepth, 0, 1, ksize);
 
         // take the magnitude of the gradients 
@@ -114,6 +115,7 @@ namespace utils
         cv::pow(cv_image_dy, 2, cv_image_dy_sqr);   
         cv::sqrt(cv_image_dx_sqr + cv_image_dy_sqr, grad_mag);
 
+        // find the median of rate of change between neighboring points
         double medianValue = utils::medianMat(grad_mag);
         
         // filtering out depth elements 
@@ -122,6 +124,8 @@ namespace utils
             for(int w = 0; w < depthImg.cols; ++w)
             {
                 float grad_mag_hw = grad_mag.at<float>(h,w);
+                // setting a threshold at two times the median of the rate of distance change 
+                // in order to keeps point distributed among its neighbors.
                 if(grad_mag_hw > medianValue*2)
                 {
                     depthImg.at<unsigned short>(h,w) = 0;
@@ -137,7 +141,10 @@ namespace utils
     /// 
     double medianMat(cv::Mat& input)
     {
-        int histSize = 65536;
+        // since it takes too long to find the max value in the input data, we will use the max depth 
+        // representation for 65535/depth_units based on the post :
+        // https://github.com/IntelRealSense/librealsense/issues/3508
+        int histSize = 65535;
         cv::Mat inputMat;
         if(input.type() != CV_32F)
         {
@@ -162,8 +169,8 @@ namespace utils
 
         for( int i = 0; i < histSize && med < 0.0; ++i )
         {
-            bin += cvRound( hist.at< float >( i ) );
-            if ( bin > m && med < 0.0 )
+            bin += cvRound(hist.at<float>(i));
+            if( bin > m && med < 0.0 )
                 med = i;
         }
 
