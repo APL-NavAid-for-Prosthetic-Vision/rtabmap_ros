@@ -76,7 +76,8 @@
   <arg name="publish_visual_image"                       default="true"/>
   <arg name="map_manager_update_rate"                    default="0.5"/>  <!-- map manager update rate is the thread processing rate. Ex: 2 Hz, use 1/2 = 0.5 -->
   <arg name="landmark_to_multi_signature_id"             default="false"/>
-
+  <arg name="octomap_raytracing"                         default="false"/>
+  
   <!-- JHU APL : end -->
 
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
@@ -471,9 +472,9 @@
       <param name="Grid/DepthDecimation"            type="string"   value="4"/>
       <param name="Grid/MaxGroundAngle"             type="string"   value="45"/>   <!--  Maximum angle (degrees) between point's normal to ground's normal to label it as ground. -->
       <param name="Grid/NormalRadiusSearch"         type="string"   value="0.1"/>  <!-- Use all or k nearest neighbors in a sphere of radius in meters. -->
-      <param name="Grid/MaxGroundHeight"            type="string"   value="0.05"/>
+      <param name="Grid/MaxGroundHeight"            type="string"   value="0.049"/>
       <param name="Grid/MinClusterSize"             type="string"   value="5"/>
-      <param name="Grid/ClusterRadius"              type="string"   value="0.1"/>
+      <param name="Grid/ClusterRadius"              type="string"   value="0.15"/>
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>
@@ -505,7 +506,8 @@
       <param name="depth_Filters"             type="bool" value="$(arg depth_Filters)"/>  
       <param name="tf_delay"                  type="double" value="$(arg tf_delay)"/>  
       <param name="map_always_update"         type="bool"   value="$(arg map_always_update)"/>
-
+      <param name="octomap_raytracing"        type="bool"   value="$(arg octomap_raytracing)"/>
+      
       <param name="model_classes_file_path"  type="string" value="$(arg model_classes_file_path)" />
       <param name="publish_semantic_mask"    type="bool"   value="$(arg publish_semantic_mask)" />
       <param name="publish_depth_image"      type="bool"   value="$(arg publish_depth_image)" />
