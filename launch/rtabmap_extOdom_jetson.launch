@@ -82,7 +82,7 @@
         <arg name="queue_size"                  default="$(arg queue_size)"/>
         <arg name="rtabmap_detectionRate"       default="$(arg rtabmap_detectionRate)"/>      <!-- "Rtabmap/DetectionRate" : [Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.] --> 
         <arg name="tf_delay"                    default="0.0667"/>  <!-- (15 Hz: 0.0667 sec) (30 Hz: 0.0334 sec) in order to keep up with the odometry time update-->
-        <arg name="grid_rangeMax"               default="10.0"/>
+        <arg name="grid_rangeMax"               default="8.0"/>
         <arg name="queue_size_rgbd"             default="$(arg queue_size_rgbd)"/>
         <arg name="mem_STMSize"                 default="20"/>
         <arg name="bayes_fullPredictionUpdate"  default="$(arg bayes_fullPredictionUpdate)"/>
