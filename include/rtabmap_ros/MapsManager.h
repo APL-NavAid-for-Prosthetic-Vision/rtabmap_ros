@@ -191,6 +191,7 @@ private:
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
 	float gridMaxObstacleHeight_;
+	bool octomapRayTracing_;
 
 	UMutex octomap_mtx_;
 	UMutex octomap_u_mtx_;
