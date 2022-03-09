@@ -76,7 +76,8 @@
   <arg name="publish_visual_image"                       default="true"/>
   <arg name="map_manager_update_rate"                    default="0.5"/>  <!-- map manager update rate is the thread processing rate. Ex: 2 Hz, use 1/2 = 0.5 -->
   <arg name="landmark_to_multi_signature_id"             default="false"/>
-
+  <arg name="octomap_raytracing"                         default="false"/>
+  
   <!-- JHU APL : end -->
 
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
@@ -156,6 +157,8 @@
   <arg name="rectifyOnlyFeatures"          default="false"/>   <!-- If ImagesAlreadyRectified is false and this parameter is true, the whole RGB image will not be rectified, only the features.-->
   <arg name="multi_level_cell_size"        default="0.05 0.05 0.05 0.05 0.05"/>   <!-- ['meters'] 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
   <arg name="multi_level_cell_name"        default="ground ceiling static movable dynamic"/>   <!-- Name of octree per layer. -->
+  <arg name="grid_semanticDepthFusionCorrection"    default="false"/>
+  <arg name="grid_semanticGroundCorrection"         default="false"/>
    
   <!-- These arguments should not be modified directly, see referred topics without "_relay" suffix above -->
   
@@ -458,21 +461,28 @@
       <param name="GridGlobal/FullUpdate"     type="string" value="true" />
       
       <param if="$(arg subscribe_rgbd_semantic_detection)" name="Grid/EnableSemanticSegmentation" type="bool" value="true"/>
+      <param name="Grid/OctoMapNumThreads"          type="int"      value="$(arg OctoMapNumThreads)"/>
       <param name="Grid/FromDepth"                  type="string"   value="true"/> <!-- Create occupancy grid from depth image(s) -->
       <param name="Grid/3D"                         type="string"   value="true"/>
       <param name="Grid/CellSize"                   type="string"   value="$(arg map_resolution)"/> <!--Param: Grid/CellSize = "0.1"   [Resolution of the occupancy grid.]-->
       <param name="Grid/RayTracing"                 type="string"   value="$(arg raytracing)"/>
-      <param name="Grid/OctoMapNumThreads"          type="string"   value="$(arg OctoMapNumThreads)"/>
       <param name="Grid/RangeMax"                   type="string"   value="$(arg grid_rangeMax)" />
       <param name="Grid/NoiseFilteringMinNeighbors" type="string"   value="5" />
       <param name="Grid/NoiseFilteringRadius"       type="string"   value="0.0"/>
       <param name="Grid/DepthDecimation"            type="string"   value="4"/>
+      <param name="Grid/MaxGroundAngle"             type="string"   value="45"/>   <!--  Maximum angle (degrees) between point's normal to ground's normal to label it as ground. -->
+      <param name="Grid/NormalRadiusSearch"         type="string"   value="0.1"/>  <!-- Use all or k nearest neighbors in a sphere of radius in meters. -->
+      <param name="Grid/MaxGroundHeight"            type="string"   value="0.049"/>
+      <param name="Grid/MinClusterSize"             type="string"   value="5"/>
+      <param name="Grid/ClusterRadius"              type="string"   value="0.15"/>
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>
       <param name="Grid/MaxObstacleHeight"          type="string"   value="$(arg grid_maxObstacleHeight)"/>
       <param name="Grid/MultiLevelCellSize"         type="string"   value="$(arg multi_level_cell_size)"/>
       <param name="Grid/MultiLevelTreeName"         type="string"   value="$(arg multi_level_cell_name)"/>
+      <param name="Grid/SemanticDepthFusionCorrection"   type="string"   value="$(arg grid_semanticDepthFusionCorrection)"/>
+      <param name="Grid/SemanticGroundCorrection"   type="string"   value="$(arg grid_semanticGroundCorrection)"/>
       
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />
@@ -496,7 +506,8 @@
       <param name="depth_Filters"             type="bool" value="$(arg depth_Filters)"/>  
       <param name="tf_delay"                  type="double" value="$(arg tf_delay)"/>  
       <param name="map_always_update"         type="bool"   value="$(arg map_always_update)"/>
-
+      <param name="octomap_raytracing"        type="bool"   value="$(arg octomap_raytracing)"/>
+      
       <param name="model_classes_file_path"  type="string" value="$(arg model_classes_file_path)" />
       <param name="publish_semantic_mask"    type="bool"   value="$(arg publish_semantic_mask)" />
       <param name="publish_depth_image"      type="bool"   value="$(arg publish_depth_image)" />

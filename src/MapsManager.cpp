@@ -63,6 +63,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include <rtabmap_ros/utils_mapping.h>
+#include <Eigen/Dense>
 
 //system
 #include <string>
@@ -89,7 +90,9 @@ MapsManager::MapsManager() :
 		octomapUpdated_(true),
 		latching_(true),
 		semanticSegmentationEnable_(false),
-		publishSemanticMask_(false)
+		publishSemanticMask_(false),
+		gridMaxObstacleHeight_(std::numeric_limits<double>::max()),
+		octomapRayTracing_(false)
 {
 }
 
@@ -180,6 +183,14 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 
 	int octoMapNumThreads = 2;
 	pnh.param("Grid/OctoMapNumThreads", octoMapNumThreads, octoMapNumThreads);
+	ROS_INFO("Grid/OctoMapNumThreads = %d", octoMapNumThreads);
+	std::string gridMaxObstacleHeight;
+	pnh.param("Grid/MaxObstacleHeight", gridMaxObstacleHeight, gridMaxObstacleHeight);
+	gridMaxObstacleHeight_ = std::stof(gridMaxObstacleHeight);
+	ROS_INFO("(mapManager) Grid/MaxObstacleHeight = %f", gridMaxObstacleHeight_);
+	octomapRayTracing_ = false;
+	pnh.param("octomap_raytracing", octomapRayTracing_, octomapRayTracing_);
+	ROS_INFO("octomap_raytracing = %s", octomapRayTracing_?"True":"False");
 
 	// JHUAPL section end
 
@@ -1087,15 +1098,26 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		octomap_u_mtx_.lock();
 		if(updateOctomap && semanticSegmentationEnable_)
 		{
-			UTimer time;
-			octomapUpdated_ = semanticOctomap_->update(filteredPoses);
-			ROS_INFO("SemanticOctomap update time = %fs", time.ticks());
+			if(octomapRayTracing_) {
+				std::list<std::string> rayTraceLayers;
+				rayTraceLayers.push_back("static");
+
+				UTimer time;
+				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, &rayTraceLayers);
+				UINFO("\nSemanticOctomap update time = %fs", time.ticks());
+			}
+			else {
+				UTimer time;
+				octomapUpdated_ = semanticOctomap_->update(filteredPoses);
+				UINFO("\nSemanticOctomap update time = %fs", time.ticks());
+			}
+			
 		}
 		else if(updateOctomap)
 		{
 			UTimer time;
 			octomapUpdated_ = octomap_->update(filteredPoses);
-			ROS_INFO("Octomap update time = %fs", time.ticks());
+			UINFO("\nOctomap update time = %fs", time.ticks());
 		}
 		octomap_u_mtx_.unlock();
 #endif
@@ -1991,10 +2013,15 @@ void MapsManager::publishAPLMaps(
 
 			if(copyOctree)
 			{
+				float maxValue = std::numeric_limits<float>::max();
+				float minValue = -1*std::numeric_limits<float>::max();
+				Eigen::Vector3f maxBoundMap(maxValue, maxValue, maxValue);
+				Eigen::Vector3f minBoundMap(minValue, minValue, minValue);
+
 				UDEBUG("copying %d", layerId);
 				// copy the whole octree into a local tree temporally
 				std::list<std::string> multiLevelOctreeName = {octreeId2OctreeNamePtr->second};
-				semanticOctomap_->multiOctreesToMergeOctree(newOcTree, multiLevelOctreeName);
+				semanticOctomap_->multiOctreesToMergeOctree(newOcTree, multiLevelOctreeName, minBoundMap, maxBoundMap);
 			}
 			newOcTree->setOctTreeName(octreeName);
 
@@ -2014,8 +2041,13 @@ void MapsManager::publishAPLMaps(
 
 			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
 
+			float maxValue = std::numeric_limits<float>::max();
+			float minValue = -1*std::numeric_limits<float>::max();
+			Eigen::Vector3f maxBoundMap(maxValue, maxValue, gridMaxObstacleHeight_);
+			Eigen::Vector3f minBoundMap(minValue, minValue, minValue);
+
 			// multiOctreesToMergeOctree uses the actual map, needs to be locked
-			semanticOctomap_->multiOctreesToMergeOctree(&m_octree, multiLevelOctreeName);
+			semanticOctomap_->multiOctreesToMergeOctree(&m_octree, multiLevelOctreeName, minBoundMap, maxBoundMap);
 		}
 		octomap_mtx_.unlock();
 

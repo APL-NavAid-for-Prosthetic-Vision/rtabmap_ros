@@ -30,7 +30,11 @@
     <arg name="queue_size"                     default="200"/> <!--default for depth mode --> 
     <arg name="multi_level_cell_size"          default="0.05 0.05 0.05 0.05 0.05"/>   <!-- 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
     <arg name="multi_level_cell_name"          default="ground ceiling static movable dynamic"/>   <!-- Name of octree per layer. -->
-   
+    <arg name="grid_semanticDepthFusionCorrection"   default="false"/>
+    <arg name="grid_semanticGroundCorrection"        default="false"/>
+    <arg name="octomap_raytracing"                   default="false"/>
+
+
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
     <arg name="map_always_update"           default="false"/>
@@ -78,7 +82,7 @@
         <arg name="queue_size"                  default="$(arg queue_size)"/>
         <arg name="rtabmap_detectionRate"       default="$(arg rtabmap_detectionRate)"/>      <!-- "Rtabmap/DetectionRate" : [Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.] --> 
         <arg name="tf_delay"                    default="0.0667"/>  <!-- (15 Hz: 0.0667 sec) (30 Hz: 0.0334 sec) in order to keep up with the odometry time update-->
-        <arg name="grid_rangeMax"               default="10.0"/>
+        <arg name="grid_rangeMax"               default="8.0"/>
         <arg name="queue_size_rgbd"             default="$(arg queue_size_rgbd)"/>
         <arg name="mem_STMSize"                 default="20"/>
         <arg name="bayes_fullPredictionUpdate"  default="$(arg bayes_fullPredictionUpdate)"/>
@@ -91,7 +95,10 @@
         <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
         <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
         <arg name="multi_level_cell_size"       default="$(arg multi_level_cell_size)"/>   
-        <arg name="multi_level_cell_name"       default="$(arg multi_level_cell_name)"/>   
+        <arg name="multi_level_cell_name"       default="$(arg multi_level_cell_name)"/>
+        <arg name="grid_semanticDepthFusionCorrection"   default="$(arg grid_semanticDepthFusionCorrection)"/>
+        <arg name="grid_semanticGroundCorrection"         default="$(arg grid_semanticGroundCorrection)"/>
+        <arg name="octomap_raytracing"                    default="$(arg octomap_raytracing)"/>
     </include>
 
 </launch>
