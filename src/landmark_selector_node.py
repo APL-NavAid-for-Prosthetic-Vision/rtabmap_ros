@@ -57,7 +57,7 @@ class LandmarkSelectorApp(App):
         self.landmarks = resp1.landmarks
 
     def create_button(self, landmark):
-        pass
+        
         
         #btn1 = MDRaisedButton(text='Landmark '+str(id), on_press=self.select, md_bg_color=[1,0,0,1])
 
@@ -121,17 +121,18 @@ class LandmarkSelectorApp(App):
         return self.bl
 
 def handle_selected_landmarks_request(req):
-    landmarks = []
+    landmarks_res = SelectedLandmarksResponse()
+    landmarks_res.landmarks = []
     for button in selected_buttons:
-        landmarks.append(buttons[button.id][0])
-    return landmarks
+        landmarks_res.landmarks.append(buttons[button.id][0])
+    return landmarks_res
     
      
 if __name__ == '__main__':
 
     rospy.init_node('landmark_selector_node', anonymous=False)
     rospy.wait_for_service('/rtabmap/landmarks_available')
-    s = rospy.Service('selected_landmarks', SelectedLandmarks, handle_selected_landmarks_request)
+    s = rospy.Service('/rtabmap/selected_landmarks', SelectedLandmarks, handle_selected_landmarks_request)
 
     app = LandmarkSelectorApp()
     app.run()

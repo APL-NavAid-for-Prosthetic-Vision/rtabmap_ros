@@ -2,4 +2,4 @@ bool placeholder
 
 ---
 
-Landmark landmarks
+Landmark[] landmarks
