@@ -829,7 +829,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					UDEBUG("Adding grid map %d to cache...", iter->first);
 					cv::Point3f viewPoint;
 					std::map<unsigned int, cv::Mat> obstaclesCellsMap;
-					std::map<unsigned int, cv::Mat> emptyCellsMap;
+					cv::Mat emptyCells;
 					
 					cv::Mat rgb, depth, semanticMask;
 					bool generateGrid = true;
@@ -865,40 +865,23 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 							occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
 							semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
 							generateGrid?0:&obstaclesCellsMap,
-							generateGrid?0:&emptyCellsMap);
+							generateGrid?0:&emptyCells);
 
-					// empty cell map might not have all the layers since mat with no elements were not store.
-					// if  the empty cells map is not the same size as the active occupancy layers
-					// the missing one would be added with a mat with not elements.
-					UDEBUG(" emptyCellsMap size=%d", (int)emptyCellsMap.size());
-					if(emptyCellsMap.size() < occupancyGrid_->getLayerIdToLayerName().size()) 
-					{
-						UDEBUG(" empty cells map doesnot contain correct number of layers");
-						std::map<int, std::string> layerIdToLayerNameMap = occupancyGrid_->getLayerIdToLayerName();
-						for(auto ldToLNMapIter = layerIdToLayerNameMap.begin(); ldToLNMapIter != layerIdToLayerNameMap.end(); ++ldToLNMapIter)
-						{
-							auto emptyCellsMapIter = emptyCellsMap.find(ldToLNMapIter->first);
-							if(emptyCellsMapIter == emptyCellsMap.end())
-							{
-								cv::Mat emptyCells;
-								emptyCellsMap.insert({(unsigned int)ldToLNMapIter->first, emptyCells});
-							}
-						}
-					}
-					
+					UDEBUG(" emptyCells size=%d", (int)emptyCells.cols );
+
 					if(generateGrid)
 					{
 						UDEBUG("generateGrid");
 						Signature tmp(data);
 						tmp.setPose(iter->second);
-						occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCellsMap, viewPoint);
-						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
+						occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
+						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
 						uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 					}
 					else
 					{
 						viewPoint = data.gridViewPoint();
-						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCellsMap)));
+						uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
 						uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
 					}
 				
@@ -1041,12 +1024,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					(iter->first == 0 || 
 						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
 				{
-					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<unsigned int, cv::Mat> > >::iterator mter = gridAPLMaps_.find(iter->first);
+					std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > >::iterator mter = gridAPLMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
 					if(mter != gridAPLMaps_.end() && pter != gridMapsViewpoints_.end())
 					{
 						if( (mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
-						   (mter->second.second.begin()->second.empty() || mter->second.second.begin()->second.channels() > 2) )
+							(mter->second.second.empty() || mter->second.second.channels() > 2) )
 						{
 							semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
 						}
@@ -1098,7 +1081,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		octomap_u_mtx_.lock();
 		if(updateOctomap && semanticSegmentationEnable_)
 		{
-			if(octomapRayTracing_) {
+			if(octomapRayTracing_) 
+			{
 				std::list<std::string> rayTraceLayers;
 				rayTraceLayers.push_back("static");
 
@@ -1106,7 +1090,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, &rayTraceLayers);
 				UINFO("\nSemanticOctomap update time = %fs", time.ticks());
 			}
-			else {
+			else 
+			{
 				UTimer time;
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses);
 				UINFO("\nSemanticOctomap update time = %fs", time.ticks());
@@ -1170,7 +1155,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		else
 		{
 			// In Semantic Segmentation Mode
-			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, std::map<unsigned int, cv::Mat> > >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
+			for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
 			{
 				if(!uContains(poses, iter->first))
 				{
