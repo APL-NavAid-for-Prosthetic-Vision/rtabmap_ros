@@ -1083,18 +1083,15 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		{
 			if(octomapRayTracing_) 
 			{
-				std::list<std::string> rayTraceLayers;
-				rayTraceLayers.push_back("static");
-
 				UTimer time;
-				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, &rayTraceLayers);
-				UINFO("\nSemanticOctomap update time = %fs", time.ticks());
+				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, RtabmapAPLColorOcTreeNode::OccupancyType::kTypeMovable);
+				UINFO("\n SemanticOctomap update time = %fs", time.ticks());
 			}
 			else 
 			{
 				UTimer time;
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses);
-				UINFO("\nSemanticOctomap update time = %fs", time.ticks());
+				UINFO("\n SemanticOctomap update time = %fs", time.ticks());
 			}
 			
 		}
@@ -1102,7 +1099,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		{
 			UTimer time;
 			octomapUpdated_ = octomap_->update(filteredPoses);
-			UINFO("\nOctomap update time = %fs", time.ticks());
+			UINFO("\n Octomap update time = %fs", time.ticks());
 		}
 		octomap_u_mtx_.unlock();
 #endif

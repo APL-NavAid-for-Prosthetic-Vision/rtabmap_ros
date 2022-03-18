@@ -33,7 +33,8 @@
     <arg name="grid_semanticDepthFusionCorrection"   default="false"/>
     <arg name="grid_semanticGroundCorrection"        default="false"/>
     <arg name="octomap_raytracing"                   default="false"/>
-
+    <arg name="grid_outlierRemoval"                  default="false"/>
+    <arg name="grid_raytracingMaxRange"              default="0"/>
 
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -98,7 +99,9 @@
         <arg name="multi_level_cell_name"       default="$(arg multi_level_cell_name)"/>
         <arg name="grid_semanticDepthFusionCorrection"   default="$(arg grid_semanticDepthFusionCorrection)"/>
         <arg name="grid_semanticGroundCorrection"         default="$(arg grid_semanticGroundCorrection)"/>
+        <arg name="grid_outlierRemoval"                   default="$(arg grid_outlierRemoval)"/>
         <arg name="octomap_raytracing"                    default="$(arg octomap_raytracing)"/>
+        <arg name="grid_raytracingMaxRange"               default="$(arg grid_raytracingMaxRange)"/>
     </include>
 
 </launch>
