@@ -1087,13 +1087,13 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			{
 				UTimer time;
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeMovable);
-				UINFO("\n SemanticOctomap update time = %fs", time.ticks());
+				UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
 			}
 			else 
 			{
 				UTimer time;
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses);
-				UINFO("\n SemanticOctomap update time = %fs", time.ticks());
+				UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
 			}
 			
 		}
@@ -1101,7 +1101,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		{
 			UTimer time;
 			octomapUpdated_ = octomap_->update(filteredPoses);
-			UINFO("\n Octomap update time = %fs", time.ticks());
+			UINFO("+++ Octomap update time = %f sec", time.ticks());
 		}
 		octomap_u_mtx_.unlock();
 #endif

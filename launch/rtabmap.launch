@@ -136,7 +136,7 @@
   <arg name="queue_size_rgbd"              default="30" />
   <arg name="queue_size_stereo"            default="30" />
   <arg name="raytracing"                   default="false" />
-  <arg name="OctoMapNumThreads"            default="6" />
+  <arg name="OctoMapNumThreads"            default="3" />
   <arg name="initial_pose"                 default="0 0 0 0 0 0" />         <!-- x y z roll pitch yaw -->
   <arg name="time_threshold"               default="0" />
   <arg name="memory_threshold"             default="0" />
