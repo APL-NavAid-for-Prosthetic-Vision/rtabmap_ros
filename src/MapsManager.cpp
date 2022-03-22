@@ -59,6 +59,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_OCTOMAP
 #include <octomap/ColorOcTree.h>
 #include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/SemanticColorOcTree.h>
+#include <rtabmap/core/SemanticOctoMap.h>
 #endif
 #endif
 
@@ -1084,7 +1086,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			if(octomapRayTracing_) 
 			{
 				UTimer time;
-				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, RtabmapAPLColorOcTreeNode::OccupancyType::kTypeMovable);
+				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeMovable);
 				UINFO("\n SemanticOctomap update time = %fs", time.ticks());
 			}
 			else 
@@ -1971,8 +1973,8 @@ void MapsManager::publishAPLMaps(
 		for(auto nter = mlOctrees.begin(); nter != mlOctrees.end(); ++nter)
 		{
 			int layerId = nter->first;
-			RtabmapAPLColorOcTree* octreePtr = nter->second;
-			RtabmapAPLColorOcTree* newOcTree = new RtabmapAPLColorOcTree(octreePtr->getResolution());
+			SemanticColorOcTree* octreePtr = nter->second;
+			SemanticColorOcTree* newOcTree = new SemanticColorOcTree(octreePtr->getResolution());
 			std::string octreeName = octreePtr->getOctTreeName();
 			
 			// only copy the layers that would be used for publishing.
@@ -2010,7 +2012,7 @@ void MapsManager::publishAPLMaps(
 			mlOctreesTemp.insert({layerId, newOcTree});
 		}
 
-		RtabmapAPLColorOcTree m_octree(0.05);
+		SemanticColorOcTree m_octree(0.05);
 		if(octoMapPubFull_.getNumSubscribers() > 0 || octoMapPubBin_.getNumSubscribers() > 0)
 		{	
 			m_octree.setOccupancyThres(0.5);

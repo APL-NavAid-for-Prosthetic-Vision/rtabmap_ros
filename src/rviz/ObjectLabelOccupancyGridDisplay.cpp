@@ -60,6 +60,7 @@
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/conversions.h>
 
+#include <rtabmap/core/SemanticColorOcTree.h>
 #include <rtabmap/core/SemanticOctoMap.h>
 
 #include <sstream>
@@ -417,9 +418,9 @@ bool TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::checkType(std::string
 }
 
 template <>
-bool TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::checkType(std::string type_id)
+bool TemplatedObjectLabelOccupancyGridDisplay<rtabmap::SemanticColorOcTree>::checkType(std::string type_id)
 {
-    if(type_id == "RtabmapAPLColorOcTree")
+    if(type_id == "SemanticColorOcTree")
     {
         return true;
     }
@@ -453,10 +454,10 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::setVoxelColor(PointCl
     }
 }
 
-//Specialization for RtabmapAPLColorOcTree, which can set the voxel color from the node itself
+//Specialization for SemanticColorOcTree, which can set the voxel color from the node itself
 template <>
-void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::setVoxelColor(PointCloud::Point& newPoint, 
-                                                                                rtabmap::RtabmapAPLColorOcTree::NodeType& node,
+void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::SemanticColorOcTree>::setVoxelColor(PointCloud::Point& newPoint, 
+                                                                                rtabmap::SemanticColorOcTree::NodeType& node,
                                                                                 double minZ, double maxZ)
 {
     float cell_probability;
@@ -467,7 +468,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::s
         case OCTOMAP_CELL_COLOR:
         {
             const float b2f = 1./256.; 
-            rtabmap::RtabmapAPLColorOcTreeNode::Color& color = node.getColor();
+            rtabmap::SemanticColorOcTreeNode::Color& color = node.getColor();
             newPoint.setColor(b2f*color.r, b2f*color.g, b2f*color.b, node.getOccupancy());
             break;
         }
@@ -488,7 +489,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::s
 }
 
 template <>
-void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::updateClassIdTable(rtabmap::RtabmapAPLColorOcTree::NodeType& node)
+void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::SemanticColorOcTree>::updateClassIdTable(rtabmap::SemanticColorOcTree::NodeType& node)
 {
     std::map<unsigned int, std::pair< int, cv::Point3f> >::iterator sematicClassIsMapIter; 
     OctreeVoxelColorMode octree_color_mode = static_cast<OctreeVoxelColorMode>(octree_coloring_property_->getOptionInt());
@@ -526,7 +527,7 @@ bool ObjectLabelOccupancyGridDisplay::updateFromTF()
 }
 
 template <>
-void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree>::publishMsgs() 
+void TemplatedObjectLabelOccupancyGridDisplay<rtabmap::SemanticColorOcTree>::publishMsgs() 
 {
     if(semanticClassIdMap_pub_.getNumSubscribers())
     {
@@ -573,12 +574,12 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
     }
 
     // creating octree
-    rtabmap::RtabmapAPLColorOcTree* octomap = NULL;
+    rtabmap::SemanticColorOcTree* octomap = NULL;
 
     if(octomap_mode_property_->getOptionInt() == OctoMapMSGMode::Full_Map_Mode)
     {
         //ROS_INFO(" OctoMap Msg Mode: Full_Map_Mode");
-        octomap = new rtabmap::RtabmapAPLColorOcTree(msg->resolution);
+        octomap = new rtabmap::SemanticColorOcTree(msg->resolution);
 
         if(octomap)
         {
@@ -595,13 +596,13 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
         //ROS_INFO(" OctoMap Msg Mode: Binary_Map_Mode");
         // Binary Octomap
         octomap::AbstractOcTree* tree;
-        rtabmap::RtabmapAPLColorOcTree* octree = new rtabmap::RtabmapAPLColorOcTree(msg->resolution);
+        rtabmap::SemanticColorOcTree* octree = new rtabmap::SemanticColorOcTree(msg->resolution);
         octomap_msgs::readTree(octree, *msg);
         tree = octree;
 
         if(tree)
         {
-            octomap = dynamic_cast<rtabmap::RtabmapAPLColorOcTree*>(tree);
+            octomap = dynamic_cast<rtabmap::SemanticColorOcTree*>(tree);
             if (!octomap)
             { 
                 ROS_ERROR("octomap: Wrong octomap type. Use a different display type ....");
@@ -735,7 +736,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
 } // namespace rtabmap_ros
 
 #include <pluginlib/class_list_macros.h>
-typedef rtabmap_ros::TemplatedObjectLabelOccupancyGridDisplay<rtabmap::RtabmapAPLColorOcTree> rtabmapColorOcTreeGridDisplay;
+typedef rtabmap_ros::TemplatedObjectLabelOccupancyGridDisplay<rtabmap::SemanticColorOcTree> rtabmapColorOcTreeGridDisplay;
 
 PLUGINLIB_EXPORT_CLASS( rtabmapColorOcTreeGridDisplay, rviz::Display)
 

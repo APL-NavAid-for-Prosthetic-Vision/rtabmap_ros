@@ -48,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/thread/mutex.hpp>
 
 #ifdef RTABMAP_OCTOMAP
+#include <rtabmap/core/SemanticColorOcTree.h>
 #include <rtabmap/core/SemanticOctoMap.h>
 #endif
 

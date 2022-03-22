@@ -18,6 +18,7 @@
 
 #include <map>
 
+#include <rtabmap/core/SemanticColorOcTree.h>
 #include <rtabmap/core/SemanticOctoMap.h>
 
 #include <rtabmap_ros/SemanticClassIdElement.h>

@@ -311,25 +311,25 @@ std::string TableSemanticsPanel::getOccupancyType_str(int type)
 {
 	std::string typeStr;
 
-	if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeGround) {
+	if(type == rtabmap::SemanticColorOcTreeNode::OccupancyType::kTypeGround) {
 		typeStr = "ground";
 	}
-	else if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeCeiling) {
+	else if(type == rtabmap::SemanticColorOcTreeNode::OccupancyType::kTypeCeiling) {
 		typeStr = "ceiling";
 	}
-	else if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeStatic) 
+	else if(type == rtabmap::SemanticColorOcTreeNode::OccupancyType::kTypeStatic) 
 	{
 		typeStr = "static";
 	}
-	else if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeMovable) 
+	else if(type == rtabmap::SemanticColorOcTreeNode::OccupancyType::kTypeMovable) 
 	{
 		typeStr = "movable";
 	}
-	else if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeDynamic) 
+	else if(type == rtabmap::SemanticColorOcTreeNode::OccupancyType::kTypeDynamic) 
 	{
 		typeStr = "dynamic";
 	}
-	else if(type == rtabmap::RtabmapAPLColorOcTreeNode::OccupancyType::kTypeEmpty) 
+	else if(type == rtabmap::SemanticColorOcTreeNode::OccupancyType::kTypeEmpty) 
 	{
 		typeStr = "empty";
 	}
