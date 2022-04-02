@@ -4749,7 +4749,7 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 			UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
 
 			double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-			NODELET_INFO("  Map manager update in took %f sec", total_elapsed);
+			NODELET_INFO("****  Map manager update in took %f sec", total_elapsed);
 
 			pflag_mtx_.lock();
 			bool publishMapThreadRunning = publishMapThreadRunning_;

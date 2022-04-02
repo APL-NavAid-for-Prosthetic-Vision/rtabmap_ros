@@ -32,7 +32,6 @@
     <arg name="multi_level_cell_name"          default="ground ceiling static movable dynamic"/>   <!-- Name of octree per layer. -->
     <arg name="grid_semanticDepthFusionCorrection"   default="false"/>
     <arg name="grid_semanticGroundCorrection"        default="false"/>
-    <arg name="octomap_raytracing"                   default="false"/>
     <arg name="grid_outlierRemoval"                  default="false"/>
     <arg name="grid_raytracingMaxRange"              default="0"/>
 
@@ -100,7 +99,6 @@
         <arg name="grid_semanticDepthFusionCorrection"   default="$(arg grid_semanticDepthFusionCorrection)"/>
         <arg name="grid_semanticGroundCorrection"         default="$(arg grid_semanticGroundCorrection)"/>
         <arg name="grid_outlierRemoval"                   default="$(arg grid_outlierRemoval)"/>
-        <arg name="octomap_raytracing"                    default="$(arg octomap_raytracing)"/>
         <arg name="grid_raytracingMaxRange"               default="$(arg grid_raytracingMaxRange)"/>
     </include>
 

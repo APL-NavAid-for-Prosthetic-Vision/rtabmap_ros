@@ -81,7 +81,6 @@
   <arg name="grid_semanticDepthFusionCorrection"    default="false"/>
   <arg name="grid_semanticGroundCorrection"         default="false"/>
   <arg name="grid_outlierRemoval"                   default="false"/>
-  <arg name="octomap_raytracing"                    default="false"/>
   <arg name="grid_raytracingMaxRange"               default="0"/>
   
   <!-- JHU APL : end -->
@@ -512,7 +511,6 @@
       <param name="depth_Filters"             type="bool" value="$(arg depth_Filters)"/>  
       <param name="tf_delay"                  type="double" value="$(arg tf_delay)"/>  
       <param name="map_always_update"         type="bool"   value="$(arg map_always_update)"/>
-      <param name="octomap_raytracing"        type="bool"   value="$(arg octomap_raytracing)"/>
       
       <param name="model_classes_file_path"  type="string" value="$(arg model_classes_file_path)" />
       <param name="publish_semantic_mask"    type="bool"   value="$(arg publish_semantic_mask)" />
