@@ -93,7 +93,8 @@ MapsManager::MapsManager() :
 		latching_(true),
 		semanticSegmentationEnable_(false),
 		publishSemanticMask_(false),
-		gridMaxObstacleHeight_(std::numeric_limits<double>::max())
+		gridMaxObstacleHeight_(std::numeric_limits<double>::max()),
+		octomapRayTracing_(false)
 {
 }
 
@@ -189,6 +190,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	pnh.param("Grid/MaxObstacleHeight", gridMaxObstacleHeight, gridMaxObstacleHeight);
 	gridMaxObstacleHeight_ = std::stof(gridMaxObstacleHeight);
 	ROS_INFO("(mapManager) Grid/MaxObstacleHeight = %f", gridMaxObstacleHeight_);
+
+	pnh.param("octomap_raytracing", octomapRayTracing_, octomapRayTracing_);
+	ROS_INFO("octomap_raytracing = %s", octomapRayTracing_?"True":"False");
 
 	// JHUAPL section end
 
@@ -1079,9 +1083,18 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		octomap_u_mtx_.lock();
 		if(updateOctomap && semanticSegmentationEnable_)
 		{
-			UTimer time;
-			octomapUpdated_ = semanticOctomap_->update(filteredPoses, SemanticColorOcTreeNode::OccupancyType::kTypeMovable);
-			UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
+			if(octomapRayTracing_) 
+			{
+				UTimer time;
+				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeMovable);
+				UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
+			}
+			else 
+			{
+				UTimer time;
+				octomapUpdated_ = semanticOctomap_->update(filteredPoses);
+				UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
+			}
 		}
 		else if(updateOctomap)
 		{
