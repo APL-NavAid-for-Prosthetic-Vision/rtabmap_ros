@@ -152,9 +152,14 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	ROS_INFO("%s(maps): cloud_subtract_filtering_min_neighbors = %d", name.c_str(), cloudSubtractFilteringMinNeighbors_);
 	
 	// JHUAPL section
-	pnh.param("Grid/EnableSemanticSegmentation", semanticSegmentationEnable_, semanticSegmentationEnable_);
-	pnh.param("model_classes_file_path", semanticSegmentationModelFilePath_, semanticSegmentationModelFilePath_);
+	
+	std::string semanticSegmentationEnable = "false"; 
+	pnh.param("Grid/EnableSemanticSegmentation", semanticSegmentationEnable, semanticSegmentationEnable);
+	if (semanticSegmentationEnable == "true") {
+		semanticSegmentationEnable_ = true;
+	}
 	ROS_INFO("%s(maps): Grid/EnableSemanticSegmentation = %s", name.c_str(), semanticSegmentationEnable_?"true":"false");
+	pnh.param("model_classes_file_path", semanticSegmentationModelFilePath_, semanticSegmentationModelFilePath_);
 	ROS_INFO("%s(maps): model_classes_file_path = %s", name.c_str(), semanticSegmentationModelFilePath_.empty()?"NOT_PATH":
 				semanticSegmentationModelFilePath_.c_str());
 	pnh.param("publish_semantic_mask", publishSemanticMask_, publishSemanticMask_);
@@ -184,15 +189,34 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	std::list<std::string> multiLevelTreeName = uSplit(multiLevelTreeNameStr, ' ');
 
 	int octoMapNumThreads = 2;
-	pnh.param("Grid/OctoMapNumThreads", octoMapNumThreads, octoMapNumThreads);
+	std::string octoMapNumThreadsStr = "2";
+	pnh.param("Grid/OctoMapNumThreads", octoMapNumThreadsStr, octoMapNumThreadsStr);
+	octoMapNumThreads = uStr2Float(octoMapNumThreadsStr);
 	ROS_INFO("Grid/OctoMapNumThreads = %d", octoMapNumThreads);
+
 	std::string gridMaxObstacleHeight;
 	pnh.param("Grid/MaxObstacleHeight", gridMaxObstacleHeight, gridMaxObstacleHeight);
-	gridMaxObstacleHeight_ = std::stof(gridMaxObstacleHeight);
+	//gridMaxObstacleHeight_ = std::stof(gridMaxObstacleHeight);
+	gridMaxObstacleHeight_ = uStr2Float(gridMaxObstacleHeight);
 	ROS_INFO("(mapManager) Grid/MaxObstacleHeight = %f", gridMaxObstacleHeight_);
 
 	pnh.param("octomap_raytracing", octomapRayTracing_, octomapRayTracing_);
 	ROS_INFO("octomap_raytracing = %s", octomapRayTracing_?"True":"False");
+
+	std::string rangeMaxStr = "0";
+	pnh.param("Grid/RangeMax", rangeMaxStr, rangeMaxStr);
+	float rangeMax = uStr2Float(rangeMaxStr);
+	ROS_INFO("Grid/RangeMax = %f", rangeMax);
+
+	std::string raytracingMaxRangeStr = "2.0";
+	pnh.param("Grid/RaytracingMaxRange", raytracingMaxRangeStr, raytracingMaxRangeStr);
+	float raytracingMaxRange = uStr2Float(raytracingMaxRangeStr);
+	ROS_INFO("Grid/RaytracingMaxRange = %f", raytracingMaxRange);
+
+	std::string emptyMaxHeightStr = "1.0f";
+	pnh.param("Grid/EmptyMaxHeight", emptyMaxHeightStr, emptyMaxHeightStr);
+	float emptyMaxHeight = uStr2Float(emptyMaxHeightStr);
+	ROS_INFO("Grid/EmptyMaxHeight = %f", emptyMaxHeight);
 
 	// JHUAPL section end
 
@@ -201,7 +225,16 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	// JHUAPL section
 	if(semanticSegmentationEnable_)
 	{
-		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, 0.5, occupancyGrid_->isFullUpdate(), occupancyGrid_->getUpdateError(), octoMapNumThreads);
+		SemanticOctoMap::params_t sematicOctoMapParams = { .occupancyThr = 0.5,
+					.fullUpdate = occupancyGrid_->isFullUpdate(),
+					.updateError = occupancyGrid_->getUpdateError(),
+					.numThreads = octoMapNumThreads,
+					.rangeMax = rangeMax,
+					.raytracingMaxRange = raytracingMaxRange,
+					.emptyMaxHeight = emptyMaxHeight,
+				};
+
+		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, sematicOctoMapParams);
 	
 		// set the model class map if available
 		if(!semanticSegmentationModelFilePath_.empty())
@@ -1086,7 +1119,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			if(octomapRayTracing_) 
 			{
 				UTimer time;
-				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeMovable);
+				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeStatic);
 				UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
 			}
 			else 

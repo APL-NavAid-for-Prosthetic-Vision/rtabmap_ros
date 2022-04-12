@@ -84,6 +84,7 @@
   
   <arg name="octomap_raytracing"                    default="false"/>
   <arg name="grid_raytracingMaxRange"               default="2"/>
+  <arg name="grid_emptyMaxHeight"                   default="1.0"/>
   
   <!-- JHU APL : end -->
 
@@ -464,8 +465,9 @@
       <param name="GridGlobal/UpdateError"    type="string" value="0.01"/>
       <param name="GridGlobal/FullUpdate"     type="string" value="true" />
       
-      <param if="$(arg subscribe_rgbd_semantic_detection)" name="Grid/EnableSemanticSegmentation" type="bool" value="true"/>
-      <param name="Grid/OctoMapNumThreads"          type="int"      value="$(arg OctoMapNumThreads)"/>
+      <param if="$(arg subscribe_rgbd_semantic_detection)" name="Grid/EnableSemanticSegmentation" type="string" value="true"/>
+
+      <param name="Grid/OctoMapNumThreads"          type="string"   value="$(arg OctoMapNumThreads)"/>
       <param name="Grid/FromDepth"                  type="string"   value="true"/> <!-- Create occupancy grid from depth image(s) -->
       <param name="Grid/3D"                         type="string"   value="true"/>
       <param name="Grid/CellSize"                   type="string"   value="$(arg map_resolution)"/> <!--Param: Grid/CellSize = "0.1"   [Resolution of the occupancy grid.]-->
@@ -489,7 +491,7 @@
       <param name="Grid/SemanticGroundCorrection"   type="string"   value="$(arg grid_semanticGroundCorrection)"/>
       <param name="Grid/OutlierRemoval"             type="string"   value="$(arg grid_outlierRemoval)"/>
       <param name="Grid/RaytracingMaxRange"         type="string"   value="$(arg grid_raytracingMaxRange)"/>
-      
+      <param name="Grid/EmptyMaxHeight"             type="string"   value="$(arg grid_emptyMaxHeight)"/>
       
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />
