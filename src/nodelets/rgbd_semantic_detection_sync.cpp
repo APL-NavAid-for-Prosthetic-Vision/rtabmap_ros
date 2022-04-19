@@ -233,7 +233,7 @@ private:
 				objRecognitionSemanticDetectionClient_.call(objRecognSegImgMsg);
 				
 				double elapse_time = ros::Time::now().toSec() - start_time.toSec();
-				NODELET_INFO("object recognition client call: elapse_time= %f", elapse_time);
+				//NODELET_INFO("object recognition client call: elapse_time= %f", elapse_time);
 				
 				if(objRecognSegImgMsg.response.output.data.empty())
 				{
