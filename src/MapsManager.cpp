@@ -225,15 +225,20 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	// JHUAPL section
 	if(semanticSegmentationEnable_)
 	{
-		SemanticOctoMap::params_t sematicOctoMapParams = { .occupancyThr = 0.5,
-					.fullUpdate = occupancyGrid_->isFullUpdate(),
-					.updateError = occupancyGrid_->getUpdateError(),
-					.numThreads = octoMapNumThreads,
-					.rangeMax = rangeMax,
-					.raytracingMaxRange = raytracingMaxRange,
-					.emptyMaxHeight = emptyMaxHeight,
-				};
-
+		SemanticOctoMap::params_t sematicOctoMapParams;
+		// setting params for Sematic Octomap
+		sematicOctoMapParams.fullUpdate = occupancyGrid_->isFullUpdate();
+		sematicOctoMapParams.updateError = occupancyGrid_->getUpdateError();
+		sematicOctoMapParams.numThreads = octoMapNumThreads;
+		sematicOctoMapParams.rangeMax = rangeMax;
+		sematicOctoMapParams.raytracingMaxRange = raytracingMaxRange;
+		sematicOctoMapParams.emptyMaxHeight = emptyMaxHeight;
+		sematicOctoMapParams.occupancyThr = 0.5;
+		sematicOctoMapParams.probHit = 0.7;
+		sematicOctoMapParams.probMiss = 0.4;
+		sematicOctoMapParams.clampingMin = 0.1192;
+		sematicOctoMapParams.clampingMax = 0.971;
+				
 		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, sematicOctoMapParams);
 	
 		// set the model class map if available
