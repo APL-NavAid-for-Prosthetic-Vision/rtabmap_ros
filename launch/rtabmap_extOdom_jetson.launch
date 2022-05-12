@@ -35,8 +35,9 @@
     <arg name="grid_outlierRemoval"                  default="false"/>
     <arg name="octomap_raytracing"                   default="false"/>
     <arg name="grid_raytracingMaxRange"              default="2"/>
-    <arg name="grid_emptyMaxHeight"                  default="0.5"/>
-
+    <arg name="grid_emptyMaxHeight"                  default="1.0"/>
+    <arg name="grid_maxGroundHeight"                 default="0.05"/>
+    
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
     <arg name="map_always_update"           default="false"/>
@@ -91,7 +92,7 @@
         <arg name="rectifyOnlyFeatures"         default="$(arg rectifyOnlyFeatures)"/>  <!-- projection of RGB-D image to point cloud is assuming that images are rectified, so needs to be true -->
         <arg name="grid_maxObstacleHeight"      default="$(arg grid_maxObstacleHeight)"/>
         <arg name="rgbd_maxOdomCacheSize"       default="$(arg rgbd_maxOdomCacheSize)"/>
-        <arg name="rgbd_optimizeMaxError"       default="3"/>
+        <arg name="rgbd_optimizeMaxError"       default="2"/>
         <!-- <arg name="optimizer_robust"            default="true"/> -->
         <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
         <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
@@ -101,10 +102,11 @@
         <arg name="grid_semanticDepthFusionCorrection"   default="$(arg grid_semanticDepthFusionCorrection)"/>
         <arg name="grid_semanticGroundCorrection"        default="$(arg grid_semanticGroundCorrection)"/>
         <arg name="grid_outlierRemoval"                  default="$(arg grid_outlierRemoval)"/>
-        <arg name="OctoMapNumThreads"                    default="3" />
+        <arg name="OctoMapNumThreads"                    default="5" />
         <arg name="octomap_raytracing"                   default="$(arg octomap_raytracing)"/>      <!-- raytracing at the semantic octomap update. uses grid_raytracingMaxRange to set the max range -->
         <arg name="grid_raytracingMaxRange"              default="$(arg grid_raytracingMaxRange)"/>
         <arg name="grid_emptyMaxHeight"                  default="$(arg grid_emptyMaxHeight)"/>
+        <arg name="grid_maxGroundHeight"                 default="$(arg grid_maxGroundHeight)"/>
     </include>
 
 </launch>
