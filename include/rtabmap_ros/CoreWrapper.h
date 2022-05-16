@@ -153,8 +153,6 @@ private:
 				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d,
 				const std::vector<cv::Mat> & localDescriptors);
 
-	void publishRegisteredData(const int nodeId, const int lastNodeId, const rtabmap::SensorData & data, const double stamp, const rtabmap::Transform & pose);
-				
 	void publishLandmarksMap(const rtabmap::Memory * memory, const std::string & mapFrameId);
 	
 	// ROS callback functions
