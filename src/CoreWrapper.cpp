@@ -1392,6 +1392,11 @@ void CoreWrapper::commonDepthCallbackImpl(
 			return;
 		}
 	}
+	else if (scan2dMsg.ranges.empty() && scan3dMsg.data.empty() && depth.empty())
+	{
+		NODELET_ERROR(" not depth sensor data input available !");
+		return;
+	}
 
 	cv::Mat userData;
 	if(userDataMsg.get())
@@ -1439,81 +1444,6 @@ void CoreWrapper::commonDepthCallbackImpl(
 			covariance_,
 			odomInfo);
 	covariance_ = cv::Mat();
-}
-
-/// TODO: detemine if to keep this functionality? leaving for now
-void CoreWrapper::publishRegisteredData(const int nodeId, const int lastNodeId, const rtabmap::SensorData & data, const double stamp, const rtabmap::Transform & pose)
-{
-	rtabmap_ros::RegisteredData msg;
-	cv::Mat rgb, depth, semanticMask;
-
-	if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty() && !data.imageSemanticMaskRaw().empty())
-	{
-		rgb = data.imageRaw();
-		depth = data.depthOrRightRaw();
-		semanticMask = data.imageSemanticMaskRaw();
-		UDEBUG(" Registered Data");
-	}
-	else 
-	{
-		UDEBUG(" Registered Data compressed ... uncompressing");
-		data.uncompressDataConst(&rgb, &depth, &semanticMask);
-	}
-	
-	// add to message
-	cv_bridge::CvImage rgbImgCv;
-	rgbImgCv.header.stamp = ros::Time(stamp);
-	rgbImgCv.image = rgb;
-	rgbImgCv.encoding = sensor_msgs::image_encodings::TYPE_8UC3;
-	// add rgb image to the msg out
-	rgbImgCv.toImageMsg(msg.rgbImage);
-
-	cv_bridge::CvImage depthImgCv;
-	depthImgCv.header.stamp = ros::Time(stamp);
-	depthImgCv.image = depth;
-	if(depth.type() == CV_16UC1)
-	{
-		depthImgCv.encoding =  sensor_msgs::image_encodings::TYPE_16UC1;
-	}
-	else // CV_32FC1
-	{
-		depthImgCv.encoding =  sensor_msgs::image_encodings::TYPE_32FC1;
-	}
-	// add depth image to the msg out
-	depthImgCv.toImageMsg(msg.depthImage);
-
-	cv_bridge::CvImage semanticMaskImgCv;
-	semanticMaskImgCv.header.stamp = ros::Time(stamp);
-	semanticMaskImgCv.image = semanticMask;
-	semanticMaskImgCv.encoding = sensor_msgs::image_encodings::TYPE_8UC1;
-	// add semantic mask image to the msg out
-	semanticMaskImgCv.toImageMsg(msg.semanticMaskImage);
-
-	// map association of object id and occupancy type
-	std::map<unsigned int, std::string> object2occupancyMap = data.getOccupancyAssociation();
-	for(auto iter = object2occupancyMap.begin(); iter != object2occupancyMap.end(); ++iter) {
-		int objectId = iter->first;
-		std::string occupancy = iter->second;
-
-		msg.occupancyMapkeys.push_back(occupancy); 
-		msg.occupancyMapObjectValue.push_back(objectId); 
-	}
-
-	// last nodeId is the id of last received data
-	msg.lastNodeId = lastNodeId;
-
-	// signatureId is the same as the node id. This is the id on the nodeId added to the graph.
-	msg.nodeId = nodeId;
-
-	// pose TF to msg { geometry_msgs::Pose }
-	transformToPoseMsg(pose, msg.pose);
-
-	// msg header 
-	msg.header.stamp = ros::Time::now();
-
-	// publish message
-	publishRegisteredDataPub_.publish(msg);
-
 }
 
 void CoreWrapper::publishLandmarksMap(const rtabmap::Memory * memory, const std::string & mapFrameId) 
@@ -1954,6 +1884,11 @@ void CoreWrapper::commonDepthCallbackImpl(
 			NODELET_ERROR("Could not convert 3d laser scan msg! Aborting rtabmap update...");
 			return;
 		}
+	} 
+	else if (scan2dMsg.ranges.empty() && scan3dMsg.data.empty() && depth.empty())
+	{
+		NODELET_ERROR(" not depth sensor data input available !");
+		return;
 	}
 
 	cv::Mat userData;
@@ -2707,16 +2642,6 @@ void CoreWrapper::process(
 					// contains local occupancy grid information and post-processing
 					// (e.g., decimation) of the sensor data
 					rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
-		
-					// if(publishRegisteredDataPub_.getNumSubscribers()) 
-					// {
-					// 	int nodeId = rtabmap_.getMemory()->getLastWorkingSignature()->id();
-					// 	int lastNodeId = rtabmap_.getMemory()->getLastSignatureId();
-
-					// 	rtabmap::Transform map2NodePose = mapToOdom_*odom;
-						
-					// 	publishRegisteredData(nodeId, lastNodeId, sd, data.stamp(), map2NodePose);
-					// }
 
 					// publish the newest semantic mask added to map 
 					mapsManager_.publishSemenaticMaskImage(sd);
