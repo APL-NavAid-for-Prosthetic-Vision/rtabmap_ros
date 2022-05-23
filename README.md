@@ -20,6 +20,11 @@ libfmt-dev
 
 ## Installation
 
+# clone repo with submodules
+git clone https://bitbucket.xrcs.jhuapl.edu/scm/slamr01/rtabmap_ros.git
+git submodule init
+git submodule update
+
 - From your workspace initialize and configure the catkin project (make sure to have source the ROS environment 'source /opt/ros/melodic/setup.bash')
 
 ```bash
