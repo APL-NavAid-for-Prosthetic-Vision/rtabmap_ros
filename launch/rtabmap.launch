@@ -477,11 +477,11 @@
       <param name="Grid/NoiseFilteringMinNeighbors" type="string"   value="5" />
       <param name="Grid/NoiseFilteringRadius"       type="string"   value="0.0"/>
       <param name="Grid/DepthDecimation"            type="string"   value="4"/>
-      <param name="Grid/MaxGroundAngle"             type="string"   value="55"/>   <!--  Maximum angle (degrees) between point's normal to ground's normal to label it as ground. -->
+      <param name="Grid/MaxGroundAngle"             type="string"   value="35"/>   <!--  Maximum angle (degrees) between point's normal to ground's normal to label it as ground. -->
       <param name="Grid/NormalRadiusSearch"         type="string"   value="0.15"/>  <!-- Use all or k nearest neighbors in a sphere of radius in meters. -->
       <param name="Grid/MaxGroundHeight"            type="string"   value="$(arg grid_maxGroundHeight)"/>
-      <param name="Grid/MinClusterSize"             type="string"   value="50"/>
-      <param name="Grid/ClusterRadius"              type="string"   value="0.15"/>
+      <param name="Grid/MinClusterSize"             type="string"   value="3"/>
+      <param name="Grid/ClusterRadius"              type="string"   value="0.25"/>
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>

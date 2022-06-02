@@ -1124,7 +1124,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			if(octomapRayTracing_) 
 			{
 				UTimer time;
-				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeMovable);
+				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeStatic);
 				UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
 			}
 			else 
