@@ -852,7 +852,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				if(updateGridCache && semanticSegmentationEnable_ && (iter->first == 0 || !uContains(gridAPLMaps_, iter->first)))
 				{
 					UDEBUG("Data required for %d", iter->first);
-					// the argument signature is a local copy, and does not need to be lock for
+					// the argument signatures is a local copy, and does not need to be lock
 					std::map<int, rtabmap::Signature>::const_iterator findIter = signatures.find(iter->first);
 					if(findIter != signatures.end())
 					{
@@ -907,6 +907,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 							generateGrid?0:&obstaclesCellsMap,
 							generateGrid?0:&emptyCells);
 
+					UDEBUG(" obstaclesCellsMap size=%d", (int)obstaclesCellsMap.size());
 					UDEBUG(" emptyCells size=%d", (int)emptyCells.cols );
 
 					if(generateGrid)
