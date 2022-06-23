@@ -2343,4 +2343,13 @@ std::map<unsigned int, std::string> MapsManager::getOccupancyAssociation()
 	return std::move(occupancyAssociationMap);
 }
 
+std::map<unsigned int, std::string> MapsManager::getClassIdAssociation() 
+{
+	std::map<unsigned int, std::string> classId2StringMap;
+	// get the class id to string association from the occupancy grid object.
+	occupancyGrid_->getClassIdAssociation(&classId2StringMap);
+
+	return std::move(classId2StringMap);
+}
+
 // JHUAPL section end

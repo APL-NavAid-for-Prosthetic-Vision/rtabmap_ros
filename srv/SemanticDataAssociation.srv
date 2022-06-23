@@ -1,13 +1,18 @@
 #
-#   This services response with the semantic data association occupancyMapkeys
+#   This services response with the semantic data association and the occupancy association
 #
-#   Response: 
-#       - occupancyMapkeys : occupancy type name used in the map, each index matches the index of the occupancyMapObjectValue.
-#       - occupancyMapObjectValue : occupancy id corresponding to the occupancy name, each index matches the index of the occupancyMapkeys.
-
+#   Response:
+#       - ClassId: list of all class ids  
+#       - classNameString: list of all class id name as string in the same order of ClassId
+#       - occupancyClassId: list of all class ids for the occupancy association
+#       - occupancyNameString: list of all occupancy name associations for each of the occupancyClassId (e.g., ground, ceiling, static, movable, dynamic)
+#
 
 ---
 #response
 
-string[] occupancyMapkeys
-uint32[] occupancyMapObjectValue
+uint32[] ClassId
+string[] classNameString
+
+uint32[] occupancyClassId
+string[] occupancyNameString

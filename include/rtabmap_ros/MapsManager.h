@@ -108,15 +108,16 @@ public:
 	bool isSemanticSegmentationEnabled() { return semanticSegmentationEnable_; }
 
 	void publishAPLMaps(const ros::Time & stamp,
-						const std::string & mapFrameId);
+			const std::string & mapFrameId);
 
 	void publishSemenaticMaskImage(const rtabmap::SensorData & data);
 
-	bool getIsAlwaysUpdateMap() {return alwaysUpdateMap_; }
+	bool getIsAlwaysUpdateMap() {return alwaysUpdateMap_;}
 
 	std::map<unsigned int, std::string> getOccupancyAssociation();
 
-	
+	std::map<unsigned int, std::string> getClassIdAssociation(); 
+
 	// JHUAPL section end
 
 private:
