@@ -4728,14 +4728,28 @@ void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & fil
 
 bool CoreWrapper::semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAssociation::Request & req, rtabmap_ros::SemanticDataAssociation::Response & res)
 {
-	// map association of object id and occupancy type
-	std::map<unsigned int, std::string> object2occupancyMap = mapsManager_.getOccupancyAssociation();
-	for(auto iter = object2occupancyMap.begin(); iter != object2occupancyMap.end(); ++iter) {
-		int objectId = iter->first;
+	// Class ID is the semantic label id, corresponds to a supported classed detected in the semantic segmentation model.
+	std::map<unsigned int, std::string> classId2StringMap = mapsManager_.getClassIdAssociation();
+
+	// copy the data association into the ROS message.
+	for(auto iter = classId2StringMap.begin(); iter != classId2StringMap.end(); ++iter) {
+		int classId = iter->first;
+		std::string className = iter->second;
+
+		res.ClassId.push_back(classId); 
+		res.classNameString.push_back(className); 
+	}
+
+	// Class ID to Occupancy name association  
+	std::map<unsigned int, std::string> classId2occupancyMap = mapsManager_.getOccupancyAssociation();
+
+	// copy the class id to occupancy name association into a ROS service message.
+	for(auto iter = classId2occupancyMap.begin(); iter != classId2occupancyMap.end(); ++iter) {
+		int classId = iter->first;
 		std::string occupancy = iter->second;
 
-		res.occupancyMapkeys.push_back(occupancy); 
-		res.occupancyMapObjectValue.push_back(objectId); 
+		res.occupancyClassId.push_back(classId); 
+		res.occupancyNameString.push_back(occupancy); 
 	}
 
 	return true;
