@@ -267,7 +267,7 @@ private:
 					rgbdSemanticDetectionPub_.publish(msg);
 					// statistics of the node
 					elapse_time = ros::Time::now().toSec() - timeLastPublished_.toSec();
-					NODELET_INFO("RGBD semantic Msg: elapse_time= %f (frq:%.2f Hz)", elapse_time, 1/elapse_time);
+					NODELET_DEBUG("RGBD semantic Msg: elapse_time= %f (frq:%.2f Hz)", elapse_time, 1/elapse_time);
 				}	
 			}
 

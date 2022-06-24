@@ -107,6 +107,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap_ros/Landmarks.h>
 #include <visualization_msgs/MarkerArray.h>
 
+#include <rtabmap_ros/ObstacleData.h>
+
 //boost
 #include <boost/chrono.hpp>
 
@@ -833,6 +835,8 @@ void CoreWrapper::onInit()
 	// JHUAPL section 
 
 	landmarksMapPub_ =  nh.advertise<visualization_msgs::MarkerArray>("landmarks_map", 1);
+	obstaclesDataPub_ = nh.advertise<rtabmap_ros::ObstacleData>("obstacle_data", 1);
+
 	landmarkInsertSrv_ = nh.advertiseService("landmarks_insert", &CoreWrapper::landmarksInsertSrvCallback, this);
 	landmarksQuerySrv_ = nh.advertiseService("landmarks_available", &CoreWrapper::landmarksQuerySrvCallback, this);
 	landmarksRemoveSrv_ = nh.advertiseService("landmarks_remove", &CoreWrapper::landmarksRemoveSrvCallback, this);
@@ -2648,6 +2652,9 @@ void CoreWrapper::process(
 
 					// publish visual and depth image 
 					publishVisualDepthImages(sd);
+
+					// publish obstacles data of the last added Data
+					publishObstacleData(sd);
 				}
 				else 
 				{
@@ -4732,7 +4739,8 @@ bool CoreWrapper::semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAs
 	std::map<unsigned int, std::string> classId2StringMap = mapsManager_.getClassIdAssociation();
 
 	// copy the data association into the ROS message.
-	for(auto iter = classId2StringMap.begin(); iter != classId2StringMap.end(); ++iter) {
+	for(auto iter = classId2StringMap.begin(); iter != classId2StringMap.end(); ++iter) 
+	{
 		int classId = iter->first;
 		std::string className = iter->second;
 
@@ -4744,7 +4752,8 @@ bool CoreWrapper::semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAs
 	std::map<unsigned int, std::string> classId2occupancyMap = mapsManager_.getOccupancyAssociation();
 
 	// copy the class id to occupancy name association into a ROS service message.
-	for(auto iter = classId2occupancyMap.begin(); iter != classId2occupancyMap.end(); ++iter) {
+	for(auto iter = classId2occupancyMap.begin(); iter != classId2occupancyMap.end(); ++iter) 
+	{
 		int classId = iter->first;
 		std::string occupancy = iter->second;
 
@@ -4755,6 +4764,55 @@ bool CoreWrapper::semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAs
 	return true;
 }
 
+void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data)
+{
+	if(obstaclesDataPub_.getNumSubscribers()) 
+	{
+		UTimer timer;
+		timer.start();
+		std::map<unsigned int, std::string> occupancyAssociation = data.getOccupancyAssociation();
+		std::map<unsigned int, cv::Mat> obstaclesCellMap = data.gridObstacleCellsMapRaw();
+
+		rtabmap_ros::ObstacleData msg;
+
+		// obstaclesCellMap contains all class id detected in a keyframe, not all classes are actual obstacles.
+		//  we are going to select the set of points belonging to actual obstacles and copying them into a ROS message.
+		// actual obstacles are associated to occupancy types : static, movable, and dynamic
+		for (auto iter = obstaclesCellMap.begin(); iter != obstaclesCellMap.end(); ++iter) 
+		{
+			auto occupancyIter = occupancyAssociation.find(iter->first);
+			if (occupancyIter != occupancyAssociation.end()) 
+			{
+				if (occupancyIter->second == "static" ||
+						occupancyIter->second == "movable" ||
+						occupancyIter->second == "dynamic") 
+				{
+					unsigned int classId = iter->first;
+				
+					msg.obstacleIds.push_back(classId);
+
+					cv_bridge::CvImagePtr cv_ptr(new cv_bridge::CvImage);
+
+					// XYZRGB encapulation in 4D
+					// [0] = X; [1] = Y, [2] = Z ; [3] = B | G  << 8 | R << 16
+					if (iter->second.type() == CV_32FC(4)) 
+					{
+						cv_ptr->encoding = "32FC4";
+					}
+					cv_ptr->image = iter->second.clone();
+
+					sensor_msgs::ImagePtr imgMsgPtr = cv_ptr->toImageMsg();
+					// add point cloud encapulated as an image
+					msg.pointClouds.push_back(*imgMsgPtr);
+				}
+			}
+		}
+		NODELET_DEBUG(" publishObstacleData copying msg time elapsed: %f secs", timer.ticks());
+		timer.start();
+		obstaclesDataPub_.publish(msg);
+		NODELET_DEBUG(" publishObstacleData sending msg time elapsed: %f secs", timer.ticks());
+	}
+}
 
 // JHUAPL section end
 
