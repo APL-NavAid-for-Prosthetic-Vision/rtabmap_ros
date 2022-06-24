@@ -97,7 +97,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /// JHUAPL section
 
 #include "rtabmap_ros/utils_mapping.h"
-#include "rtabmap_ros/RegisteredData.h"
 
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/Link.h>
@@ -262,8 +261,6 @@ void CoreWrapper::onInit()
 #endif
 
 	pnh.param("depth_Filters", depthFilters_, depthFilters_);
-
-	publishRegisteredDataPub_ = nh.advertise<rtabmap_ros::RegisteredData>("registered_data", 1);
 
 	// JHUAPL section end
 
@@ -2646,6 +2643,7 @@ void CoreWrapper::process(
 					// contains local occupancy grid information and post-processing
 					// (e.g., decimation) of the sensor data
 					rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
+					
 
 					// publish the newest semantic mask added to map 
 					mapsManager_.publishSemenaticMaskImage(sd);
@@ -2654,7 +2652,7 @@ void CoreWrapper::process(
 					publishVisualDepthImages(sd);
 
 					// publish obstacles data of the last added Data
-					publishObstacleData(sd);
+					publishObstacleData(sd, odom);
 				}
 				else 
 				{
@@ -4764,7 +4762,7 @@ bool CoreWrapper::semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAs
 	return true;
 }
 
-void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data)
+void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data, const rtabmap::Transform & odom)
 {
 	if(obstaclesDataPub_.getNumSubscribers()) 
 	{
@@ -4775,6 +4773,9 @@ void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data)
 
 		rtabmap_ros::ObstacleData msg;
 
+		// corresponding pose to message geometry_msgs::Pose
+		transformToPoseMsg(odom, msg.odom);
+	
 		// obstaclesCellMap contains all class id detected in a keyframe, not all classes are actual obstacles.
 		//  we are going to select the set of points belonging to actual obstacles and copying them into a ROS message.
 		// actual obstacles are associated to occupancy types : static, movable, and dynamic
