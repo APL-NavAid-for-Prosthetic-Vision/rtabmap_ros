@@ -120,7 +120,7 @@ private:
 	bool odomUpdate(const nav_msgs::OdometryConstPtr & odomMsg, ros::Time stamp);
 	bool odomTFUpdate(const ros::Time & stamp); // TF odom
 
-	/// 
+	/// *****************************************
 	///	JHU APL functions
 	/// ******************************************
 
@@ -138,6 +138,7 @@ private:
 				const std::vector<std::vector<rtabmap_ros::KeyPoint> > & localKeyPoints = std::vector<std::vector<rtabmap_ros::KeyPoint> >(),
 				const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3d = std::vector<std::vector<rtabmap_ros::Point3f> >(),
 				const std::vector<cv::Mat> & localDescriptors = std::vector<cv::Mat>());
+
 	void commonDepthCallbackImpl(
 				const std::string & odomFrameId,
 				const rtabmap_ros::UserDataConstPtr & userDataMsg,
@@ -157,13 +158,26 @@ private:
 	
 	// ROS callback functions
 	//
-	
 	bool landmarksInsertSrvCallback(rtabmap_ros::LandmarksInsert::Request & req, rtabmap_ros::LandmarksInsert::Response & res);
 	bool landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request & req, rtabmap_ros::LandmarksQuery::Response & res);
 	bool landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res);
 	bool semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAssociation::Request & req, rtabmap_ros::SemanticDataAssociation::Response & res);
 
+	///
+	/// Helper function	
+	///
+
+	/// @brief publish visual and depth image
+	///
 	void publishVisualDepthImages(const rtabmap::SensorData & data);
+
+	///
+	///
+	void publishObstacleData(const rtabmap::SensorData & data);
+
+	///
+	/// Threads call back functions
+	///
 
 	/// @brief function for map manager update as a thread, it is called from the thread binding
 	///
@@ -176,7 +190,7 @@ private:
 
 	/// ******************************************
 	///	JHUAPL section end
-	///
+	/// ******************************************
 
 	virtual void commonDepthCallback(
 				const nav_msgs::OdometryConstPtr & odomMsg,
@@ -441,6 +455,7 @@ private:
 	
 	ros::Publisher publishRegisteredDataPub_;
 	ros::Publisher landmarksMapPub_;
+	ros::Publisher obstaclesDataPub_;
 	
 	ros::ServiceServer landmarkInsertSrv_;
 	ros::ServiceServer landmarksQuerySrv_;
