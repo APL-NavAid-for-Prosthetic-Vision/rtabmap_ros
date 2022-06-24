@@ -173,7 +173,7 @@ private:
 
 	///
 	///
-	void publishObstacleData(const rtabmap::SensorData & data);
+	void publishObstacleData(const rtabmap::SensorData & data, const rtabmap::Transform & odom);
 
 	///
 	/// Threads call back functions
