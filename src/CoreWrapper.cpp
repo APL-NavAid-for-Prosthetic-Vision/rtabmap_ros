@@ -2652,7 +2652,7 @@ void CoreWrapper::process(
 					publishVisualDepthImages(sd);
 
 					// publish obstacles data of the last added Data
-					publishObstacleData(sd, odom);
+					publishObstacleData(sd);
 				}
 				else 
 				{
@@ -4762,7 +4762,7 @@ bool CoreWrapper::semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAs
 	return true;
 }
 
-void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data, const rtabmap::Transform & odom)
+void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data)
 {
 	if(obstaclesDataPub_.getNumSubscribers()) 
 	{
@@ -4770,11 +4770,14 @@ void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data, const rt
 		timer.start();
 		std::map<unsigned int, std::string> occupancyAssociation = data.getOccupancyAssociation();
 		std::map<unsigned int, cv::Mat> obstaclesCellMap = data.gridObstacleCellsMapRaw();
+		// localTransform is the transformation applied to points from depth image
+		// to form the point cloud
+		rtabmap::Transform localTransform = data.cameraModels().at(0).localTransform();
 
 		rtabmap_ros::ObstacleData msg;
 
 		// corresponding pose to message geometry_msgs::Pose
-		transformToPoseMsg(odom, msg.odom);
+		transformToPoseMsg(localTransform.inverse(), msg.T_cam_pts);
 	
 		// obstaclesCellMap contains all class id detected in a keyframe, not all classes are actual obstacles.
 		//  we are going to select the set of points belonging to actual obstacles and copying them into a ROS message.

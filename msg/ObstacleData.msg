@@ -25,5 +25,5 @@ std_msgs/Header header
 uint32[] obstacleIds
 sensor_msgs/Image[] pointClouds
 
-# odom : pose of the sensor frame with respect to the odometry
-geometry_msgs/Pose odom
+# transform from point coords to camera coords
+geometry_msgs/Pose T_cam_pts

@@ -12,7 +12,7 @@ bool compressed
 # Raw
 sensor_msgs/Image rgb
 sensor_msgs/Image depth
-sensor_msgs/Image semantic_mask
+sensor_msgs/Image semantic_mask # store semantic label # 
 
 # Compressed
 sensor_msgs/CompressedImage rgb_compressed
