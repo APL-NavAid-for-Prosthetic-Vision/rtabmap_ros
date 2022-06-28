@@ -1,13 +1,13 @@
 #  Johns Hopkins University Applied Physics Laboratory
 #
-# Map Manager statitics message : system functional parameters manly for system performances. 
+# Map Manager statistics message : system functional parameters manly for system performances. 
 #
 
-# transmitting message header , the time message was published.
+# transmitting message header, the time when the message was published.
 std_msgs/Header header
 
 # map_manager_update_cache_time: total time elapsed to update the updateMapCaches and passing in data. 
-#                                this essentially the time it takes to process the Map Manager thread in seconds.
+#                                this is essentially the time it takes to process the Map Manager thread in seconds.
 float32 map_manager_update_cache_time
 
 # is_octomap_data: it's set to true when statitics were captured, othewise it is set to false. 
