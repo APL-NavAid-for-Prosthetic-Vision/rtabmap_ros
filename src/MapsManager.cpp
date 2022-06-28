@@ -691,7 +691,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		bool updateGrid,
 		bool updateOctomap,
 		UMutex& memory_mtx,
-		const std::map<int, rtabmap::Signature> & signaturesIn)
+		const std::map<int, rtabmap::Signature> & signaturesIn,
+		rtabmap_ros::MapManagerStats * mapManagerStatsPtr)
 {
 	bool updateGridCache = updateGrid || updateOctomap;
 	if(!updateGrid && !updateOctomap)
@@ -1122,24 +1123,29 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 		octomap_u_mtx_.lock();
 		if(updateOctomap && semanticSegmentationEnable_)
 		{
+			mapManagerStatsPtr->is_octomap_data = true;
 			if(octomapRayTracing_) 
 			{
 				UTimer time;
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeStatic);
-				UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
+				mapManagerStatsPtr->octomap_update_time = time.ticks();
+				UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
 			}
 			else 
 			{
 				UTimer time;
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses);
-				UINFO("++++ SemanticOctomap update time = %f sec", time.ticks());
+				mapManagerStatsPtr->octomap_update_time = time.ticks();
+				UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
 			}
 		}
 		else if(updateOctomap)
 		{
+			mapManagerStatsPtr->is_octomap_data = true;
 			UTimer time;
 			octomapUpdated_ = octomap_->update(filteredPoses);
-			UINFO("+++ Octomap update time = %f sec", time.ticks());
+			mapManagerStatsPtr->octomap_update_time = time.ticks();
+			UINFO("+++ Octomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
 		}
 		octomap_u_mtx_.unlock();
 #endif

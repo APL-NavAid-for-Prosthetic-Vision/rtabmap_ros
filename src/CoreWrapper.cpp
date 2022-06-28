@@ -107,6 +107,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <visualization_msgs/MarkerArray.h>
 
 #include <rtabmap_ros/ObstacleData.h>
+#include <rtabmap_ros/MapManagerStats.h>
 
 //boost
 #include <boost/chrono.hpp>
@@ -833,6 +834,7 @@ void CoreWrapper::onInit()
 
 	landmarksMapPub_ =  nh.advertise<visualization_msgs::MarkerArray>("landmarks_map", 1);
 	obstaclesDataPub_ = nh.advertise<rtabmap_ros::ObstacleData>("obstacle_data", 1);
+	mapManagerStatsPub_ = nh.advertise<rtabmap_ros::MapManagerStats>("map_manager_stats", 1);
 
 	landmarkInsertSrv_ = nh.advertiseService("landmarks_insert", &CoreWrapper::landmarksInsertSrvCallback, this);
 	landmarksQuerySrv_ = nh.advertiseService("landmarks_available", &CoreWrapper::landmarksQuerySrvCallback, this);
@@ -4649,12 +4651,14 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 	ros::Rate rate(1.0 / threadDelay);
 	NODELET_INFO(" map manager update thread, expected update rate: %fsecs", rate.expectedCycleTime().toSec());
 	boost::thread publishMapThread;
+
+	ros::WallTime startTime;
 	
 	while(mapManagerUpdateThreadRunning_)
 	{
-		ros::WallTime startTime = ros::WallTime::now();
-  		ros::Time rostime = ros::Time::now();
-	
+		startTime = ros::WallTime::now();
+		rtabmap_ros::MapManagerStats mapManagerStats;
+
 		std::map<int, rtabmap::Transform> filteredPoses;
 		std::map<int, rtabmap::Signature> tmpSignature;
 		ros::Time stamp;
@@ -4669,17 +4673,15 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 		if(!filteredPoses.empty())
 		{
 			filteredPoses = mapsManager_.updateMapCaches(
-							filteredPoses,
-							rtabmap_.getMemory(),
-							false,
-							false,
-							rtabmap_mtx_,
-							tmpSignature);
+					filteredPoses,
+					rtabmap_.getMemory(),
+					false,
+					false,
+					rtabmap_mtx_,
+					tmpSignature,
+					&mapManagerStats);
 		
 			UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
-
-			double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-			NODELET_INFO("****  Map manager update in took %f sec", total_elapsed);
 
 			pflag_mtx_.lock();
 			bool publishMapThreadRunning = publishMapThreadRunning_;
@@ -4693,6 +4695,19 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 				
 				std::string threadId = boost::lexical_cast<std::string>(publishMapThread.get_id());
 				UDEBUG(" created new thread for publishing map! (%s)", threadId.c_str());
+			}
+
+			double total_elapsed = (ros::WallTime::now() - startTime).toSec();
+			NODELET_INFO("****  Map manager update in took %f sec", total_elapsed);
+
+			// update stats for ros message
+			mapManagerStats.map_manager_update_cache_time = total_elapsed;
+			mapManagerStats.header.stamp = ros::Time::now();
+
+			// publish stats when there are subscribers.
+			if (mapManagerStatsPub_.getNumSubscribers()) 
+			{
+				mapManagerStatsPub_.publish(mapManagerStats);
 			}
 		}
 		rate.sleep();

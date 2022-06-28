@@ -52,6 +52,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/SemanticOctoMap.h>
 #endif
 
+#include <rtabmap_ros/MapManagerStats.h>
+
 // JHUAPL section end
 
 namespace rtabmap {
@@ -82,7 +84,8 @@ public:
 			bool updateGrid,
 			bool updateOctomap,
 			UMutex& memory_mtx,
-			const std::map<int, rtabmap::Signature> & signatures = std::map<int, rtabmap::Signature>());
+			const std::map<int, rtabmap::Signature> & signatures = std::map<int, rtabmap::Signature>(),
+			rtabmap_ros::MapManagerStats * mapManagerStatsPtr = nullptr);
 
 	void publishMaps(
 			const std::map<int, rtabmap::Transform> & poses,

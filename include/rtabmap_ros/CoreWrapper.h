@@ -456,6 +456,7 @@ private:
 	ros::Publisher publishRegisteredDataPub_;
 	ros::Publisher landmarksMapPub_;
 	ros::Publisher obstaclesDataPub_;
+	ros::Publisher mapManagerStatsPub_;
 	
 	ros::ServiceServer landmarkInsertSrv_;
 	ros::ServiceServer landmarksQuerySrv_;
