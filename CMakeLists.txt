@@ -149,6 +149,7 @@ add_message_files(
    ObstacleData.msg
    Landmark.msg
    Landmarks.msg
+   MapManagerStats.msg
 )
 
 ## Generate services in the 'srv' folder

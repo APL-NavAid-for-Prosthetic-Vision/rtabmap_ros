@@ -185,7 +185,7 @@ private:
 
 	/// @brief function thread for publishing maps, it is called and managed from MapManagerUpdateThread
 	///
-	void publishMapThread(const std::map<int, rtabmap::Transform> & filteredPoses, const ros::Time & stamp, const std::string & mapFrameId);
+	void publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses, const ros::Time & stamp, const std::string & mapFrameId);
 
 
 	/// ******************************************
@@ -456,6 +456,7 @@ private:
 	ros::Publisher publishRegisteredDataPub_;
 	ros::Publisher landmarksMapPub_;
 	ros::Publisher obstaclesDataPub_;
+	ros::Publisher mapManagerStatsPub_;
 	
 	ros::ServiceServer landmarkInsertSrv_;
 	ros::ServiceServer landmarksQuerySrv_;
