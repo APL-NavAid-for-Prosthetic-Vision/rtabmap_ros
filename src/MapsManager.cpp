@@ -1629,9 +1629,6 @@ void MapsManager::publishMaps(
 	bool octomapUpdated = octomapUpdated_;
 	octomap_u_mtx_.unlock();
 
-	/// TODO: need to copy all needed octomap_ data under a single lock rather than
-	///        seperate locks to ensure consistency of different parts of the data;
-	///        using multiple locks spread out over time allows octree data to change between locks
 	octomap_mtx_.lock();
 	if( octomapUpdated ||
 		!latching_ ||
