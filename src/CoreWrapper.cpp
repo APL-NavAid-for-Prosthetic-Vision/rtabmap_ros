@@ -4691,7 +4691,7 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 			{
 				// the thread has finished, creating a new one. no need to lock for variable
 				publishMapThreadRunning_ = true;
-				publishMapThread = boost::thread(boost::bind(&CoreWrapper::publishMapThread, this, filteredPoses, stamp, mapFrameId_));
+				publishMapThread = boost::thread(boost::bind(&CoreWrapper::publishMapThread, this, std::move(filteredPoses), stamp, mapFrameId_));
 				
 				std::string threadId = boost::lexical_cast<std::string>(publishMapThread.get_id());
 				UDEBUG(" created new thread for publishing map! (%s)", threadId.c_str());
@@ -4718,7 +4718,7 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 	publishMapThread.join();
 }
 
-void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & filteredPoses, const ros::Time & stamp, const std::string & mapFrameId)
+void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses, const ros::Time & stamp, const std::string & mapFrameId)
 {
 	try
 	{
@@ -4735,7 +4735,7 @@ void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> & fil
 		}
 
 		double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-  		NODELET_INFO("       publishing map took %lf secs", total_elapsed);
+  	NODELET_INFO("       publishing map took %lf secs", total_elapsed);
 
 	}
 	catch (boost::thread_interrupted&) {}

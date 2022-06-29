@@ -185,7 +185,7 @@ private:
 
 	/// @brief function thread for publishing maps, it is called and managed from MapManagerUpdateThread
 	///
-	void publishMapThread(const std::map<int, rtabmap::Transform> & filteredPoses, const ros::Time & stamp, const std::string & mapFrameId);
+	void publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses, const ros::Time & stamp, const std::string & mapFrameId);
 
 
 	/// ******************************************
