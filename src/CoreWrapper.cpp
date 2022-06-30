@@ -264,6 +264,8 @@ void CoreWrapper::onInit()
 
 	// JHUAPL section end
 
+	obstacleDataSeq = 0;
+
 	infoPub_ = nh.advertise<rtabmap_ros::Info>("info", 1);
 	mapDataPub_ = nh.advertise<rtabmap_ros::MapData>("mapData", 1);
 	mapGraphPub_ = nh.advertise<rtabmap_ros::MapGraph>("mapGraph", 1);
@@ -2374,6 +2376,8 @@ void CoreWrapper::process(
 	UTimer timer;
 	if(rtabmap_.isIDsGenerated() || data.id() > 0)
 	{
+		// --- IGNORE THIS ---
+		// This for loop is special case situation added by author to handle a single dataset
 		// Add intermediate nodes?
 		for(std::list<std::pair<nav_msgs::Odometry, rtabmap_ros::OdomInfo> >::iterator iter=interOdoms_.begin(); iter!=interOdoms_.end();)
 		{
@@ -2465,6 +2469,8 @@ void CoreWrapper::process(
 				break;
 			}
 		}
+		// --- IGNORE THIS ---
+
 
 		//Add async stuff
 		Transform groundTruthPose;
@@ -2616,6 +2622,10 @@ void CoreWrapper::process(
 			rtabmapROSStats_.clear();
 		}
 
+		//
+		//	TODO:  break rtabmap_.process() into 2 parts (or add sensor_processing_complete() callback) 
+		//         so that processed sensor data can be published prior to rtabmap registration
+		//
 		// mutex to sync with map manager thread
 		rtabmap_mtx_.lock();
 		bool rtabmapProcessed = rtabmap_.process(data, odom, covariance, odomVelocity, externalStats);
@@ -4768,20 +4778,24 @@ void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data)
 	{
 		UTimer timer;
 		timer.start();
-		std::map<unsigned int, std::string> occupancyAssociation = data.getOccupancyAssociation();
-		std::map<unsigned int, cv::Mat> obstaclesCellMap = data.gridObstacleCellsMapRaw();
-		// localTransform is the transformation applied to points from depth image
-		// to form the point cloud
-		rtabmap::Transform localTransform = data.cameraModels().at(0).localTransform();
 
 		rtabmap_ros::ObstacleData msg;
+		msg.header.seq = ++obstacleDataSeq;
+		msg.header.stamp = ros::Time(data.stamp());
+		msg.header.frame_id = frameId_;
+		msg.signatureId = data.id();
 
-		// corresponding pose to message geometry_msgs::Pose
+		// localTransform is the transformation from camera coordinates
+		// to the base frame; we need the inverse to transform points back
+		// to camera coordinates
+		rtabmap::Transform localTransform = data.cameraModels().at(0).localTransform();		
 		transformToPoseMsg(localTransform.inverse(), msg.T_cam_pts);
 	
 		// obstaclesCellMap contains all class id detected in a keyframe, not all classes are actual obstacles.
 		//  we are going to select the set of points belonging to actual obstacles and copying them into a ROS message.
 		// actual obstacles are associated to occupancy types : static, movable, and dynamic
+		std::map<unsigned int, std::string> occupancyAssociation = data.getOccupancyAssociation();
+		std::map<unsigned int, cv::Mat> obstaclesCellMap = data.gridObstacleCellsMapRaw();		
 		for (auto iter = obstaclesCellMap.begin(); iter != obstaclesCellMap.end(); ++iter) 
 		{
 			auto occupancyIter = occupancyAssociation.find(iter->first);
@@ -4806,7 +4820,7 @@ void CoreWrapper::publishObstacleData(const rtabmap::SensorData & data)
 					cv_ptr->image = iter->second.clone();
 
 					sensor_msgs::ImagePtr imgMsgPtr = cv_ptr->toImageMsg();
-					// add point cloud encapulated as an image
+					// add point cloud encapsulated as an image
 					msg.pointClouds.push_back(*imgMsgPtr);
 				}
 			}
