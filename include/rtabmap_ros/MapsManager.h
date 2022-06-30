@@ -54,6 +54,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap_ros/MapManagerStats.h>
 
+#include <std_srvs/Empty.h>
+
 // JHUAPL section end
 
 namespace rtabmap {
@@ -124,6 +126,12 @@ public:
 	// JHUAPL section end
 
 private:
+	// JHUAPL section
+	bool clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
+
+	// JHUAPL section end
+
+private:
 	// mapping stuff
 	bool cloudOutputVoxelized_;
 	bool cloudSubtractFiltering_;
@@ -159,6 +167,8 @@ private:
 	ros::Publisher octoMapFullMovablePub_;
 	ros::Publisher octoMapFullDynamicPub_;
 
+	ros::ServiceServer clearRegisteredMapSrv_;
+
 	// JHUAPL end section
 
 	std::map<int, rtabmap::Transform> assembledGroundPoses_;
@@ -191,7 +201,7 @@ private:
 
 	rtabmap::SemanticOctoMap * semanticOctomap_;
 	bool semanticSegmentationEnable_;
-	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > > gridAPLMaps_; // < , < map<class_label_id, object_cells>, map<layer id, empty_cells> > >
+	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > > gridAPLMaps_; // map< keyframe_ID, pairs < map<class_id, pointcloud> , empty_cells > >
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;

@@ -366,6 +366,8 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		latched_.insert(std::make_pair((void*)&octoMapProj_, false));
 	}
 
+	clearRegisteredMapSrv_ = nht->advertiseService("clear_registered_map", &MapsManager::clearRegisteredMapCallback , this);
+
 #endif
 #endif
 }
@@ -1060,8 +1062,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 				}
 
-#ifdef WITH_OCTOMAP_MSGS
-#ifdef RTABMAP_OCTOMAP
+				#ifdef WITH_OCTOMAP_MSGS
+				#ifdef RTABMAP_OCTOMAP
 				if(updateOctomap && semanticSegmentationEnable_ &&
 					(iter->first == 0 || 
 						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
@@ -1070,8 +1072,9 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
 					if(mter != gridAPLMaps_.end() && pter != gridMapsViewpoints_.end())
 					{
-						if( (mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
-							(mter->second.second.empty() || mter->second.second.channels() > 2) )
+						if( (mter->second.first.begin() != mter->second.first.end()) && 
+								(mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
+								(mter->second.second.empty() || mter->second.second.channels() > 2) )
 						{
 							semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
 						}
@@ -1082,8 +1085,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 				}
 				else if(updateOctomap && !semanticSegmentationEnable_ &&
-							(iter->first == 0 ||
-						  		octomap_->addedNodes().find(iter->first) == octomap_->addedNodes().end()))
+						(iter->first == 0 ||
+						octomap_->addedNodes().find(iter->first) == octomap_->addedNodes().end()))
 				{
 					std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator mter = gridMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
@@ -1104,8 +1107,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 						}
 					}
 				}
-#endif
-#endif
+				#endif
+				#endif
 			}
 			else
 			{
@@ -1118,8 +1121,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			gridUpdated_ = occupancyGrid_->update(filteredPoses);
 		}
 
-#ifdef WITH_OCTOMAP_MSGS
-#ifdef RTABMAP_OCTOMAP
+		#ifdef WITH_OCTOMAP_MSGS
+		#ifdef RTABMAP_OCTOMAP
 		octomap_u_mtx_.lock();
 		if(updateOctomap && semanticSegmentationEnable_)
 		{
@@ -1129,6 +1132,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				UTimer time;
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses, true, SemanticColorOcTreeNode::OccupancyType::kTypeStatic);
 				mapManagerStatsPtr->octomap_update_time = time.ticks();
+				mapManagerStatsPtr->octomap_grd_height = semanticOctomap_->getGrdReferenceHeight();
 				UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
 			}
 			else 
@@ -1136,6 +1140,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 				UTimer time;
 				octomapUpdated_ = semanticOctomap_->update(filteredPoses);
 				mapManagerStatsPtr->octomap_update_time = time.ticks();
+				mapManagerStatsPtr->octomap_grd_height = semanticOctomap_->getGrdReferenceHeight();
 				UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
 			}
 		}
@@ -1148,10 +1153,9 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			UINFO("+++ Octomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
 		}
 		octomap_u_mtx_.unlock();
-#endif
-#endif
+		#endif
+		#endif
 		octomap_mtx_.unlock();
-
 
 		if(!semanticSegmentationEnable_)
 		{
@@ -2053,16 +2057,16 @@ void MapsManager::publishAPLMaps(
 			mlOctreesTemp.insert({layerId, newOcTree});
 		}
 
-		SemanticColorOcTree m_octree(0.05);
+		boost::shared_ptr<SemanticColorOcTree> m_octreePtr(new SemanticColorOcTree(0.05));
 		if(octoMapPubFull_.getNumSubscribers() > 0 || octoMapPubBin_.getNumSubscribers() > 0)
 		{	
-			m_octree.setOccupancyThres(0.5);
-			m_octree.setProbHit(0.7);
-			m_octree.setProbMiss(0.4);
-			m_octree.setClampingThresMin(0.1192);
-			m_octree.setClampingThresMax(0.971);
+			m_octreePtr->setOccupancyThres(0.5);
+			m_octreePtr->setProbHit(0.7);
+			m_octreePtr->setProbMiss(0.4);
+			m_octreePtr->setClampingThresMin(0.1192);
+			m_octreePtr->setClampingThresMax(0.971);
 			std::string octreeName = "Dynamic_Map";	// map named expected by RTK
-			m_octree.setOctTreeName(octreeName);
+			m_octreePtr->setOctTreeName(octreeName);
 
 			std::list<std::string> multiLevelOctreeName = {"static","movable","dynamic"};
 
@@ -2072,7 +2076,7 @@ void MapsManager::publishAPLMaps(
 			Eigen::Vector3f minBoundMap(minValue, minValue, minValue);
 
 			// multiOctreesToMergeOctree uses the actual map, needs to be locked
-			semanticOctomap_->multiOctreesToMergeOctree(&m_octree, multiLevelOctreeName, minBoundMap, maxBoundMap);
+			semanticOctomap_->multiOctreesToMergeOctree(m_octreePtr.get(), multiLevelOctreeName, minBoundMap, maxBoundMap);
 		}
 		octomap_mtx_.unlock();
 
@@ -2190,7 +2194,7 @@ void MapsManager::publishAPLMaps(
 		if(octoMapPubFull_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			octomap_msgs::fullMapToMsg(m_octree, msg);
+			octomap_msgs::fullMapToMsg(*m_octreePtr, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			octoMapPubFull_.publish(msg);
@@ -2201,7 +2205,7 @@ void MapsManager::publishAPLMaps(
 		if(octoMapPubBin_.getNumSubscribers())
 		{
 			octomap_msgs::Octomap msg;
-			octomap_msgs::binaryMapToMsg(m_octree, msg);
+			octomap_msgs::binaryMapToMsg(*m_octreePtr, msg);
 			msg.header.frame_id = mapFrameId;
 			msg.header.stamp = stamp;
 			octoMapPubBin_.publish(msg);
@@ -2353,6 +2357,22 @@ std::map<unsigned int, std::string> MapsManager::getClassIdAssociation()
 	occupancyGrid_->getClassIdAssociation(&classId2StringMap);
 
 	return std::move(classId2StringMap);
+}
+
+bool MapsManager::clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&) 
+{
+	ROS_INFO("rtabmap: clearing registered map");
+
+	// the idea is to clear the grid and octomap addedNodes to force an update.
+
+	grid_mtx_.lock();
+	octomap_mtx_.lock();
+	semanticOctomap_->clear();
+	octomap_mtx_.unlock();
+	gridAPLMaps_.clear();
+	gridMapsViewpoints_.clear();
+	grid_mtx_.unlock();
+
 }
 
 // JHUAPL section end
