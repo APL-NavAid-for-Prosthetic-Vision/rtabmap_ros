@@ -54,6 +54,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap_ros/MapManagerStats.h>
 
+#include <std_srvs/Empty.h>
+
 // JHUAPL section end
 
 namespace rtabmap {
@@ -124,6 +126,12 @@ public:
 	// JHUAPL section end
 
 private:
+	// JHUAPL section
+	bool clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
+
+	// JHUAPL section end
+
+private:
 	// mapping stuff
 	bool cloudOutputVoxelized_;
 	bool cloudSubtractFiltering_;
@@ -158,6 +166,8 @@ private:
 	ros::Publisher octoMapFullStaticPub_;
 	ros::Publisher octoMapFullMovablePub_;
 	ros::Publisher octoMapFullDynamicPub_;
+
+	ros::ServiceServer clearRegisteredMapSrv_;
 
 	// JHUAPL end section
 
