@@ -1060,8 +1060,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 				}
 
-#ifdef WITH_OCTOMAP_MSGS
-#ifdef RTABMAP_OCTOMAP
+				#ifdef WITH_OCTOMAP_MSGS
+				#ifdef RTABMAP_OCTOMAP
 				if(updateOctomap && semanticSegmentationEnable_ &&
 					(iter->first == 0 || 
 						semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
@@ -1070,8 +1070,9 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
 					if(mter != gridAPLMaps_.end() && pter != gridMapsViewpoints_.end())
 					{
-						if( (mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
-							(mter->second.second.empty() || mter->second.second.channels() > 2) )
+						if( (mter->second.first.begin() != mter->second.first.end()) && 
+								(mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
+								(mter->second.second.empty() || mter->second.second.channels() > 2) )
 						{
 							semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
 						}
@@ -1082,8 +1083,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 					}
 				}
 				else if(updateOctomap && !semanticSegmentationEnable_ &&
-							(iter->first == 0 ||
-						  		octomap_->addedNodes().find(iter->first) == octomap_->addedNodes().end()))
+						(iter->first == 0 ||
+						octomap_->addedNodes().find(iter->first) == octomap_->addedNodes().end()))
 				{
 					std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator mter = gridMaps_.find(iter->first);
 					std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
@@ -1104,8 +1105,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 						}
 					}
 				}
-#endif
-#endif
+				#endif
+				#endif
 			}
 			else
 			{
@@ -1118,8 +1119,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			gridUpdated_ = occupancyGrid_->update(filteredPoses);
 		}
 
-#ifdef WITH_OCTOMAP_MSGS
-#ifdef RTABMAP_OCTOMAP
+		#ifdef WITH_OCTOMAP_MSGS
+		#ifdef RTABMAP_OCTOMAP
 		octomap_u_mtx_.lock();
 		if(updateOctomap && semanticSegmentationEnable_)
 		{
@@ -1148,10 +1149,9 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			UINFO("+++ Octomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
 		}
 		octomap_u_mtx_.unlock();
-#endif
-#endif
+		#endif
+		#endif
 		octomap_mtx_.unlock();
-
 
 		if(!semanticSegmentationEnable_)
 		{
