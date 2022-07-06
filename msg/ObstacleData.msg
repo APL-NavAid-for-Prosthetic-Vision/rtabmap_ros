@@ -22,6 +22,7 @@ std_msgs/Header header
 #   
 #     Note: sensor_msgs/Image.data stores the data as bytes, a 32FC4 would use 16 bytes for one encasulated point.
 
+int32 signatureId   # for debug
 uint32[] obstacleIds
 sensor_msgs/Image[] pointClouds
 

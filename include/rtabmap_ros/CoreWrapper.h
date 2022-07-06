@@ -453,6 +453,8 @@ private:
 
 	//  JHUAPL section
 	
+	unsigned int obstacleDataSeq;
+
 	ros::Publisher publishRegisteredDataPub_;
 	ros::Publisher landmarksMapPub_;
 	ros::Publisher obstaclesDataPub_;
