@@ -82,10 +82,12 @@
   <arg name="grid_semanticGroundCorrection"         default="false"/>
   <arg name="grid_outlierRemoval"                   default="false"/>
   
-  <arg name="octomap_raytracing"                    default="false"/>
-  <arg name="grid_raytracingMaxRange"               default="2"/>
-  <arg name="grid_emptyMaxHeight"                   default="1.0"/>
   <arg name="grid_maxGroundHeight"                  default="0.05"/>
+  <arg name="octomap_raytracing"                    default="false"/>
+  <arg name="grid_raytracingMaxRange"               default="6"/>
+  <arg name="grid_rayTracingMaxHeight"              default="1.0"/>
+  <arg name="grid_rayTracingMaxWidth"               default="4.0"/>
+  <arg name="grid_rayTracingWithGrd"                default="true"/>
   
   <!-- JHU APL : end -->
 
@@ -492,7 +494,9 @@
       <param name="Grid/SemanticGroundCorrection"   type="string"   value="$(arg grid_semanticGroundCorrection)"/>
       <param name="Grid/OutlierRemoval"             type="string"   value="$(arg grid_outlierRemoval)"/>
       <param name="Grid/RaytracingMaxRange"         type="string"   value="$(arg grid_raytracingMaxRange)"/>
-      <param name="Grid/EmptyMaxHeight"             type="string"   value="$(arg grid_emptyMaxHeight)"/>
+      <param name="Grid/RayTracingMaxHeight"        type="string"   value="$(arg grid_rayTracingMaxHeight)"/>
+      <param name="Grid/RayTracingMaxWidth"         type="string"   value="$(arg grid_rayTracingMaxWidth)"/>
+      <param name="Grid/RayTracingWithGrd"          type="string"   value="$(arg grid_rayTracingWithGrd)"/>
       
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />

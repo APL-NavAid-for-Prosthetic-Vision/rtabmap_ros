@@ -34,8 +34,10 @@
     <arg name="grid_semanticGroundCorrection"        default="false"/>
     <arg name="grid_outlierRemoval"                  default="false"/>
     <arg name="octomap_raytracing"                   default="false"/>
-    <arg name="grid_raytracingMaxRange"              default="2"/>
-    <arg name="grid_emptyMaxHeight"                  default="1.0"/>
+    <arg name="grid_raytracingMaxRange"              default="4"/>
+    <arg name="grid_rayTracingMaxHeight"             default="1.0"/>
+    <arg name="grid_rayTracingMaxWidth"              default="4"/>
+    <arg name="grid_rayTracingWithGrd"               default="true"/>
     <arg name="grid_maxGroundHeight"                 default="0.05"/>
     
     <!-- Localization-only mode -->
@@ -105,7 +107,9 @@
         <arg name="OctoMapNumThreads"                    default="5" />
         <arg name="octomap_raytracing"                   default="$(arg octomap_raytracing)"/>      <!-- raytracing at the semantic octomap update. uses grid_raytracingMaxRange to set the max range -->
         <arg name="grid_raytracingMaxRange"              default="$(arg grid_raytracingMaxRange)"/>
-        <arg name="grid_emptyMaxHeight"                  default="$(arg grid_emptyMaxHeight)"/>
+        <arg name="grid_rayTracingMaxHeight"             default="$(arg grid_rayTracingMaxHeight)"/>
+        <arg name="grid_rayTracingMaxWidth"              default="$(arg grid_rayTracingMaxWidth)"/>
+        <arg name="grid_rayTracingWithGrd"               default="$(arg grid_rayTracingWithGrd)"/>
         <arg name="grid_maxGroundHeight"                 default="$(arg grid_maxGroundHeight)"/>
     </include>
 

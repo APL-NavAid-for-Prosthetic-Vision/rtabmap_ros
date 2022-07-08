@@ -213,10 +213,22 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	float raytracingMaxRange = uStr2Float(raytracingMaxRangeStr);
 	ROS_INFO("Grid/RaytracingMaxRange = %f", raytracingMaxRange);
 
-	std::string emptyMaxHeightStr = "1.0f";
-	pnh.param("Grid/EmptyMaxHeight", emptyMaxHeightStr, emptyMaxHeightStr);
-	float emptyMaxHeight = uStr2Float(emptyMaxHeightStr);
-	ROS_INFO("Grid/EmptyMaxHeight = %f", emptyMaxHeight);
+	std::string rayTracingMaxHeightStr = "1.0f";
+	pnh.param("Grid/RayTracingMaxHeight", rayTracingMaxHeightStr, rayTracingMaxHeightStr);
+	float rayTracingMaxHeight = uStr2Float(rayTracingMaxHeightStr);
+	ROS_INFO("Grid/RayTracingMaxHeight = %f", rayTracingMaxHeight);
+
+	std::string rayTracingMaxWidthStr = "4.0f";
+	pnh.param("Grid/RayTracingMaxWidth", rayTracingMaxWidthStr, rayTracingMaxWidthStr);
+	float rayTracingMaxWidth = uStr2Float(rayTracingMaxWidthStr);
+	ROS_INFO("Grid/RayTracingMaxWidth = %f", rayTracingMaxWidth);
+
+	std::string raytracingWithGrdStr = "false"; // use lower case
+	pnh.param("Grid/RayTracingWithGrd", raytracingWithGrdStr, raytracingWithGrdStr);
+	bool raytracingWithGrd = false;
+	if (raytracingWithGrdStr == "true")
+		raytracingWithGrd = true;
+	ROS_INFO("Grid/RayTracingWithGrd = %s", raytracingWithGrd?"true":"false");
 
 	// JHUAPL section end
 
@@ -231,13 +243,15 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.updateError = occupancyGrid_->getUpdateError();
 		sematicOctoMapParams.numThreads = octoMapNumThreads;
 		sematicOctoMapParams.rangeMax = rangeMax;
-		sematicOctoMapParams.raytracingMaxRange = raytracingMaxRange;
-		sematicOctoMapParams.emptyMaxHeight = emptyMaxHeight;
 		sematicOctoMapParams.occupancyThr = 0.5;
 		sematicOctoMapParams.probHit = 0.7;
 		sematicOctoMapParams.probMiss = 0.4;
 		sematicOctoMapParams.clampingMin = 0.1192;
 		sematicOctoMapParams.clampingMax = 0.971;
+		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
+		sematicOctoMapParams.raytracingParams.maxHeight = rayTracingMaxHeight;
+		sematicOctoMapParams.raytracingParams.rayTraceWithGrd = raytracingWithGrd;
+		sematicOctoMapParams.raytracingParams.maxWidth = rayTracingMaxWidth;
 				
 		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, sematicOctoMapParams);
 	
