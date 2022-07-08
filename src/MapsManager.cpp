@@ -214,9 +214,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	ROS_INFO("Grid/RaytracingMaxRange = %f", raytracingMaxRange);
 
 	std::string rayTracingMaxHeightStr = "1.0f";
-	pnh.param("Grid/RayTracingMaxHeight", rayTracingMaxHeightStr, rayTracingMaxHeightStr);
-	float rayTracingMaxHeight = uStr2Float(rayTracingMaxHeightStr);
-	ROS_INFO("Grid/RayTracingMaxHeight = %f", rayTracingMaxHeight);
+	pnh.param("Grid/RayTracingMaxHeightOffset", rayTracingMaxHeightStr, rayTracingMaxHeightStr);
+	float rayTracingMaxHeightOffset = uStr2Float(rayTracingMaxHeightStr);
+	ROS_INFO("Grid/RayTracingMaxHeightOffset = %f", rayTracingMaxHeightOffset);
 
 	std::string rayTracingMaxWidthStr = "4.0f";
 	pnh.param("Grid/RayTracingMaxWidth", rayTracingMaxWidthStr, rayTracingMaxWidthStr);
@@ -249,7 +249,7 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.clampingMin = 0.1192;
 		sematicOctoMapParams.clampingMax = 0.971;
 		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
-		sematicOctoMapParams.raytracingParams.maxHeight = rayTracingMaxHeight;
+		sematicOctoMapParams.raytracingParams.maxHeightOffset = rayTracingMaxHeightOffset;
 		sematicOctoMapParams.raytracingParams.rayTraceWithGrd = raytracingWithGrd;
 		sematicOctoMapParams.raytracingParams.maxWidth = rayTracingMaxWidth;
 				
