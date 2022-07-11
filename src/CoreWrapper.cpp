@@ -114,10 +114,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /// JHUAPL section end
 
+
 using namespace rtabmap;
 
 namespace rtabmap_ros 
 {
+
+void signature_complete_callback(void* user_data)
+{
+	CoreWrapper* this = static_cast<CoreWrapper*>(user_data);
+
+	// this is the same as the "data" sent to rtabmap except that it now
+	// contains local occupancy grid information and post-processing
+	// (e.g., decimation) of the sensor data
+	rtabmap::SensorData sd = this->rtabmap_.getMemory()->getLastAddedData();
+
+	// publish obstacle data
+	this->publishObstacleData(sd);
+}
+
 
 CoreWrapper::CoreWrapper() :
 		CommonDataSubscriber(false),
@@ -2367,6 +2382,7 @@ void CoreWrapper::commonOdomCallback(
 	covariance_ = cv::Mat();
 }
 
+
 void CoreWrapper::process(
 		const ros::Time & stamp,
 		SensorData & data,
@@ -2630,7 +2646,7 @@ void CoreWrapper::process(
 		//
 		// mutex to sync with map manager thread
 		rtabmap_mtx_.lock();
-		bool rtabmapProcessed = rtabmap_.process(data, odom, covariance, odomVelocity, externalStats);
+		bool rtabmapProcessed = rtabmap_.process(data, odom, covariance, odomVelocity, externalStats, signature_complete_callback, this);
 		rtabmap_mtx_.unlock();
 		if(rtabmapProcessed)
 		{
@@ -2663,8 +2679,9 @@ void CoreWrapper::process(
 					// publish visual and depth image 
 					publishVisualDepthImages(sd);
 
-					// publish obstacles data of the last added Data
-					publishObstacleData(sd);
+					// moved this to callback to publish sooner
+					// // publish obstacles data of the last added Data
+					// publishObstacleData(sd);
 				}
 				else 
 				{
