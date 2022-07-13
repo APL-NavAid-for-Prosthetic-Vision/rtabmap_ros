@@ -20,7 +20,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-import StatisticGUI as gui
+from stats_gui.statistic_gui import StatisticsGUI
 
 from rtabmap_ros.msg import MapManagerStats
 
@@ -41,7 +41,7 @@ class StatisticsVisualizer:
       # Q Application
       self.App = QApplication(sys.argv) 
       # Create the GUI
-      self.gui = gui.StatisticsGUI()
+      self.gui = StatisticsGUI()
 
     # Launch processingThread thread
     # self.stop_thread = False
@@ -98,6 +98,9 @@ class StatisticsVisualizer:
     # if the msg contains octomap stats data
     if msg.is_octomap_data:
       octomap_time = msg.octomap_update_time
+
+    # update data in GUI
+    self.gui.update_map_manager_graph(mm_time)
 
 # main function
 if __name__ == '__main__':
