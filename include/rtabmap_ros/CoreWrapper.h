@@ -113,6 +113,21 @@ public:
 	CoreWrapper();
 	virtual ~CoreWrapper();
 
+	rtabmap::Rtabmap* get_rtabmap() {return &rtabmap_;}
+
+	///
+	/// Helper function	
+	///
+
+	/// @brief publish visual and depth image
+	///
+	void publishVisualDepthImages(const rtabmap::SensorData & data);
+
+	///
+	///
+	void publishObstacleData(const rtabmap::SensorData & data);
+
+
 private:
 
 	virtual void onInit();
@@ -162,18 +177,6 @@ private:
 	bool landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request & req, rtabmap_ros::LandmarksQuery::Response & res);
 	bool landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request & req, rtabmap_ros::LandmarksRemove::Response & res);
 	bool semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAssociation::Request & req, rtabmap_ros::SemanticDataAssociation::Response & res);
-
-	///
-	/// Helper function	
-	///
-
-	/// @brief publish visual and depth image
-	///
-	void publishVisualDepthImages(const rtabmap::SensorData & data);
-
-	///
-	///
-	void publishObstacleData(const rtabmap::SensorData & data);
 
 	///
 	/// Threads call back functions

@@ -122,15 +122,15 @@ namespace rtabmap_ros
 
 void signature_complete_callback(void* user_data)
 {
-	CoreWrapper* this = static_cast<CoreWrapper*>(user_data);
+	CoreWrapper* core_wrapper = static_cast<CoreWrapper*>(user_data);
 
 	// this is the same as the "data" sent to rtabmap except that it now
 	// contains local occupancy grid information and post-processing
 	// (e.g., decimation) of the sensor data
-	rtabmap::SensorData sd = this->rtabmap_.getMemory()->getLastAddedData();
+	rtabmap::SensorData sd = core_wrapper->get_rtabmap()->getMemory()->getLastAddedData();
 
 	// publish obstacle data
-	this->publishObstacleData(sd);
+	core_wrapper->publishObstacleData(sd);
 }
 
 
@@ -2672,7 +2672,6 @@ void CoreWrapper::process(
 					// (e.g., decimation) of the sensor data
 					rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
 					
-
 					// publish the newest semantic mask added to map 
 					mapsManager_.publishSemenaticMaskImage(sd);
 
