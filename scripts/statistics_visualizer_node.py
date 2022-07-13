@@ -71,7 +71,6 @@ class StatisticsVisualizer:
   def spin(self):
     """
     """
-
     if self.app_display:
       #
       rospy.loginfo(" app display")
@@ -98,9 +97,16 @@ class StatisticsVisualizer:
     # if the msg contains octomap stats data
     if msg.is_octomap_data:
       octomap_time = msg.octomap_update_time
+      grd_height = msg.octomap_grd_height
 
     # update data in GUI
-    self.gui.update_map_manager_graph(mm_time)
+    if not msg.is_octomap_data:
+      self.gui.update_map_manager_graph(mm_time)
+    else:
+      # graph times elapsed
+      self.gui.update_map_manager_graph_2(mm_time, octomap_time)
+      # data display
+      self.gui.update_map_manager_data(grd_height)
 
 # main function
 if __name__ == '__main__':
