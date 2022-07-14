@@ -110,14 +110,14 @@ class MatplotlibWidget(QWidget):
     self._line1.axes.set_xlim(0, self.time + 1)
     self._line1.axes.set_ylim(0, y_limit_value + 1)
 
-    # no need to update line yet.
-    #self._line1.figure.canvas.draw()
+    # update line 1
+    self._line1.figure.canvas.draw()
 
     # second line
     self.y_axis_data_2 = np.append(self.y_axis_data_2, om_value)
     self._line2.set_data(self.x_axis_data, self.y_axis_data_2)
 
-    # it seems that when updating the second line, it updates both lines.
+    # update line 2
     self._line2.figure.canvas.draw()
 
     # update time stamp
