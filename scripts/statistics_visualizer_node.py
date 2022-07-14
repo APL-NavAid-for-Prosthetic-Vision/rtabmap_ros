@@ -13,6 +13,7 @@ import rospy
 import sys
 import os
 import threading
+
 import numpy as np
 
 # pyqt modules
@@ -50,8 +51,7 @@ class StatisticsVisualizer:
     # self.threadNH.start()
 
     # Subscriber
-    rospy.Subscriber("rtabmap/map_manager_stats", MapManagerStats, callback=self.mapManagerStatsCallback)
-
+    rospy.Subscriber("rtabmap/map_manager_stats", MapManagerStats, callback=self.mapManagerStatsCallback, queue_size=1)
 
   def processingThread(self, stop):
     """
@@ -101,7 +101,7 @@ class StatisticsVisualizer:
 
     # update data in GUI
     if not msg.is_octomap_data:
-      self.gui.update_map_manager_graph(mm_time)
+      self.gui.update_map_manager_graph_2(mm_time, 0.0)
     else:
       # graph times elapsed
       self.gui.update_map_manager_graph_2(mm_time, octomap_time)
