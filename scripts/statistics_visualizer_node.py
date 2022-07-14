@@ -13,6 +13,7 @@ import rospy
 import sys
 import os
 import threading
+
 import numpy as np
 
 # pyqt modules
@@ -20,7 +21,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-import StatisticGUI as gui
+from stats_gui.statistic_gui import StatisticsGUI
 
 from rtabmap_ros.msg import MapManagerStats
 
@@ -41,7 +42,7 @@ class StatisticsVisualizer:
       # Q Application
       self.App = QApplication(sys.argv) 
       # Create the GUI
-      self.gui = gui.StatisticsGUI()
+      self.gui = StatisticsGUI()
 
     # Launch processingThread thread
     # self.stop_thread = False
@@ -50,8 +51,7 @@ class StatisticsVisualizer:
     # self.threadNH.start()
 
     # Subscriber
-    rospy.Subscriber("rtabmap/map_manager_stats", MapManagerStats, callback=self.mapManagerStatsCallback)
-
+    rospy.Subscriber("rtabmap/map_manager_stats", MapManagerStats, callback=self.mapManagerStatsCallback, queue_size=1)
 
   def processingThread(self, stop):
     """
@@ -71,7 +71,6 @@ class StatisticsVisualizer:
   def spin(self):
     """
     """
-
     if self.app_display:
       #
       rospy.loginfo(" app display")
@@ -98,6 +97,16 @@ class StatisticsVisualizer:
     # if the msg contains octomap stats data
     if msg.is_octomap_data:
       octomap_time = msg.octomap_update_time
+      grd_height = msg.octomap_grd_height
+
+    # update data in GUI
+    if not msg.is_octomap_data:
+      self.gui.update_map_manager_graph_2(mm_time, 0.0)
+    else:
+      # graph times elapsed
+      self.gui.update_map_manager_graph_2(mm_time, octomap_time)
+      # data display
+      self.gui.update_map_manager_data(grd_height)
 
 # main function
 if __name__ == '__main__':
