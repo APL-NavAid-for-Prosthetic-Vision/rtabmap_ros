@@ -230,6 +230,16 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		raytracingWithGrd = true;
 	ROS_INFO("Grid/RayTracingWithGrd = %s", raytracingWithGrd?"true":"false");
 
+	std::string dsor_std_mulStr = "0.25";
+	pnh.param("Grid/OctoMapDSORSTDMul", dsor_std_mulStr, dsor_std_mulStr);
+	float dsor_std_mul = uStr2Float(dsor_std_mulStr);
+	ROS_INFO("Grid/OctoMapDSORSTDMul = %f", dsor_std_mul);
+
+	std::string dsor_range_mulStr = "0.25";
+	pnh.param("Grid/OctoMapDSORRangeMul", dsor_range_mulStr, dsor_range_mulStr);
+	float dsor_range_mul = uStr2Float(dsor_range_mulStr);
+	ROS_INFO("Grid/OctoMapDSORRangeMul = %f", dsor_range_mul);
+
 	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
@@ -248,11 +258,13 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.probMiss = 0.4;
 		sematicOctoMapParams.clampingMin = 0.1192;
 		sematicOctoMapParams.clampingMax = 0.971;
+		sematicOctoMapParams.dsor_std_mul = dsor_std_mul;
+		sematicOctoMapParams.dsor_range_mul = dsor_range_mul;
 		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
 		sematicOctoMapParams.raytracingParams.maxHeightOffset = rayTracingMaxHeightOffset;
 		sematicOctoMapParams.raytracingParams.rayTraceWithGrd = raytracingWithGrd;
 		sematicOctoMapParams.raytracingParams.maxWidth = rayTracingMaxWidth;
-				
+
 		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, sematicOctoMapParams);
 	
 		// set the model class map if available

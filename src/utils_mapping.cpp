@@ -99,7 +99,7 @@ namespace utils
 
     void depthEdgeFilter(cv::Mat& depthImg)
     {
-        int ksize = 3; // selects the separable kernel to use to calculate the derivative , 5 works better at 0.005 0.01 more of processing.
+        int ksize = 5; // selects the separable kernel to use to calculate the derivative , 5 works better at 0.005 0.01 more of processing.
         int ddepth = CV_32F;
         cv::Mat cv_image_dx, cv_image_dy, grad_mag;
 
