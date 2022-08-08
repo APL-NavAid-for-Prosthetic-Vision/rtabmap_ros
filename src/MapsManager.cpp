@@ -213,22 +213,22 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	float raytracingMaxRange = uStr2Float(raytracingMaxRangeStr);
 	ROS_INFO("Grid/RaytracingMaxRange = %f", raytracingMaxRange);
 
-	std::string rayTracingMaxHeightStr = "1.0f";
-	pnh.param("Grid/RayTracingMaxHeightOffset", rayTracingMaxHeightStr, rayTracingMaxHeightStr);
-	float rayTracingMaxHeightOffset = uStr2Float(rayTracingMaxHeightStr);
-	ROS_INFO("Grid/RayTracingMaxHeightOffset = %f", rayTracingMaxHeightOffset);
+	std::string rayTracingCellSizeStr = "0.05f";
+	pnh.param("Grid/RayTracingCellSize", rayTracingCellSizeStr, rayTracingCellSizeStr);
+	float rayTracingCellSize = uStr2Float(rayTracingCellSizeStr);
+	ROS_INFO("Grid/RayTracingCellSize = %f", rayTracingCellSize);
 
-	std::string rayTracingMaxWidthStr = "4.0f";
-	pnh.param("Grid/RayTracingMaxWidth", rayTracingMaxWidthStr, rayTracingMaxWidthStr);
-	float rayTracingMaxWidth = uStr2Float(rayTracingMaxWidthStr);
-	ROS_INFO("Grid/RayTracingMaxWidth = %f", rayTracingMaxWidth);
+	std::string clipVerticalBoundaryStr = "false"; // use lower case
+	pnh.param("Grid/RayTracingclipVerBoundary", clipVerticalBoundaryStr, clipVerticalBoundaryStr);
+	bool clipVerticalBoundary = false;
+	if (clipVerticalBoundaryStr == "true")
+		clipVerticalBoundary = true;
+	ROS_INFO("Grid/RayTracingclipVerBoundary = %s", clipVerticalBoundary?"true":"false");
 
-	std::string raytracingWithGrdStr = "false"; // use lower case
-	pnh.param("Grid/RayTracingWithGrd", raytracingWithGrdStr, raytracingWithGrdStr);
-	bool raytracingWithGrd = false;
-	if (raytracingWithGrdStr == "true")
-		raytracingWithGrd = true;
-	ROS_INFO("Grid/RayTracingWithGrd = %s", raytracingWithGrd?"true":"false");
+	std::string verticalBoundaryMaxHeightStr = "0.5";
+	pnh.param("Grid/verticalBoundaryMaxHeight", verticalBoundaryMaxHeightStr, verticalBoundaryMaxHeightStr);
+	float verticalBoundaryMaxHeight = uStr2Float(verticalBoundaryMaxHeight);
+	ROS_INFO("Grid/verticalBoundaryMaxHeight = %f", verticalBoundaryMaxHeight);
 
 	std::string dsor_std_mulStr = "0.25";
 	pnh.param("Grid/OctoMapDSORSTDMul", dsor_std_mulStr, dsor_std_mulStr);
@@ -261,9 +261,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.dsor_std_mul = dsor_std_mul;
 		sematicOctoMapParams.dsor_range_mul = dsor_range_mul;
 		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
-		sematicOctoMapParams.raytracingParams.maxHeightOffset = rayTracingMaxHeightOffset;
-		sematicOctoMapParams.raytracingParams.rayTraceWithGrd = raytracingWithGrd;
-		sematicOctoMapParams.raytracingParams.maxWidth = rayTracingMaxWidth;
+		sematicOctoMapParams.raytracingParams.cellSize = rayTracingCellSize;
+		sematicOctoMapParams.raytracingParams.clipVerticalBoundary = clipVerticalBoundary;
+		sematicOctoMapParams.raytracingParams.verticalBoundaryMaxHeight = verticalBoundaryMaxHeight;
 
 		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, sematicOctoMapParams);
 	
