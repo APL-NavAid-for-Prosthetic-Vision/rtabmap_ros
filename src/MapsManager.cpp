@@ -227,7 +227,7 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 
 	std::string verticalBoundaryMaxHeightStr = "0.5";
 	pnh.param("Grid/verticalBoundaryMaxHeight", verticalBoundaryMaxHeightStr, verticalBoundaryMaxHeightStr);
-	float verticalBoundaryMaxHeight = uStr2Float(verticalBoundaryMaxHeight);
+	float verticalBoundaryMaxHeight = uStr2Float(verticalBoundaryMaxHeightStr);
 	ROS_INFO("Grid/verticalBoundaryMaxHeight = %f", verticalBoundaryMaxHeight);
 
 	std::string dsor_std_mulStr = "0.25";
@@ -2399,6 +2399,41 @@ bool MapsManager::clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs
 	gridMapsViewpoints_.clear();
 	grid_mtx_.unlock();
 
+}
+
+bool MapsManager::octomapRayTracingInit(const rtabmap::SensorData & data) {
+
+	// return whether Ray Trace is successfully initialized.
+
+	if (semanticOctomap_) {
+
+		semanticOctomap_->clearRayTraceInitialized();
+
+		// There must be one camera model
+		if (data.cameraModels().size() == 0) {
+			ROS_WARN(" OCTOMAP RAY TRACE not initializing!! Camera model not available.");
+			return false;
+		}
+
+		// Providing support for a single camera 
+		int image_width = data.cameraModels().at(0).imageWidth();
+		int image_height = data.cameraModels().at(0).imageHeight();
+		double fx = data.cameraModels().at(0).fx();
+		double fy = data.cameraModels().at(0).fy();
+		double cx = data.cameraModels().at(0).cx();
+		double cy = data.cameraModels().at(0).cy();
+
+		rtabmap::Transform T_keyframe_camera = data.cameraModels().at(0).localTransform();	
+
+		semanticOctomap_->initializeRayTrace(image_width, image_height, fx, fy, cx, cy, T_keyframe_camera);
+
+		return true;
+
+	} else {
+		ROS_WARN(" OCTOMAP RAY TRACE not initializing!! No pointer to octomap.");
+		return false;
+	}
+	
 }
 
 // JHUAPL section end

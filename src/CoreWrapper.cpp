@@ -173,7 +173,8 @@ CoreWrapper::CoreWrapper() :
 		mapManagerUpdateThread_(0),
 		mapManagerUpdateThreadRunning_(false),
 		publishMapThreadRunning_(false),
-		mapToOdomPrev_(rtabmap::Transform::getIdentity())
+		mapToOdomPrev_(rtabmap::Transform::getIdentity()),
+		mapManagerInitialized_(false)
 {
 	char * rosHomePath = getenv("ROS_HOME");
 	std::string workingDir = rosHomePath?rosHomePath:UDirectory::homeDir()+"/.ros";
@@ -2640,9 +2641,22 @@ void CoreWrapper::process(
 			rtabmapROSStats_.clear();
 		}
 
-		//
-		//	TODO:  break rtabmap_.process() into 2 parts (or add sensor_processing_complete() callback) 
-		//         so that processed sensor data can be published prior to rtabmap registration
+		// JHUAPL Section
+
+		// if the map manager has not initialized pre processing strategies based on data from 
+		// inputs. It would only take place once.
+		if (!mapManagerInitialized_) 
+		{
+			// When Octomap's Ray Tracing is Enabled, it needs to initialized a reference boundary cloud.
+			if (mapsManager_.isOctomapRayTracingEnabled())
+			{
+				// ray tracing needs camera instrinsic params and image size.
+				mapManagerInitialized_ = mapsManager_.octomapRayTracingInit(data);
+			}
+		}
+
+		// JHUAPL end of Section
+
 		//
 		// mutex to sync with map manager thread
 		rtabmap_mtx_.lock();
@@ -4677,6 +4691,13 @@ void CoreWrapper::MapManagerUpdateThread(const double & threadDelay)
 	ros::Rate rate(1.0 / threadDelay);
 	NODELET_INFO(" map manager update thread, expected update rate: %fsecs", rate.expectedCycleTime().toSec());
 	boost::thread publishMapThread;
+
+	// wait for the map manager to be initialized
+	while (!mapManagerInitialized_)
+	{
+		NODELET_WARN(" Waiting for Map Manager Initialization");
+		rate.sleep();
+	}
 
 	ros::WallTime startTime;
 	
