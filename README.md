@@ -15,7 +15,7 @@ ROS packages :
 octomap_msgs, octomap_ros, octomap_rviz_plugins 
 
 system libraries:  
-opencv 3.4.10 (Tested, newer might work 3.4.x)  
+opencv 3.4.17 (Tested, newer might work 3.4.17)  
 libfmt-dev 
 
 ## Installation
@@ -39,10 +39,14 @@ $ catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr
 #otherwise
 $ catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
 
-# Building with CUDA support 
-catkin build rtabmap_ros --cmake-args -DOPENCV_CUDA=ON -DWITH_YAMLCPP=ON 
+# Building with CUDA support
+$ catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/usr/bin/python3 -DOPENCV_CUDA=ON -DWITH_YAMLCPP=ON
+catkin build rtabmap_ros 
+
+# ** Optional flags:
+# WITH_YAMLCPP : Needs to be enable for semantic segmentation mode.
 
 # Building with graphic
-catkin build rtabmap_ros --cmake-args -DWITH_YAMLCPP=ON -DRTABMAP_GUI=ON 
+catkin build rtabmap_ros --cmake-args -DRTABMAP_GUI=ON 
  
 ```

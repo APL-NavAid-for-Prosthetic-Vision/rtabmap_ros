@@ -91,6 +91,7 @@ void TableSemanticsPanel::setTable( const QString& new_file )
 		if( classID_file_path_ != "" )
 		{
 			// load yaml file
+		#ifdef WITH_YAMLCPP
 			if(!utils::parseModelConfig(classID_file_path_.toStdString(), modelNameIdMap_, modelMaskIdColorMap_))
 			{
 				ROS_ERROR("model classid structure FAILED to load: %s", classID_file_path_.toStdString().c_str());
@@ -99,6 +100,7 @@ void TableSemanticsPanel::setTable( const QString& new_file )
 			{
 				ROS_INFO("LOADED: %s",classID_file_path_.toStdString().c_str());
 			}
+		#endif
 		}
 		
 		// rviz::Panel defines the configChanged() signal.  Emitting it
