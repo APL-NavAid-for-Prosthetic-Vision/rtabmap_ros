@@ -30,15 +30,16 @@
     <arg name="queue_size"                     default="200"/> <!--default for depth mode --> 
     <arg name="multi_level_cell_size"          default="0.05 0.05 0.05 0.05 0.05"/>   <!-- 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
     <arg name="multi_level_cell_name"          default="ground ceiling static movable dynamic"/>   <!-- Name of octree per layer. -->
-    <arg name="grid_semanticDepthFusionCorrection"   default="false"/>
-    <arg name="grid_semanticGroundCorrection"        default="false"/>
-    <arg name="grid_outlierRemoval"                  default="false"/>
-    <arg name="octomap_raytracing"                   default="false"/>
-    <arg name="grid_raytracingMaxRange"              default="4"/>
-    <arg name="grid_rayTracingMaxHeightOffset"             default="1.0"/>
-    <arg name="grid_rayTracingMaxWidth"              default="4"/>
-    <arg name="grid_rayTracingWithGrd"               default="true"/>
-    <arg name="grid_maxGroundHeight"                 default="0.05"/>
+    <arg name="grid_semanticDepthFusionCorrection"    default="false"/>
+    <arg name="grid_semanticGroundCorrection"         default="false"/>
+    <arg name="grid_outlierRemoval"                   default="false"/>
+    <arg name="octomap_raytracing"                    default="false"/>
+    <arg name="grid_rayTracingMaxRange"               default="4"/>
+    <arg name="grid_rayTracingVertBoundaryMaxHeight"  default="1.0"/>
+    <arg name="grid_rayTracingCellSize"               default="0.05"/>
+    <arg name="grid_rayTracingFOVSizeFactor"          default="0.85"/>
+    <arg name="grid_rayTracingClipVertBoundary"       default="true"/>
+    <arg name="grid_maxGroundHeight"                  default="0.05"/>
     
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -100,17 +101,18 @@
         <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
         <arg name="multi_level_cell_size"       default="$(arg multi_level_cell_size)"/>   
         <arg name="multi_level_cell_name"       default="$(arg multi_level_cell_name)"/>
-        <arg name="grid_rangeMax"                        default="10.0"/>  <!-- max range for the grid, in semantic octomap is max range of occupied points -->
-        <arg name="grid_semanticDepthFusionCorrection"   default="$(arg grid_semanticDepthFusionCorrection)"/>
-        <arg name="grid_semanticGroundCorrection"        default="$(arg grid_semanticGroundCorrection)"/>
-        <arg name="grid_outlierRemoval"                  default="$(arg grid_outlierRemoval)"/>
-        <arg name="OctoMapNumThreads"                    default="5" />
-        <arg name="octomap_raytracing"                   default="$(arg octomap_raytracing)"/>      <!-- raytracing at the semantic octomap update. uses grid_raytracingMaxRange to set the max range -->
-        <arg name="grid_raytracingMaxRange"              default="$(arg grid_raytracingMaxRange)"/>
-        <arg name="grid_rayTracingMaxHeightOffset"       default="$(arg grid_rayTracingMaxHeightOffset)"/>
-        <arg name="grid_rayTracingMaxWidth"              default="$(arg grid_rayTracingMaxWidth)"/>
-        <arg name="grid_rayTracingWithGrd"               default="$(arg grid_rayTracingWithGrd)"/>
-        <arg name="grid_maxGroundHeight"                 default="$(arg grid_maxGroundHeight)"/>
+        <arg name="grid_rangeMax"                         default="10.0"/>  <!-- max range for the grid, in semantic octomap is max range of occupied points -->
+        <arg name="grid_semanticDepthFusionCorrection"    default="$(arg grid_semanticDepthFusionCorrection)"/>
+        <arg name="grid_semanticGroundCorrection"         default="$(arg grid_semanticGroundCorrection)"/>
+        <arg name="grid_outlierRemoval"                   default="$(arg grid_outlierRemoval)"/>
+        <arg name="OctoMapNumThreads"                     default="5" />
+        <arg name="octomap_raytracing"                    default="$(arg octomap_raytracing)"/>      <!-- raytracing at the semantic octomap update. uses grid_rayTracingMaxRange to set the max range -->
+        <arg name="grid_rayTracingClipVertBoundary"       default="$(arg grid_rayTracingClipVertBoundary)"/>
+        <arg name="grid_rayTracingMaxRange"               default="$(arg grid_rayTracingMaxRange)"/>
+        <arg name="grid_rayTracingVertBoundaryMaxHeight"  default="$(arg grid_rayTracingVertBoundaryMaxHeight)"/>
+        <arg name="grid_rayTracingCellSize"               default="$(arg grid_rayTracingCellSize)"/>
+        <arg name="grid_rayTracingFOVSizeFactor"          default="$(arg grid_rayTracingFOVSizeFactor)"/>
+        <arg name="grid_maxGroundHeight"                  default="$(arg grid_maxGroundHeight)"/>
     </include>
 
 </launch>

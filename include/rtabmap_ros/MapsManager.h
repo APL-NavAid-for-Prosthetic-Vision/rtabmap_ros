@@ -123,6 +123,10 @@ public:
 
 	std::map<unsigned int, std::string> getClassIdAssociation(); 
 
+	bool isOctomapRayTracingEnabled() { return octomapRayTracing_; }
+
+	bool octomapRayTracingInit(const rtabmap::SensorData & data);
+
 	// JHUAPL section end
 
 private:

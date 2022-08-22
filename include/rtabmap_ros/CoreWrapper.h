@@ -95,6 +95,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 
 // system
 #include <string>
+#include <atomic>
 
 //boost
 #include <boost/thread/mutex.hpp>
@@ -487,6 +488,7 @@ private:
 	
 	rtabmap::Transform mapToOdomPrev_;
 	bool LandmarkToMultiSignatureId_;
+	std::atomic<bool> mapManagerInitialized_;
 
 	//  JHUAPL section end
 };

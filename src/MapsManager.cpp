@@ -213,22 +213,32 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	float raytracingMaxRange = uStr2Float(raytracingMaxRangeStr);
 	ROS_INFO("Grid/RaytracingMaxRange = %f", raytracingMaxRange);
 
-	std::string rayTracingMaxHeightStr = "1.0f";
-	pnh.param("Grid/RayTracingMaxHeightOffset", rayTracingMaxHeightStr, rayTracingMaxHeightStr);
-	float rayTracingMaxHeightOffset = uStr2Float(rayTracingMaxHeightStr);
-	ROS_INFO("Grid/RayTracingMaxHeightOffset = %f", rayTracingMaxHeightOffset);
+	std::string rayTracingCellSizeStr = "0.05f";
+	pnh.param("Grid/RayTracingCellSize", rayTracingCellSizeStr, rayTracingCellSizeStr);
+	float rayTracingCellSize = uStr2Float(rayTracingCellSizeStr);
+	ROS_INFO("Grid/RayTracingCellSize = %f", rayTracingCellSize);
 
-	std::string rayTracingMaxWidthStr = "4.0f";
-	pnh.param("Grid/RayTracingMaxWidth", rayTracingMaxWidthStr, rayTracingMaxWidthStr);
-	float rayTracingMaxWidth = uStr2Float(rayTracingMaxWidthStr);
-	ROS_INFO("Grid/RayTracingMaxWidth = %f", rayTracingMaxWidth);
+	std::string clipVerticalBoundaryStr = "false"; // use lower case
+	pnh.param("Grid/RayTracingclipVerBoundary", clipVerticalBoundaryStr, clipVerticalBoundaryStr);
+	bool clipVerticalBoundary = false;
+	if (clipVerticalBoundaryStr == "true")
+		clipVerticalBoundary = true;
+	ROS_INFO("Grid/RayTracingclipVerBoundary = %s", clipVerticalBoundary?"true":"false");
 
-	std::string raytracingWithGrdStr = "false"; // use lower case
-	pnh.param("Grid/RayTracingWithGrd", raytracingWithGrdStr, raytracingWithGrdStr);
-	bool raytracingWithGrd = false;
-	if (raytracingWithGrdStr == "true")
-		raytracingWithGrd = true;
-	ROS_INFO("Grid/RayTracingWithGrd = %s", raytracingWithGrd?"true":"false");
+	std::string verticalBoundaryMaxHeightStr = "0.5";
+	pnh.param("Grid/verticalBoundaryMaxHeight", verticalBoundaryMaxHeightStr, verticalBoundaryMaxHeightStr);
+	float verticalBoundaryMaxHeight = uStr2Float(verticalBoundaryMaxHeightStr);
+	ROS_INFO("Grid/verticalBoundaryMaxHeight = %f", verticalBoundaryMaxHeight);
+
+	std::string grd_stddev_factorStr = "3.0";
+	pnh.param("Grid/OctoMapGrdSTDDEVFactor", grd_stddev_factorStr, grd_stddev_factorStr);
+	float grd_stddev_factor = uStr2Float(grd_stddev_factorStr);
+	ROS_INFO("Grid/OctoMapGrdSTDDEVFactor = %f", grd_stddev_factor);
+
+	std::string grd_stddev_thresholdStr = "0.1";
+	pnh.param("Grid/OctoMapGrdSTDDEVThreshold", grd_stddev_thresholdStr, grd_stddev_thresholdStr);
+	float grd_stddev_threshold = uStr2Float(grd_stddev_thresholdStr);
+	ROS_INFO("Grid/OctoMapGrdSTDDEVThreshold = %f", grd_stddev_threshold);
 
 	// JHUAPL section end
 
@@ -248,11 +258,13 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.probMiss = 0.4;
 		sematicOctoMapParams.clampingMin = 0.1192;
 		sematicOctoMapParams.clampingMax = 0.971;
+		sematicOctoMapParams.grd_stddev_factor = grd_stddev_factor;
+		sematicOctoMapParams.grd_stddev_threshold = grd_stddev_threshold;
 		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
-		sematicOctoMapParams.raytracingParams.maxHeightOffset = rayTracingMaxHeightOffset;
-		sematicOctoMapParams.raytracingParams.rayTraceWithGrd = raytracingWithGrd;
-		sematicOctoMapParams.raytracingParams.maxWidth = rayTracingMaxWidth;
-				
+		sematicOctoMapParams.raytracingParams.cellSize = rayTracingCellSize;
+		sematicOctoMapParams.raytracingParams.clipVerticalBoundary = clipVerticalBoundary;
+		sematicOctoMapParams.raytracingParams.verticalBoundaryMaxHeight = verticalBoundaryMaxHeight;
+
 		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, sematicOctoMapParams);
 	
 		// set the model class map if available
@@ -2389,6 +2401,41 @@ bool MapsManager::clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs
 	gridMapsViewpoints_.clear();
 	grid_mtx_.unlock();
 
+}
+
+bool MapsManager::octomapRayTracingInit(const rtabmap::SensorData & data) {
+
+	// return whether Ray Trace is successfully initialized.
+
+	if (semanticOctomap_) {
+
+		semanticOctomap_->clearRayTraceInitialized();
+
+		// There must be one camera model
+		if (data.cameraModels().size() == 0) {
+			ROS_WARN(" OCTOMAP RAY TRACE not initializing!! Camera model not available.");
+			return false;
+		}
+
+		// Providing support for a single camera 
+		int image_width = data.cameraModels().at(0).imageWidth();
+		int image_height = data.cameraModels().at(0).imageHeight();
+		double fx = data.cameraModels().at(0).fx();
+		double fy = data.cameraModels().at(0).fy();
+		double cx = data.cameraModels().at(0).cx();
+		double cy = data.cameraModels().at(0).cy();
+
+		rtabmap::Transform T_keyframe_camera = data.cameraModels().at(0).localTransform();	
+
+		semanticOctomap_->initializeRayTrace(image_width, image_height, fx, fy, cx, cy, T_keyframe_camera);
+
+		return true;
+
+	} else {
+		ROS_WARN(" OCTOMAP RAY TRACE not initializing!! No pointer to octomap.");
+		return false;
+	}
+	
 }
 
 // JHUAPL section end

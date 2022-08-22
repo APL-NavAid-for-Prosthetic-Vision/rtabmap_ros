@@ -81,13 +81,13 @@
   <arg name="grid_semanticDepthFusionCorrection"    default="false"/>
   <arg name="grid_semanticGroundCorrection"         default="false"/>
   <arg name="grid_outlierRemoval"                   default="false"/>
-  
   <arg name="grid_maxGroundHeight"                  default="0.05"/>
   <arg name="octomap_raytracing"                    default="false"/>
-  <arg name="grid_raytracingMaxRange"               default="6"/>
-  <arg name="grid_rayTracingMaxHeightOffset"        default="1.0"/>
-  <arg name="grid_rayTracingMaxWidth"               default="4.0"/>
-  <arg name="grid_rayTracingWithGrd"                default="true"/>
+  <arg name="grid_rayTracingClipVertBoundary"       default="true"/>
+  <arg name="grid_rayTracingMaxRange"               default="6"/>
+  <arg name="grid_rayTracingVertBoundaryMaxHeight"  default="1.0"/>
+  <arg name="grid_rayTracingCellSize"               default="0.05"/>
+  <arg name="grid_rayTracingFOVSizeFactor"          default="0.85"/>
   
   <!-- JHU APL : end -->
 
@@ -493,10 +493,13 @@
       <param name="Grid/SemanticDepthFusionCorrection"   type="string"   value="$(arg grid_semanticDepthFusionCorrection)"/>
       <param name="Grid/SemanticGroundCorrection"   type="string"   value="$(arg grid_semanticGroundCorrection)"/>
       <param name="Grid/OutlierRemoval"             type="string"   value="$(arg grid_outlierRemoval)"/>
-      <param name="Grid/RaytracingMaxRange"         type="string"   value="$(arg grid_raytracingMaxRange)"/>
-      <param name="Grid/RayTracingMaxHeightOffset"  type="string"   value="$(arg grid_rayTracingMaxHeightOffset)"/>
-      <param name="Grid/RayTracingMaxWidth"         type="string"   value="$(arg grid_rayTracingMaxWidth)"/>
-      <param name="Grid/RayTracingWithGrd"          type="string"   value="$(arg grid_rayTracingWithGrd)"/>
+      <param name="Grid/RayTracingMaxRange"         type="string"   value="$(arg grid_rayTracingMaxRange)"/>
+      <param name="Grid/RayTracingVertBoundaryMaxHeight"  type="string"   value="$(arg grid_rayTracingVertBoundaryMaxHeight)"/>
+      <param name="Grid/RayTracingCellSize"         type="string"   value="$(arg grid_rayTracingCellSize)"/>
+      <param name="Grid/RayTracingClipVertBoundary" type="string"   value="$(arg grid_rayTracingClipVertBoundary)"/>
+      <param name="Grid/RayTracingFOVSizeFactor"    type="string"   value="$(arg grid_rayTracingFOVSizeFactor)"/>
+      <param name="Grid/OctoMapGrdSTDDEVFactor"     type="string"   value="3.0"/>
+      <param name="Grid/OctoMapGrdSTDDEVThreshold"  type="string"   value="0.1"/>
       
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />

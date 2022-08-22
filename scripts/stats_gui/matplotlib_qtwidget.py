@@ -25,7 +25,8 @@ import numpy as np
 class MatplotlibWidget(QWidget):
   """
   """
-  def __init__(self, parent=None, width=5, height=4, dpi=100, title="", multiple_line=False, label_names=[]):
+  def __init__(self, parent=None, width=5, height=4, dpi=100, title="", multiple_line=False, 
+      label_names=[], y_axis_name="Seconds"):
     """
     """
     super().__init__()
@@ -65,12 +66,12 @@ class MatplotlibWidget(QWidget):
 
     # setting axes labels after settining initial empty plot, locates labels correctly.
     self._line1.axes.set_xlabel("Seconds")
-    self._line1.axes.set_ylabel("Seconds")
+    self._line1.axes.set_ylabel(y_axis_name)
 
     # updates layout in the main window.
     self.setLayout(layout_canvas)
 
-  def update_canvas(self, y_value):
+  def update_canvas(self, y_value, set_y_limit_mode='time'):
     """
     """
     timeStop = time.time()
@@ -80,19 +81,34 @@ class MatplotlibWidget(QWidget):
     self.x_axis_data = np.append(self.x_axis_data, self.time)
     self.y_axis_data_1 = np.append(self.y_axis_data_1, y_value)
 
-    y_limit_value = np.amax(self.y_axis_data_1)
+    if set_y_limit_mode == 'time':
+      y_limit_value = np.amax(self.y_axis_data_1)
+    elif set_y_limit_mode == 'ground':
+      y_limit_value = np.amin(self.y_axis_data_1)
+    else:
+      y_limit_value = np.amax(self.y_axis_data_1)
     
     self._line1.set_data(self.x_axis_data, self.y_axis_data_1)
     # update axes 
     self._line1.axes.set_xlim(0, self.time + 1)
-    self._line1.axes.set_ylim(0, y_limit_value + 1)
+    if set_y_limit_mode == 'time':
+      self._line1.axes.set_ylim(0, y_limit_value + 1)
+    elif set_y_limit_mode == 'ground':
+      if y_limit_value < 0:
+        # negative 
+        self._line1.axes.set_ylim(y_limit_value - 1, 0)
+      else:
+        # positive 
+        self._line1.axes.set_ylim(0, y_limit_value + 1)
+    else:
+      self._line1.axes.set_ylim(0, y_limit_value)
 
     self._line1.figure.canvas.draw()
 
     # update time stamp
     self._time_stamp = timeStop 
 
-  def update_canvas_2(self, mm_value, om_value):
+  def update_canvas_2(self, mm_value, om_value, y_axes_lim_offset=1):
     """
     """
     timeStop = time.time()
@@ -108,7 +124,7 @@ class MatplotlibWidget(QWidget):
     self._line1.set_data(self.x_axis_data, self.y_axis_data_1)
     # update axes 
     self._line1.axes.set_xlim(0, self.time + 1)
-    self._line1.axes.set_ylim(0, y_limit_value + 1)
+    self._line1.axes.set_ylim(0, y_limit_value + y_axes_lim_offset)
 
     # update line 1
     self._line1.figure.canvas.draw()
