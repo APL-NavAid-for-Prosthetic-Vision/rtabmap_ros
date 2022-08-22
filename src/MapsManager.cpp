@@ -272,11 +272,12 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		{
 			std::map<std::string, std::map<unsigned int, std::string>> networkModelMap;
 			std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
-			
+		#ifdef WITH_YAMLCPP
 			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, networkModelMap, modelMaskIdColorMap))
 			{
 				ROS_WARN("parsing network model Config FAILED to parse the semantic segmentation ocupacy to label id to name association file");
 			}
+		#endif
 
 			// occupancy grid (3D) needs to create label to occupancy association
 			occupancyGrid_->setModelAssociationMap(networkModelMap);
@@ -554,11 +555,12 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
 		{
 			std::map<std::string, std::map<unsigned int, std::string>> networkModelMap;
 			std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
-
+		#ifdef WITH_YAMLCPP
 			if(!utils::parseModelConfig(semanticSegmentationModelFilePath_, networkModelMap, modelMaskIdColorMap))
 			{
 				ROS_WARN("parseModelConfig {network model config} FAILED to parse the semantic semantation name architecture file");
 			}
+		#endif
 
 			// occupancy grid (3D) needs to create label to occupancy association
 			occupancyGrid_->setModelAssociationMap(networkModelMap);

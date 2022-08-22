@@ -343,15 +343,17 @@ ADD_DEFINITIONS("-DWITH_APRILTAG_ROS")
 ENDIF(apriltag_ros_FOUND)
 
 # ---- APL Added
-if(yaml-cpp_FOUND)
-   include_directories(
-      ${YAML_CPP_INCLUDE_DIR}
-   )
-   set(Libraries
-      ${Libraries}
-      ${YAML_CPP_LIBRARIES}
-   )
-endif(yaml-cpp_FOUND)
+if(WITH_YAMLCPP)
+   if(yaml-cpp_FOUND)
+      include_directories(
+         ${YAML_CPP_INCLUDE_DIR}
+      )
+      set(Libraries
+         ${Libraries}
+         ${YAML_CPP_LIBRARIES}
+      )
+   endif(yaml-cpp_FOUND)
+endif(WITH_YAMLCPP)
 
 
 if(objectrecognition_FOUND)

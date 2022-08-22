@@ -651,6 +651,7 @@ void CoreWrapper::onInit()
 
 	// set the model class map if available
 	std::map<std::string, std::map<unsigned int, std::string>> networkModelMap;
+#ifdef WITH_YAMLCPP
 	std::map<unsigned int, cv::Point3f> modelMaskIdColorMap;
 	if(enableSemanticSegmentation && !semanticSegmentationModelFilePath.empty())
 	{
@@ -659,6 +660,7 @@ void CoreWrapper::onInit()
 			ROS_WARN("parseModelConfig FAILED to parse the semantic segmentation ocupacy to label id to name association file");
 		}
 	}
+#endif
 
 	bool publishVisualImage = false;
 	pnh.param("publish_visual_image", publishVisualImage, publishVisualImage);
