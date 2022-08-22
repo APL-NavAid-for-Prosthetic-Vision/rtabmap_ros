@@ -498,8 +498,8 @@
       <param name="Grid/RayTracingCellSize"         type="string"   value="$(arg grid_rayTracingCellSize)"/>
       <param name="Grid/RayTracingClipVertBoundary" type="string"   value="$(arg grid_rayTracingClipVertBoundary)"/>
       <param name="Grid/RayTracingFOVSizeFactor"    type="string"   value="$(arg grid_rayTracingFOVSizeFactor)"/>
-      <param name="Grid/OctoMapDSORSTDMul"          type="string"   value="0.8"/>
-      <param name="Grid/OctoMapDSORRangeMul"        type="string"   value="0.25"/>
+      <param name="Grid/OctoMapGrdSTDDEVFactor"     type="string"   value="3.0"/>
+      <param name="Grid/OctoMapGrdSTDDEVThreshold"  type="string"   value="0.1"/>
       
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />

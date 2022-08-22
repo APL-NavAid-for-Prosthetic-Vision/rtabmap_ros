@@ -230,15 +230,15 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	float verticalBoundaryMaxHeight = uStr2Float(verticalBoundaryMaxHeightStr);
 	ROS_INFO("Grid/verticalBoundaryMaxHeight = %f", verticalBoundaryMaxHeight);
 
-	std::string dsor_std_mulStr = "0.25";
-	pnh.param("Grid/OctoMapDSORSTDMul", dsor_std_mulStr, dsor_std_mulStr);
-	float dsor_std_mul = uStr2Float(dsor_std_mulStr);
-	ROS_INFO("Grid/OctoMapDSORSTDMul = %f", dsor_std_mul);
+	std::string grd_stddev_factorStr = "3.0";
+	pnh.param("Grid/OctoMapGrdSTDDEVFactor", grd_stddev_factorStr, grd_stddev_factorStr);
+	float grd_stddev_factor = uStr2Float(grd_stddev_factorStr);
+	ROS_INFO("Grid/OctoMapGrdSTDDEVFactor = %f", grd_stddev_factor);
 
-	std::string dsor_range_mulStr = "0.25";
-	pnh.param("Grid/OctoMapDSORRangeMul", dsor_range_mulStr, dsor_range_mulStr);
-	float dsor_range_mul = uStr2Float(dsor_range_mulStr);
-	ROS_INFO("Grid/OctoMapDSORRangeMul = %f", dsor_range_mul);
+	std::string grd_stddev_thresholdStr = "0.1";
+	pnh.param("Grid/OctoMapGrdSTDDEVThreshold", grd_stddev_thresholdStr, grd_stddev_thresholdStr);
+	float grd_stddev_threshold = uStr2Float(grd_stddev_thresholdStr);
+	ROS_INFO("Grid/OctoMapGrdSTDDEVThreshold = %f", grd_stddev_threshold);
 
 	// JHUAPL section end
 
@@ -258,8 +258,8 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.probMiss = 0.4;
 		sematicOctoMapParams.clampingMin = 0.1192;
 		sematicOctoMapParams.clampingMax = 0.971;
-		sematicOctoMapParams.dsor_std_mul = dsor_std_mul;
-		sematicOctoMapParams.dsor_range_mul = dsor_range_mul;
+		sematicOctoMapParams.grd_stddev_factor = grd_stddev_factor;
+		sematicOctoMapParams.grd_stddev_threshold = grd_stddev_threshold;
 		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
 		sematicOctoMapParams.raytracingParams.cellSize = rayTracingCellSize;
 		sematicOctoMapParams.raytracingParams.clipVerticalBoundary = clipVerticalBoundary;
