@@ -240,6 +240,21 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	float grd_stddev_threshold = uStr2Float(grd_stddev_thresholdStr);
 	ROS_INFO("Grid/OctoMapGrdSTDDEVThreshold = %f", grd_stddev_threshold);
 
+	std::string grd_min_thresholdStr = "-2.0";
+	pnh.param("Grid/OctoMapGrdMinThreshold", grd_min_thresholdStr, grd_min_thresholdStr);
+	float grd_min_threshold = uStr2Float(grd_min_thresholdStr);
+	ROS_INFO("Grid/OctoMapGrdMinThreshold = %f", grd_min_threshold);
+
+	std::string grd_max_thresholdStr = "0.0";
+	pnh.param("Grid/OctoMapGrdMaxThreshold", grd_max_thresholdStr, grd_max_thresholdStr);
+	float grd_max_threshold = uStr2Float(grd_max_thresholdStr);
+	ROS_INFO("Grid/OctoMapGrdMaxThreshold = %f", grd_max_threshold);
+
+	std::string grd_offset_heightStr = "0.0";
+	pnh.param("Grid/OctoMapGrdOffsetHeight", grd_offset_heightStr, grd_offset_heightStr);
+	float grd_offset_height = uStr2Float(grd_offset_heightStr);
+	ROS_INFO("Grid/OctoMapGrdOffsetHeight = %f", grd_offset_height);
+
 	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
@@ -260,6 +275,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.clampingMax = 0.971;
 		sematicOctoMapParams.grd_stddev_factor = grd_stddev_factor;
 		sematicOctoMapParams.grd_stddev_threshold = grd_stddev_threshold;
+		sematicOctoMapParams.grd_min_threshold = grd_min_threshold;
+		sematicOctoMapParams.grd_max_threshold = grd_max_threshold;
+		sematicOctoMapParams.grd_offset_height = grd_offset_height;
 		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
 		sematicOctoMapParams.raytracingParams.cellSize = rayTracingCellSize;
 		sematicOctoMapParams.raytracingParams.clipVerticalBoundary = clipVerticalBoundary;
@@ -2400,6 +2418,8 @@ bool MapsManager::clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs
 	gridAPLMaps_.clear();
 	gridMapsViewpoints_.clear();
 	grid_mtx_.unlock();
+
+	return true;
 
 }
 

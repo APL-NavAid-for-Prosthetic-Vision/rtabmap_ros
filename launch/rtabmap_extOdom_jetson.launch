@@ -39,7 +39,10 @@
     <arg name="grid_rayTracingCellSize"               default="0.05"/>
     <arg name="grid_rayTracingFOVSizeFactor"          default="0.85"/>
     <arg name="grid_rayTracingClipVertBoundary"       default="true"/>
-    <arg name="grid_maxGroundHeight"                  default="0.05"/>
+    <arg name="grid_maxGroundHeight"                  default="0.0"/>
+    <arg name="grid_octomap_ground_min_threshold"     default="-2.0"/>
+    <arg name="grid_octomap_ground_max_threshold"     default="0.0"/>
+    <arg name="grid_octomap_ground_offset_height"     default="0.0"/>
     
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -113,6 +116,9 @@
         <arg name="grid_rayTracingCellSize"               default="$(arg grid_rayTracingCellSize)"/>
         <arg name="grid_rayTracingFOVSizeFactor"          default="$(arg grid_rayTracingFOVSizeFactor)"/>
         <arg name="grid_maxGroundHeight"                  default="$(arg grid_maxGroundHeight)"/>
+        <arg name="grid_octomap_ground_min_threshold"     default="$(arg grid_octomap_ground_min_threshold)"/>
+        <arg name="grid_octomap_ground_max_threshold"     default="$(arg grid_octomap_ground_max_threshold)"/>
+        <arg name="grid_octomap_ground_offset_height"     default="$(arg grid_octomap_ground_offset_height)"/>
     </include>
 
 </launch>
