@@ -150,7 +150,9 @@ class StatisticsVisualizer:
     if time_elapsed >= 1:
       # on seconds has passed
       self.last_response_time = current_time
-      self.rtabmap_stats.rtabmap_hz = 1. / np.mean(self.rtabmap_time_total_sec_buf)
+      mean = np.mean(self.rtabmap_time_total_sec_buf)
+      if mean > 0:
+        self.rtabmap_stats.rtabmap_hz = 1. / mean
       self.rtabmap_time_total_sec_buf = np.array([], dtype=np.float64)
 
     self.gui.update_rtabmap_stat(self.rtabmap_stats)
