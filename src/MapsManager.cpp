@@ -255,6 +255,11 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	float grd_offset_height = uStr2Float(grd_offset_heightStr);
 	ROS_INFO("Grid/OctoMapGrdOffsetHeight = %f", grd_offset_height);
 
+	std::string empty_point_cache_sizeStr = "0.0";
+	pnh.param("Grid/OctoMapEmptyPointsCacheSize", empty_point_cache_sizeStr, empty_point_cache_sizeStr);
+	int empty_point_cache_size = uStr2Int(empty_point_cache_sizeStr);
+	ROS_INFO("Grid/OctoMapEmptyPointsCacheSize = %d", empty_point_cache_size);
+
 	// JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
@@ -278,10 +283,12 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.grd_min_threshold = grd_min_threshold;
 		sematicOctoMapParams.grd_max_threshold = grd_max_threshold;
 		sematicOctoMapParams.grd_offset_height = grd_offset_height;
+		sematicOctoMapParams.empty_point_cache_size = empty_point_cache_size;
 		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
 		sematicOctoMapParams.raytracingParams.cellSize = rayTracingCellSize;
 		sematicOctoMapParams.raytracingParams.clipVerticalBoundary = clipVerticalBoundary;
 		sematicOctoMapParams.raytracingParams.verticalBoundaryMaxHeight = verticalBoundaryMaxHeight;
+		
 
 		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, sematicOctoMapParams);
 	
