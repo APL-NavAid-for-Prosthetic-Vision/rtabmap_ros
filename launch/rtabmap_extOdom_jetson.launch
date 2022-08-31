@@ -43,6 +43,7 @@
     <arg name="grid_octomap_ground_min_threshold"     default="-2.0"/>
     <arg name="grid_octomap_ground_max_threshold"     default="0.0"/>
     <arg name="grid_octomap_ground_offset_height"     default="0.0"/>
+    <arg name="grid_octomap_empty_points_cache_size"  default="1000"/>
     
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -119,6 +120,7 @@
         <arg name="grid_octomap_ground_min_threshold"     default="$(arg grid_octomap_ground_min_threshold)"/>
         <arg name="grid_octomap_ground_max_threshold"     default="$(arg grid_octomap_ground_max_threshold)"/>
         <arg name="grid_octomap_ground_offset_height"     default="$(arg grid_octomap_ground_offset_height)"/>
+        <arg name="grid_octomap_empty_points_cache_size"  default="$(arg grid_octomap_empty_points_cache_size)"/>
     </include>
 
 </launch>

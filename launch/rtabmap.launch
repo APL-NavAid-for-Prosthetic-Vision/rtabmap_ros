@@ -91,6 +91,7 @@
   <arg name="grid_octomap_ground_min_threshold"     default="-2.0"/>
   <arg name="grid_octomap_ground_max_threshold"     default="0.0"/>
   <arg name="grid_octomap_ground_offset_height"     default="0.0"/>
+  <arg name="grid_octomap_empty_points_cache_size"  default="1000"/>
 
   
   <!-- JHU APL : end -->
@@ -470,7 +471,7 @@
       
       <param name="GridGlobal/MaxNodes"       type="string" value="$(arg max_nodes)"/>
       <param name="GridGlobal/UpdateError"    type="string" value="0.01"/>
-      <param name="GridGlobal/FullUpdate"     type="string" value="true" />
+      <param name="GridGlobal/FullUpdate"     type="string" value="true"/>
       
       <param if="$(arg subscribe_rgbd_semantic_detection)" name="Grid/EnableSemanticSegmentation" type="string" value="true"/>
 
@@ -507,6 +508,7 @@
       <param name="Grid/OctoMapGrdMinThreshold"     type="string"   value="$(arg grid_octomap_ground_min_threshold)"/>
       <param name="Grid/OctoMapGrdMaxThreshold"     type="string"   value="$(arg grid_octomap_ground_max_threshold)"/>
       <param name="Grid/OctoMapGrdOffsetHeight"     type="string"   value="$(arg grid_octomap_ground_offset_height)"/>
+      <param name="Grid/OctoMapEmptyPointsCacheSize" type="string"   value="$(arg grid_octomap_empty_points_cache_size)"/>
       
       <param name="Kp/DetectorStrategy" type="string" value="10" />
       <param name="Kp/MaxDepth"         type="string" value="10" />
