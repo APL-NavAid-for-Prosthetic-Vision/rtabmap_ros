@@ -48,11 +48,11 @@ void CommonDataSubscriber::setupRGBDSemanticDetectionCallbacks(
 			{
 				subscribedToOdomInfo_ = true;
 				odomInfoSub_.subscribe(nh, "odom_info", 1);
-				SYNC_DECL3(rgbdSemanticDetectionOdomInfo, approxSync, queueSize, odomSub_, (*rgbdSemanticDetectionSubs_[0]), odomInfoSub_);
+				SYNC_DECL3(CommonDataSubscriber, rgbdSemanticDetectionOdomInfo, approxSync, queueSize, odomSub_, (*rgbdSemanticDetectionSubs_[0]), odomInfoSub_);
 			}
 			else
 			{
-				SYNC_DECL2(rgbdSemanticDetectionOdom, approxSync, queueSize, odomSub_, (*rgbdSemanticDetectionSubs_[0]));
+				SYNC_DECL2(CommonDataSubscriber, rgbdSemanticDetectionOdom, approxSync, queueSize, odomSub_, (*rgbdSemanticDetectionSubs_[0]));
 			}
         }
         else

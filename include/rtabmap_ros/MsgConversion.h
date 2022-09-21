@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/OdometryInfo.h>
 #include <rtabmap/core/Statistics.h>
 #include <rtabmap/core/StereoCameraModel.h>
+#include <rtabmap/core/Landmark.h>
 
 #include <rtabmap_ros/Link.h>
 #include <rtabmap_ros/KeyPoint.h>
@@ -75,9 +76,11 @@ rtabmap::Transform transformFromGeometryMsg(const geometry_msgs::Transform & msg
 
 void transformToPoseMsg(const rtabmap::Transform & transform, geometry_msgs::Pose & msg);
 rtabmap::Transform transformFromPoseMsg(const geometry_msgs::Pose & msg, bool ignoreRotationIfNotSet = false);
+
 void toCvCopy(const rtabmap_ros::RGBDImage & image, cv_bridge::CvImagePtr & rgb, cv_bridge::CvImagePtr & depth);
 void toCvShare(const rtabmap_ros::RGBDImageConstPtr & image, cv_bridge::CvImageConstPtr & rgb, cv_bridge::CvImageConstPtr & depth);
-
+void toCvShare(const rtabmap_ros::RGBDImage & image, const boost::shared_ptr<void const>& trackedObject, cv_bridge::CvImageConstPtr & rgb, cv_bridge::CvImageConstPtr & depth);
+void rgbdImageToROS(const rtabmap::SensorData & data, rtabmap_ros::RGBDImage & msg, const std::string & sensorFrameId);
 rtabmap::SensorData rgbdImageFromROS(const rtabmap_ros::RGBDImageConstPtr & image);
 
 /*
@@ -105,6 +108,7 @@ cv::KeyPoint keypointFromROS(const rtabmap_ros::KeyPoint & msg);
 void keypointToROS(const cv::KeyPoint & kpt, rtabmap_ros::KeyPoint & msg);
 
 std::vector<cv::KeyPoint> keypointsFromROS(const std::vector<rtabmap_ros::KeyPoint> & msg);
+void keypointsFromROS(const std::vector<rtabmap_ros::KeyPoint> & msg, std::vector<cv::KeyPoint> & kpts, int xShift=0);
 void keypointsToROS(const std::vector<cv::KeyPoint> & kpts, std::vector<rtabmap_ros::KeyPoint> & msg);
 
 rtabmap::GlobalDescriptor globalDescriptorFromROS(const rtabmap_ros::GlobalDescriptor & msg);
@@ -112,6 +116,11 @@ void globalDescriptorToROS(const rtabmap::GlobalDescriptor & desc, rtabmap_ros::
 
 std::vector<rtabmap::GlobalDescriptor> globalDescriptorsFromROS(const std::vector<rtabmap_ros::GlobalDescriptor> & msg);
 void globalDescriptorsToROS(const std::vector<rtabmap::GlobalDescriptor> & desc, std::vector<rtabmap_ros::GlobalDescriptor> & msg);
+
+rtabmap::EnvSensor envSensorFromROS(const rtabmap_ros::EnvSensor & msg);
+void envSensorToROS(const rtabmap::EnvSensor & sensor, rtabmap_ros::EnvSensor & msg);
+rtabmap::EnvSensors envSensorsFromROS(const std::vector<rtabmap_ros::EnvSensor> & msg);
+void envSensorsToROS(const rtabmap::EnvSensors & sensors, std::vector<rtabmap_ros::EnvSensor> & msg);
 
 cv::Point2f point2fFromROS(const rtabmap_ros::Point2f & msg);
 void point2fToROS(const cv::Point2f & kpt, rtabmap_ros::Point2f & msg);
@@ -122,8 +131,9 @@ void points2fToROS(const std::vector<cv::Point2f> & kpts, std::vector<rtabmap_ro
 cv::Point3f point3fFromROS(const rtabmap_ros::Point3f & msg);
 void point3fToROS(const cv::Point3f & pt, rtabmap_ros::Point3f & msg);
 
-std::vector<cv::Point3f> points3fFromROS(const std::vector<rtabmap_ros::Point3f> & msg);
-void points3fToROS(const std::vector<cv::Point3f> & pts, std::vector<rtabmap_ros::Point3f> & msg);
+std::vector<cv::Point3f> points3fFromROS(const std::vector<rtabmap_ros::Point3f> & msg, const rtabmap::Transform & transform = rtabmap::Transform());
+void points3fFromROS(const std::vector<rtabmap_ros::Point3f> & msg, std::vector<cv::Point3f> & points3, const rtabmap::Transform & transform = rtabmap::Transform());
+void points3fToROS(const std::vector<cv::Point3f> & pts, std::vector<rtabmap_ros::Point3f> & msg, const rtabmap::Transform & transform = rtabmap::Transform());
 
 rtabmap::CameraModel cameraModelFromROS(
 		const sensor_msgs::CameraInfo & camInfo,
@@ -175,14 +185,14 @@ rtabmap::Signature nodeInfoFromROS(const rtabmap_ros::NodeData & msg);
 void nodeInfoToROS(const rtabmap::Signature & signature, rtabmap_ros::NodeData & msg);
 
 std::map<std::string, float> odomInfoToStatistics(const rtabmap::OdometryInfo & info);
-rtabmap::OdometryInfo odomInfoFromROS(const rtabmap_ros::OdomInfo & msg);
-void odomInfoToROS(const rtabmap::OdometryInfo & info, rtabmap_ros::OdomInfo & msg);
+rtabmap::OdometryInfo odomInfoFromROS(const rtabmap_ros::OdomInfo & msg, bool ignoreData = false);
+void odomInfoToROS(const rtabmap::OdometryInfo & info, rtabmap_ros::OdomInfo & msg, bool ignoreData = false);
 
 cv::Mat userDataFromROS(const rtabmap_ros::UserData & dataMsg);
 void userDataToROS(const cv::Mat & data, rtabmap_ros::UserData & dataMsg, bool compress);
 
 rtabmap::Landmarks landmarksFromROS(
-		const std::map<int, geometry_msgs::PoseWithCovarianceStamped> & tags,
+		const std::map<int, std::pair<geometry_msgs::PoseWithCovarianceStamped, float> > & tags,
 		const std::string & frameId,
 		const std::string & odomFrameId,
 		const ros::Time & odomStamp,
@@ -223,7 +233,13 @@ bool convertRGBDMsgs(
 		cv::Mat & depth,
 		std::vector<rtabmap::CameraModel> & cameraModels,
 		tf::TransformListener & listener,
-		double waitForTransform);
+		double waitForTransform,
+		const std::vector<std::vector<rtabmap_ros::KeyPoint> > & localKeyPointsMsgs = std::vector<std::vector<rtabmap_ros::KeyPoint> >(),
+		const std::vector<std::vector<rtabmap_ros::Point3f> > & localPoints3dMsgs = std::vector<std::vector<rtabmap_ros::Point3f> >(),
+		const std::vector<cv::Mat> & localDescriptorsMsgs = std::vector<cv::Mat>(),
+		std::vector<cv::KeyPoint> * localKeyPoints = 0,
+		std::vector<cv::Point3f> * localPoints3d = 0,
+		cv::Mat * localDescriptors = 0);
 
 bool convertStereoMsg(
 		const cv_bridge::CvImageConstPtr& leftImageMsg,
@@ -237,7 +253,8 @@ bool convertStereoMsg(
 		cv::Mat & right,
 		rtabmap::StereoCameraModel & stereoModel,
 		tf::TransformListener & listener,
-		double waitForTransform);
+		double waitForTransform,
+		bool alreadyRectified);
 
 bool convertScanMsg(
 		const sensor_msgs::LaserScan & scan2dMsg,

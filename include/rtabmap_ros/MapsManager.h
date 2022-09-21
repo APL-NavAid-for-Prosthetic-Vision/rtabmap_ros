@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/FlannIndex.h>
 #include <rtabmap/core/Landmark.h>
+#include <rtabmap/core/OccupancyGrid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <ros/time.h>
@@ -53,7 +54,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include <rtabmap_ros/MapManagerStats.h>
-
 #include <std_srvs/Empty.h>
 
 // JHUAPL section end
@@ -79,6 +79,13 @@ public:
 
 	std::map<int, rtabmap::Transform> getFilteredPoses(
 			const std::map<int, rtabmap::Transform> & poses);
+
+	std::map<int, rtabmap::Transform> updateMapCaches(
+			const std::map<int, rtabmap::Transform> & poses,
+			const rtabmap::Memory * memory,
+			bool updateGrid,
+			bool updateOctomap,
+			const std::map<int, rtabmap::Signature> & signatures = std::map<int, rtabmap::Signature>());
 
 	std::map<int, rtabmap::Transform> updateMapCaches(
 			const std::map<int, rtabmap::Transform> & poses,
