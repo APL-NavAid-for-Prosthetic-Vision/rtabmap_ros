@@ -748,7 +748,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			const std::map<int, rtabmap::Signature> & signatures)
 {
 	UMutex mutex;
-	updateMapCaches(poses, memory, updateGrid, updateOctomap, mutex, signatures);
+	return updateMapCaches(poses, memory, updateGrid, updateOctomap, mutex, signatures);
 }
 
 std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(

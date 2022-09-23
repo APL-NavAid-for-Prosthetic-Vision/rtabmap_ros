@@ -31,6 +31,7 @@ find_package(apriltag_ros)
 find_package(rviz)
 find_package(find_object_2d)
 find_package(fiducial_msgs)
+find_package(objectrecognition)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -38,7 +39,7 @@ find_package(rtabmap_apl 0.20.18 REQUIRED)
 message(STATUS "rtabmap_apl_INCLUDE_DIRS=${rtabmap_apl_INCLUDE_DIRS}")
 message(STATUS "rtabmap_apl_LIBRARIES=${rtabmap_apl_LIBRARIES}")
 
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 4.5.5 REQUIRED)
 message(STATUS "OpenCV_INCLUDE_DIRS=${OpenCV_INCLUDE_DIRS}")
 message(STATUS "OpenCV_LIBRARIES=${OpenCV_LIBRARIES}")
 
