@@ -1638,102 +1638,91 @@ void CoreWrapper::commonDepthCallbackImpl(
 
 void CoreWrapper::publishLandmarksMap(const rtabmap::Memory * memory, const std::string & mapFrameId) 
 {
-    if(memory == 0)
-    {
-        return;
-    }
-
-    if(landmarksMapPub_.getNumSubscribers()) 
+	if(memory == 0)
 	{
-        // [ signature id , set containing landmarks id] 
-        const std::map<int, std::set<int> > landmarksIndex = memory->getLandmarksIndex();
+		return;
+	}
+	
+  if(landmarksMapPub_.getNumSubscribers()) 
+	{
+		// [ signature id , set containing landmarks id] 
+		const std::map<int, std::set<int> > landmarksIndex = memory->getLandmarksIndex();
 
-        visualization_msgs::MarkerArray markers;
-        for(std::map<int, std::set<int> >::const_iterator nIter = landmarksIndex.begin(); nIter != landmarksIndex.end(); ++nIter)
+		visualization_msgs::MarkerArray markers;
+		for(std::map<int, std::set<int> >::const_iterator lmIter = landmarksIndex.begin(); lmIter != landmarksIndex.end(); ++lmIter)
 		{
-            int signatureId = nIter->first;
-            
-            if(nIter->second.empty()) 
+			// this is the actual landmark id
+			int landMarkId = -1*lmIter->first;
+			// we need one signature per landmark
+			int signatureId = *lmIter->second.begin();
+      //UDEBUG(" landmark:%d ; signature: %d; set size: %d", landMarkId, signatureId, (unsigned int)lmIter->second.size());
+			
+			std::map<int, rtabmap::Link> landmarksLinkMap;
+			const rtabmap::Signature * s = memory->getSignature(signatureId);
+			if(s)
 			{
-                // the signature has not set of landmarkIds
-                // the signature will not have the landmark link
-				ROS_WARN("signature id (%d) is missing landmarks!! should not have an empty set of landmarks", signatureId);
-                continue;
-            }
+				landmarksLinkMap = s->getLandmarks();
+			}
 
-            std::map<int, rtabmap::Link> landmarksLinkMap;
-            const rtabmap::Signature * s = memory->getSignature(signatureId);
-            if(s)
-            {
-                landmarksLinkMap = s->getLandmarks();
-            }
-
-            if(!landmarksLinkMap.empty()) 
-            {	
+			if(!landmarksLinkMap.empty()) 
+			{
 				// compute the pose of landmark with respect to map reference frame
 				// assuming the landmark's node is in the optimized map.
-				rtabmap::Transform map2NodePose = rtabmap_.getPose(signatureId);
+				rtabmap::Transform T_map_nodePose = rtabmap_.getPose(signatureId);
 			
 				//check if the node id pose was found; if not found, it would be all zeros
-				if(map2NodePose.isNull())
+				if(T_map_nodePose.isNull())
 				{
-					map2NodePose = s->getPose();
-					if(map2NodePose.isNull())
+					T_map_nodePose = s->getPose();
+					if(T_map_nodePose.isNull())
 					{
 						ROS_ERROR("		signature id POSE not found in memory!!! THIS SHOULD NOT HAPPEN");
 						continue;
 					}
 				}
-                // in one signature there might be multiple landmarks
-                for(std::map<int, rtabmap::Link>::iterator lIter = landmarksLinkMap.begin(); lIter != landmarksLinkMap.end(); ++lIter) 
-                {
-					visualization_msgs::Marker marker;
-                    // this is the actual landmark id
-					int landMarkId = -1*lIter->first;
 
-					// check if marker has already been added to markers array
-                    bool markerExist = false;
-					for(auto tmpMarker : markers.markers)
-					{
-						if(tmpMarker.id == landMarkId)
-                            markerExist = true;
-							break;
-					}
-                    if(markerExist)
-                        continue;
-                    
-					rtabmap::Transform mapPose2landmarkPoseTf = map2NodePose * lIter->second.transform();
-					Eigen::Quaterniond quaternion = mapPose2landmarkPoseTf.getQuaterniond();
+				visualization_msgs::Marker marker;
+				std::map<int, rtabmap::Link>::iterator lIter = landmarksLinkMap.find(lmIter->first);
 
-					marker.header.frame_id = mapFrameId;
-					marker.header.stamp = ros::Time::now();
-					marker.ns = "landmarks";
-					marker.id = landMarkId;
-					marker.action = visualization_msgs::Marker::ADD;
-					marker.pose.position.x = mapPose2landmarkPoseTf.x();
-					marker.pose.position.y = mapPose2landmarkPoseTf.y();
-					marker.pose.position.z = mapPose2landmarkPoseTf.z();
-					marker.pose.orientation.x = quaternion.x();
-					marker.pose.orientation.y = quaternion.y();
-					marker.pose.orientation.z = quaternion.z();
-					marker.pose.orientation.w = quaternion.w();
-					marker.scale.x = 0.20;
-					marker.scale.y = 0.20;
-					marker.scale.z = 0.20;
-					marker.color.a = 0.5;
-					marker.color.r = 1.0;
-					marker.color.g = 0.70;
-					marker.color.b = 0.0;
-					marker.lifetime = ros::Duration(1.f/rate_);
+				if (lIter == landmarksLinkMap.end()) 
+				{
+					ROS_WARN("landmarks link Map did not contain the landmark id !!");
+					continue;
+				}
 
-					marker.type = visualization_msgs::Marker::CUBE;
+				// lIter->second.transform() -> T_nodePose_landmarkPose
+				rtabmap::Transform T_map_landmarkPose = T_map_nodePose * lIter->second.transform();
+				Eigen::Quaterniond quaternion = T_map_landmarkPose.getQuaterniond();
+
+				marker.header.frame_id = mapFrameId;
+				marker.header.stamp = ros::Time::now();
+				marker.ns = "landmarks";
+				marker.id = landMarkId;
+				marker.action = visualization_msgs::Marker::ADD;
+				marker.pose.position.x = T_map_landmarkPose.x();
+				marker.pose.position.y = T_map_landmarkPose.y();
+				marker.pose.position.z = T_map_landmarkPose.z();
+				marker.pose.orientation.x = quaternion.x();
+				marker.pose.orientation.y = quaternion.y();
+				marker.pose.orientation.z = quaternion.z();
+				marker.pose.orientation.w = quaternion.w();
+				marker.scale.x = 0.20;
+				marker.scale.y = 0.20;
+				marker.scale.z = 0.20;
+				marker.color.a = 0.5;
+				marker.color.r = 1.0;
+				marker.color.g = 0.70;
+				marker.color.b = 0.0;
+				marker.lifetime = ros::Duration((1.f/rate_)*4);
+
+				marker.type = visualization_msgs::Marker::CUBE;
 					
-					markers.markers.push_back(marker);
-                }
-            }
-        }
-        landmarksMapPub_.publish(markers);
-    }
+				markers.markers.push_back(marker);
+				
+			}
+		}
+		landmarksMapPub_.publish(markers);
+	}
 }
 
 ///
