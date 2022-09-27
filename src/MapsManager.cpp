@@ -212,6 +212,11 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	float rangeMax = uStr2Float(rangeMaxStr);
 	ROS_INFO("Grid/RangeMax = %f", rangeMax);
 
+	std::string raytracingStartoffsetStr = "0.5";
+	pnh.param("Grid/RaytracingStartOffset", raytracingStartoffsetStr, raytracingStartoffsetStr);
+	float raytracingStartOffset = uStr2Float(raytracingStartoffsetStr);
+	ROS_INFO("Grid/RaytracingStartOffset = %f", raytracingStartOffset);
+
 	std::string raytracingMaxRangeStr = "2.0";
 	pnh.param("Grid/RaytracingMaxRange", raytracingMaxRangeStr, raytracingMaxRangeStr);
 	float raytracingMaxRange = uStr2Float(raytracingMaxRangeStr);
@@ -288,11 +293,11 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		sematicOctoMapParams.grd_max_threshold = grd_max_threshold;
 		sematicOctoMapParams.grd_offset_height = grd_offset_height;
 		sematicOctoMapParams.empty_point_cache_size = empty_point_cache_size;
+		sematicOctoMapParams.raytracingParams.startOffset = raytracingStartOffset;
 		sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
 		sematicOctoMapParams.raytracingParams.cellSize = rayTracingCellSize;
 		sematicOctoMapParams.raytracingParams.clipVerticalBoundary = clipVerticalBoundary;
 		sematicOctoMapParams.raytracingParams.verticalBoundaryMaxHeight = verticalBoundaryMaxHeight;
-		
 
 		semanticOctomap_ = new SemanticOctoMap(multiLevelCellSize, multiLevelTreeName, sematicOctoMapParams);
 	

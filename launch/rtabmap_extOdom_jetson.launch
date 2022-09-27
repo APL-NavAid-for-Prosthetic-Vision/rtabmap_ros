@@ -34,6 +34,7 @@
     <arg name="grid_semanticGroundCorrection"         default="false"/>
     <arg name="grid_outlierRemoval"                   default="false"/>
     <arg name="octomap_raytracing"                    default="false"/>
+    <arg name="grid_rayTracingStartOffset"            default="0.5"/>
     <arg name="grid_rayTracingMaxRange"               default="4"/>
     <arg name="grid_rayTracingVertBoundaryMaxHeight"  default="1.0"/>
     <arg name="grid_rayTracingCellSize"               default="0.05"/>
@@ -112,6 +113,7 @@
         <arg name="OctoMapNumThreads"                     default="5" />
         <arg name="octomap_raytracing"                    default="$(arg octomap_raytracing)"/>      <!-- raytracing at the semantic octomap update. uses grid_rayTracingMaxRange to set the max range -->
         <arg name="grid_rayTracingClipVertBoundary"       default="$(arg grid_rayTracingClipVertBoundary)"/>
+        <arg name="grid_rayTracingStartOffset"            default="$(arg grid_rayTracingStartOffset)"/>
         <arg name="grid_rayTracingMaxRange"               default="$(arg grid_rayTracingMaxRange)"/>
         <arg name="grid_rayTracingVertBoundaryMaxHeight"  default="$(arg grid_rayTracingVertBoundaryMaxHeight)"/>
         <arg name="grid_rayTracingCellSize"               default="$(arg grid_rayTracingCellSize)"/>

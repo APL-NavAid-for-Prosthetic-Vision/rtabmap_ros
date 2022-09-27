@@ -98,6 +98,7 @@
   <arg name="grid_maxGroundHeight"                  default="0.05"/>
   <arg name="octomap_raytracing"                    default="false"/>
   <arg name="grid_rayTracingClipVertBoundary"       default="true"/>
+  <arg name="grid_rayTracingStartOffset"            default="0.5"/>
   <arg name="grid_rayTracingMaxRange"               default="6"/>
   <arg name="grid_rayTracingVertBoundaryMaxHeight"  default="1.0"/>
   <arg name="grid_rayTracingCellSize"               default="0.05"/>
@@ -554,6 +555,7 @@
       <param name="Grid/SemanticDepthFusionCorrection"   type="string"   value="$(arg grid_semanticDepthFusionCorrection)"/>
       <param name="Grid/SemanticGroundCorrection"   type="string"   value="$(arg grid_semanticGroundCorrection)"/>
       <param name="Grid/OutlierRemoval"             type="string"   value="$(arg grid_outlierRemoval)"/>
+      <param name="Grid/RaytracingStartOffset"      type="string"   value="$(arg grid_rayTracingStartOffset)"/>
       <param name="Grid/RayTracingMaxRange"         type="string"   value="$(arg grid_rayTracingMaxRange)"/>
       <param name="Grid/RayTracingVertBoundaryMaxHeight"  type="string"   value="$(arg grid_rayTracingVertBoundaryMaxHeight)"/>
       <param name="Grid/RayTracingCellSize"         type="string"   value="$(arg grid_rayTracingCellSize)"/>
