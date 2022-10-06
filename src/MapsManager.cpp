@@ -423,7 +423,10 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 		latched_.insert(std::make_pair((void*)&octoMapProj_, false));
 	}
 
+	// JHUAPL section
 	clearRegisteredMapSrv_ = nht->advertiseService("clear_registered_map", &MapsManager::clearRegisteredMapCallback , this);
+	mapAlwaysUpdateSrv_ = nht->advertiseService("map_always_update", &MapsManager::mapAlwaysUpdateCallback, this);
+	// JHUAPL section end 
 
 #endif
 #endif
@@ -847,11 +850,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			filteredPoses = poses;
 		}
 		
-		/// JHUAPL modification:  filteredPoses is receiving the latest added sensor data and occupancy
-		// if(!alwaysUpdateMap_)
-		// {
-		// 	filteredPoses.erase(0);
-		// }
+		always_map_update_mtx_.lock();
+		if(!alwaysUpdateMap_)
+		{
+			filteredPoses.erase(0);
+		}
+		always_map_update_mtx_.unlock();
 
 
 		bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
@@ -2522,6 +2526,24 @@ bool MapsManager::octomapRayTracingInit(const rtabmap::SensorData & data)
 		return false;
 	}
 	
+}
+
+bool MapsManager::mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) {
+
+	// req.data sets the map to always update when it is true, and when set to false the map will not always update.
+	// always updating the map means to add the latest data to the occupancy map (not just keyframes).
+	
+	// the service will respond with the state of the flag "alwaysUpdateMap_", state of there the map is always updating.
+	always_map_update_mtx_.lock();
+	if (req.data && !alwaysUpdateMap_) {
+		alwaysUpdateMap_ = true;
+	} else if (!req.data && alwaysUpdateMap_) {
+		alwaysUpdateMap_ = false;
+	}
+	res.success = alwaysUpdateMap_;
+	always_map_update_mtx_.unlock();
+
+	return true;
 }
 
 // JHUAPL section end

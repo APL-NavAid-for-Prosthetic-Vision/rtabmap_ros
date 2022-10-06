@@ -55,6 +55,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap_ros/MapManagerStats.h>
 #include <std_srvs/Empty.h>
+#include <std_srvs/SetBool.h>
 
 // JHUAPL section end
 
@@ -140,6 +141,8 @@ private:
 	// JHUAPL section
 	bool clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
 
+	bool mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
+
 	// JHUAPL section end
 
 private:
@@ -179,6 +182,7 @@ private:
 	ros::Publisher octoMapFullDynamicPub_;
 
 	ros::ServiceServer clearRegisteredMapSrv_;
+	ros::ServiceServer mapAlwaysUpdateSrv_;
 
 	// JHUAPL end section
 
@@ -222,6 +226,7 @@ private:
 	UMutex octomap_mtx_;
 	UMutex octomap_u_mtx_;
 	UMutex grid_mtx_;
+	UMutex always_map_update_mtx_;
 
 	// JHUAPL section end
 };
