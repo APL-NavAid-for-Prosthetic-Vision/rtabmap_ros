@@ -83,6 +83,7 @@
   <arg name="rgbd_semantic_detection_sync"          default="false"/>         <!-- pre-sync ; if rgbd_sync is true, this should be false -->
   <arg name="subscribe_rgbd_semantic_detection"     default="$(arg rgbd_semantic_detection_sync)"/> 
   <arg name="model_classes_file_path"               default="" />
+  <arg name="threaded_mode"                         default="false"/>
   <arg name="orb_cuda"                              default="true" />
   <arg name="depth_Filters"                         default="true"/>
   <arg name="publish_semantic_mask"                 default="true"/>
@@ -586,7 +587,8 @@
       
       <param name="GTSAM/Optimizer"    type="string" value="0" />
 
-      <!-- APL: added Rtabmap ros configuration parameters -->   
+      <!-- APL: added Rtabmap ros configuration parameters -->
+      <param name="threaded_mode"             type="bool" value="$(arg threaded_mode)"/>   
       <param name="depth_Filters"             type="bool" value="$(arg depth_Filters)"/>  
       <param name="tf_delay"                  type="double" value="$(arg tf_delay)"/>  
       <param name="map_always_update"         type="bool"   value="$(arg map_always_update)"/>

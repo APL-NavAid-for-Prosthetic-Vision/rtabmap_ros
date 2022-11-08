@@ -22,6 +22,7 @@
     <arg name="raytracing"              default="false"/>
 
     <!-- mapping configuration -->
+    <arg name="threaded_mode"                  default="true"/>
     <arg name="rtabmap_detectionRate"          default="6"/>
     <arg name="rgbd_semantic_detection_sync"   default="false"/>
     <arg name="model_classes_file_path"        default="" />
@@ -72,6 +73,7 @@
         <arg name="rgbd_semantic_detection_sync" default="$(arg rgbd_semantic_detection_sync)"/>
         <arg unless="$(arg rgbd_semantic_detection_sync)" name="rgbd_sync" default="true" />
         <arg name="approx_rgbd_sync"        default="true"/>
+        <arg name="threaded_mode"           default="$(arg threaded_mode)"/>
         
         <!-- RGB-D related topics -->
         <arg name="rgb_topic"               default="$(arg rgb_topic)"/>

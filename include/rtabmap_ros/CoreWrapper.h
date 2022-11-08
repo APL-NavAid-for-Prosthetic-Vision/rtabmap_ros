@@ -197,12 +197,19 @@ private:
 	/// Threads call back functions
 	///
 
-	/// @brief function for map manager update as a thread, it is called from the thread binding
-	///
-	void MapManagerUpdateThread(const double & threadDelay);
+	/**
+	 * @brief for multithreaded version with signature queueing
+	 */ 
+	void rtabmapProcessThread();
 
-	/// @brief function thread for publishing maps, it is called and managed from MapManagerUpdateThread
-	///
+	/** 
+	 * @brief function for map manager update as a thread, it is called from the thread binding
+	 */
+	void mapManagerUpdateThread(const double & threadDelay);
+
+	/** 
+	 * @brief function thread for publishing maps, it is called and managed from mapManagerUpdateThread
+	 */ 
 	void publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses, const ros::Time & stamp, const std::string & mapFrameId);
 
 
@@ -526,6 +533,9 @@ private:
 	image_transport::Publisher visualImagePub_;
 	image_transport::Publisher depthImagePub_;
 
+	boost::thread* rtabmapProcessThread_;
+	bool rtabmapProcessThreadRunning_;
+
 	boost::thread* mapManagerUpdateThread_;
 	bool mapManagerUpdateThreadRunning_;
 	UMutex mmu_data_mtx_;
@@ -541,6 +551,7 @@ private:
 	rtabmap::Transform mapToOdomPrev_;
 	bool LandmarkToMultiSignatureId_;
 	std::atomic<bool> mapManagerInitialized_;
+	bool threadedMode_;
 
 	//  JHUAPL section end
 };
