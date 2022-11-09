@@ -45,14 +45,20 @@ git submodule update
 
 ```bash
 
-$ catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
+# First, set build configuration
 
-# Build with CUDA support 
-# Build with yaml support  (for semantic segmentation mode) : WITH_YAMLCPP
-$ catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DOPENCV_CUDA=ON -DWITH_YAMLCPP=ON
+# If building without semantic segmentation:
+# catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+# If building with semantic segmentation (with CUDA and yaml support)
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DOPENCV_CUDA=ON -DWITH_YAMLCPP=ON
+
+# Second, run build
+
+# If building without RTABMap's custom graphics (default):
 catkin build rtabmap_ros 
 
-# Building with graphic
+# If building with RTABMap's custom graphics:
 catkin build rtabmap_ros --cmake-args -DRTABMAP_GUI=ON 
  
 ```
