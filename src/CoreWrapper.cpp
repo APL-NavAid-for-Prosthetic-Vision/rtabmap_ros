@@ -805,7 +805,7 @@ NODELET_INFO("rtabmap: gen_depth  = %s", genDepth_?"true":"false");
 		}
 
 		// JHUAPL section end
-}
+	}
 
 	// setup services
 	updateSrv_ = nh.advertiseService("update_parameters", &CoreWrapper::updateRtabmapCallback, this);

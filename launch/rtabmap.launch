@@ -504,7 +504,7 @@
       <param name="RGBD/LocalRadius"                  type="string"   value="10" />                       <!--Local radius (m) for nodes selection in the local map. -->
       <param name="RGBD/MaxLocalRetrieved"            type="string"   value="2" />                        <!-- Maximum local locations retrieved (0=disabled) near the current pose in the local map -->
       <param name="RGBD/LocalImmunizationRatio"       type="string"   value="0.3" />
-      <param name="RGBD/SavedLocalizationIgnored"     type="string"   value="true" />                        <!-- If true, RTAB-Map won't assume it is restarting from the same place than where it shut down previously.-->                       
+      <param name="RGBD/StartAtOrigin"                type="string"   value="true" />                        <!-- If true, rtabmap will assume the robot is starting from origin of the map. If false, rtabmap will assume the robot is restarting from the last saved localization pose from previous session (the place where it shut down previously).-->                       
       <param name="RGBD/NeighborLinkRefining"         type="string"   value="false"/>                        <!-- Do odometry correction with consecutive laser scans -->
 	    <param name="RGBD/OptimizeFromGraphEnd"         type="string"   value="false"/>                        <!-- Optimize graph from initial node so /map -> /odom transform will be generated -->
 	    <param name="RGBD/OptimizeMaxError"             type="string"   value="$(arg rgbd_optimizeMaxError)"/> <!-- Reject any loop closure causing large errors (>3x link's covariance) in the map -->
@@ -520,7 +520,7 @@
 	    <param name="RGBD/ProximityByTime"              type="string"   value="false"/>    <!-- Local loop closure detection with locations in STM -->
       <param name="RGBD/ProximityMaxGraphDepth"       type="string"   value="50" />      <!-- Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore-->
 
-      <param name="Vis/FeatureType"     type="string" value="8" />
+      <param name="Vis/FeatureType"     type="string" value="10" />
       <param name="Vis/MaxDepth"        type="string" value="10.0" />
       <param name="Vis/MinInliers"      type="string" value="20" />
       <param name="Vis/CorGuessWinSize" type="string" value="30" />
@@ -533,7 +533,7 @@
       <param if="$(arg subscribe_rgbd_semantic_detection)" name="Grid/EnableSemanticSegmentation" type="string" value="true"/>
 
       <param name="Grid/OctoMapNumThreads"          type="string"   value="$(arg OctoMapNumThreads)"/>
-      <param name="Grid/FromDepth"                  type="string"   value="true"/> <!-- Create occupancy grid from depth image(s) -->
+      <param name="Grid/Sensor"                     type="string"   value="1"/>      <!-- create occupancy grid from selected sensor: 0=laser scan, 1=depth image(s) or 2=both laser scan and depth image(s) -->
       <param name="Grid/3D"                         type="string"   value="true"/>
       <param name="Grid/CellSize"                   type="string"   value="$(arg map_resolution)"/> <!--Param: Grid/CellSize = "0.1"   [Resolution of the occupancy grid.]-->
       <param name="Grid/RayTracing"                 type="string"   value="$(arg raytracing)"/>
