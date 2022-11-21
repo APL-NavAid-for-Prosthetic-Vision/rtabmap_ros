@@ -726,7 +726,7 @@ namespace rtabmap_ros
 		std::string semanticSegmentationModelFilePath;
 		pnh.param("model_classes_file_path", semanticSegmentationModelFilePath, semanticSegmentationModelFilePath);
 		NODELET_INFO(" model_classes_file_path = %s", semanticSegmentationModelFilePath.empty() ? "NOT_PATH" : semanticSegmentationModelFilePath.c_str());
-
+		
 		// set the model class map if available
 		std::map<std::string, std::map<unsigned int, std::string>> networkModelMap;
 #ifdef WITH_YAMLCPP
