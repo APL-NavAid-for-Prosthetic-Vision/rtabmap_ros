@@ -5654,10 +5654,6 @@ namespace rtabmap_ros
 				Transform &odom = *preProcessedData->pose;
 				std::string &odomFrameId = preProcessedData->odomFrameId;
 				SensorData &data = *preProcessedData->data;				
-				// ros::Time stamp = ros::Time(rtabmap_._lastProcessed_stamp);
-				// Transform &odom = rtabmap_._lastProcessed_odomPose;
-				// std::string &odomFrameId = rtabmap_._lastProcessed_odomFrameId;
-				// SensorData &data = rtabmap_.getLastAddedData();
 
 				timeRtabmap = timer.ticks();
 				mapToOdomMutex_.lock();
