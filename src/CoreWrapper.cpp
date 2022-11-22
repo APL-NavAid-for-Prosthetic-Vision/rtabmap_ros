@@ -1007,7 +1007,7 @@ namespace rtabmap_ros
 		}
 
 		// JHUAPL section
-		if (rtabmapProcessThreadRunning_)
+		if (rtabmapProcessThread_)
 		{
 			rtabmapProcessThreadRunning_ = false;
 			rtabmapProcessThread_->join();
@@ -2907,9 +2907,11 @@ namespace rtabmap_ros
 			{
 				odomFrameId_ = odomFrameId;
 				timeMsgConversion += timer.ticks();
-				bool signatureQueued = rtabmap_.queueSignature(stamp.toSec(), data, odom, odomFrameId, covariance, odomVelocity, externalStats);
+				
+				boost::shared_ptr<PreProcessSignatureDataType> preprocessedData;
+				bool preprocess_ok = rtabmap_.preprocess_threaded(stamp.toSec(), data, odom, odomFrameId, covariance, odomVelocity, externalStats, preprocessedData);
 
-				if (signatureQueued)
+				if (preprocess_ok)
 				{
 					if (data.id() < 0)
 					{
@@ -2926,7 +2928,8 @@ namespace rtabmap_ros
 							// this is the same as the "data" sent to rtabmap except that it now
 							// contains local occupancy grid information and post-processing
 							// (e.g., decimation) of the sensor data
-							rtabmap::SensorData sd = rtabmap_.getLastAddedData();
+							rtabmap::SensorData &sd = *preprocessedData->data;
+							//rtabmap::SensorData sd = rtabmap_.getLastAddedData();
 
 							// publish the newest semantic mask added to map
 							mapsManager_.publishSemenaticMaskImage(sd);
@@ -2934,7 +2937,6 @@ namespace rtabmap_ros
 							// publish visual and depth image
 							publishVisualDepthImages(sd);
 
-							// moved this to callback to publish sooner
 							// publish obstacles data of the last added Data
 							publishObstacleData(sd);
 						}
@@ -2945,7 +2947,10 @@ namespace rtabmap_ros
 							// this is the same as the "data" sent to rtabmap except that it now
 							// contains local occupancy grid information and post-processing
 							// (e.g., decimation) of the sensor data
-							rtabmap::SensorData sd = rtabmap_.getLastAddedData();
+							//rtabmap::SensorData sd = rtabmap_.getLastAddedData();
+
+							rtabmap::SensorData &sd = *preprocessedData->data;
+							//rtabmap::SensorData sd = rtabmap_.getLastAddedData();
 
 							// publish visual and depth image
 							publishVisualDepthImages(sd);
@@ -2956,10 +2961,11 @@ namespace rtabmap_ros
 				}
 				timeRtabmap = timer.ticks();
 
-				NODELET_INFO("rtabmap: set Rate=%.2fs, RTAB-Map conversion:%.4fs, processing=%.4fs",
+				NODELET_INFO("rtabmap: set Rate=%.2fs, RTAB-Map conversion:%.4fs, processing=%.4fs (total=%.4fsec)",
 										rate_ > 0 ? 1.0f / rate_ : 0,
 										timeMsgConversion,
-										timeRtabmap);	
+										timeRtabmap,
+										timeMsgConversion + timeRtabmap);	
 			}
 			else
 			{
@@ -5632,26 +5638,33 @@ namespace rtabmap_ros
 
 		ROS_INFO("Starting RTabMap Process Thread");
 
+		boost::shared_ptr<PreProcessSignatureDataType> preProcessedData;
+
 		while (rtabmapProcessThreadRunning_)
 		{
 			// mutex to sync with map manager thread
 			rtabmap_mtx_.lock();
-			//timeMsgConversion += timer.ticks();
-			bool rtabmapProcessed = rtabmap_.processQueued();
+			bool rtabmapProcessed = rtabmap_.process_threaded(preProcessedData);
 			rtabmap_mtx_.unlock();
 			
 			if (rtabmapProcessed)
 			{
 				// get last processed data
-				ros::Time stamp = ros::Time(rtabmap_._lastProcessed_stamp);
-				Transform &odom = rtabmap_._lastProcessed_odomPose;
-				std::string &odomFrameId = rtabmap_._lastProcessed_odomFrameId;
-				SensorData &data = rtabmap_.getLastAddedData();
+				ros::Time stamp = ros::Time(preProcessedData->stamp);
+				Transform &odom = *preProcessedData->pose;
+				std::string &odomFrameId = preProcessedData->odomFrameId;
+				SensorData &data = *preProcessedData->data;				
+				// ros::Time stamp = ros::Time(rtabmap_._lastProcessed_stamp);
+				// Transform &odom = rtabmap_._lastProcessed_odomPose;
+				// std::string &odomFrameId = rtabmap_._lastProcessed_odomFrameId;
+				// SensorData &data = rtabmap_.getLastAddedData();
 
 				timeRtabmap = timer.ticks();
 				mapToOdomMutex_.lock();
 				mapToOdom_ = rtabmap_.getMapCorrection();
 				odomFrameId_ = odomFrameId;
+
+				rtabmap::Transform mapToOdom = mapToOdom_;
 				mapToOdomMutex_.unlock();
 
 				if (data.id() < 0)
@@ -5673,10 +5686,10 @@ namespace rtabmap_ros
 						poseMsg.pose.covariance;
 						if (!rtabmap_.getStatistics().localizationCovariance().empty())
 						{
-							rtabmap_ros::transformToPoseMsg(mapToOdom_ * odom, poseMsg.pose.pose);
+							rtabmap_ros::transformToPoseMsg(mapToOdom * odom, poseMsg.pose.pose);
 							const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
 							memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
-							mapToOdomPrev_ = mapToOdom_;
+							mapToOdomPrev_ = mapToOdom;
 						}
 						else
 						{
@@ -5694,7 +5707,7 @@ namespace rtabmap_ros
 						SensorData tmpData = data;
 						tmpData.setId(0);
 						tmpSignature.insert(std::make_pair(0, Signature(0, -1, 0, data.stamp(), "", odom, Transform(), tmpData)));
-						filteredPoses.insert(std::make_pair(0, mapToOdom_ * odom));
+						filteredPoses.insert(std::make_pair(0, mapToOdom * odom));
 					}
 					/// JHUAPL section
 					else if (filteredPoses.size() == 0 ||
@@ -5705,18 +5718,17 @@ namespace rtabmap_ros
 									 (!mapsManager_.getOccupancyGrid()->isGridFromDepth() && data.laserScanRaw().is2d())) // 2d laser scan would fill empty space for latest data
 					{
 						UDEBUG(" ----------> incoming node id(input cloud): %d (now id zero)", rtabmap_.getMemory()->getLastAddedData().id());
-						SensorData tmpData = rtabmap_.getLastAddedData();
+						SensorData tmpData = rtabmap_.getMemory()->getLastAddedData();
 						tmpData.setId(0);
-						tmpData.setStamp(data.stamp());
 						tmpSignature.insert(std::make_pair(0, Signature(0, -1, 0, data.stamp(), "", odom, Transform(), tmpData)));
-						filteredPoses.insert(std::make_pair(0, mapToOdom_ * odom));
+						filteredPoses.insert(std::make_pair(0, mapToOdom * odom));
 					}
 					/// JHUAPL section end
 
 					if ((mappingMaxNodes_ > 0 || mappingAltitudeDelta_ > 0.0) && filteredPoses.size() > 1)
 					{
 						std::map<int, Transform> nearestPoses;
-						nearestPoses = filterNodesToAssemble(filteredPoses, mapToOdom_ * odom);
+						nearestPoses = filterNodesToAssemble(filteredPoses, mapToOdom * odom);
 
 						// add latest/zero and make sure those on a planned path are not filtered
 						std::set<int> onPath;

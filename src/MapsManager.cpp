@@ -811,7 +811,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 	octomap_u_mtx_.unlock();
 
 	UDEBUG("Updating map caches...");
-
+	
 	if(!memory && signaturesIn.size() == 0)
 	{
 		ROS_ERROR("Memory and signatures should not be both null!?");
@@ -833,6 +833,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 	// update cache
 	if(updateGridCache)
 	{
+		
 		// filter nodes
 		if(mapFilterRadius_ > 0.0)
 		{
@@ -856,7 +857,6 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
 			filteredPoses.erase(0);
 		}
 		always_map_update_mtx_.unlock();
-
 
 		bool occupancySavedInDB = memory && uStrNumCmp(memory->getDatabaseVersion(), "0.11.10")>=0?true:false;
 
