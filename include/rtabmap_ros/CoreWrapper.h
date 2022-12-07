@@ -522,6 +522,7 @@ private:
 	ros::Publisher landmarksMapPub_;
 	ros::Publisher obstaclesDataPub_;
 	ros::Publisher mapManagerStatsPub_;
+	ros::Publisher inputProcessThreadStatsPub_;
 	
 	ros::ServiceServer landmarkInsertSrv_;
 	ros::ServiceServer landmarksQuerySrv_;
@@ -552,6 +553,7 @@ private:
 	bool LandmarkToMultiSignatureId_;
 	std::atomic<bool> mapManagerInitialized_;
 	bool threadedMode_;
+	double timeInputLastProcess_;
 
 	//  JHUAPL section end
 };

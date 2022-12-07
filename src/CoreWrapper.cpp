@@ -110,6 +110,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap_ros/ObstacleData.h>
 #include <rtabmap_ros/MapManagerStats.h>
+#include <rtabmap_ros/InputDataStats.h>
 
 // boost
 #include <boost/chrono.hpp>
@@ -184,7 +185,8 @@ namespace rtabmap_ros
 															 publishMapThreadRunning_(false),
 															 mapToOdomPrev_(rtabmap::Transform::getIdentity()),
 															 mapManagerInitialized_(false),
-															 threadedMode_(false)
+															 threadedMode_(false),
+															 timeInputLastProcess_(0)
 	{
 		char *rosHomePath = getenv("ROS_HOME");
 		std::string workingDir = rosHomePath ? rosHomePath : UDirectory::homeDir() + "/.ros";
@@ -331,7 +333,7 @@ namespace rtabmap_ros
 
 		pnh.param("depth_Filters", depthFilters_, depthFilters_);
 		pnh.param("threaded_mode", threadedMode_, threadedMode_);
-		NODELET_INFO("RTABMAP Thread Processing Mode: %s", threadedMode_?"ENABLED":"DISABLED");
+		NODELET_INFO("RTABMAP Thread Processing Mode: %s", threadedMode_ ? "ENABLED" : "DISABLED");
 
 		// JHUAPL section end
 
@@ -726,7 +728,7 @@ namespace rtabmap_ros
 		std::string semanticSegmentationModelFilePath;
 		pnh.param("model_classes_file_path", semanticSegmentationModelFilePath, semanticSegmentationModelFilePath);
 		NODELET_INFO(" model_classes_file_path = %s", semanticSegmentationModelFilePath.empty() ? "NOT_PATH" : semanticSegmentationModelFilePath.c_str());
-		
+
 		// set the model class map if available
 		std::map<std::string, std::map<unsigned int, std::string>> networkModelMap;
 #ifdef WITH_YAMLCPP
@@ -965,6 +967,11 @@ namespace rtabmap_ros
 		obstaclesDataPub_ = nh.advertise<rtabmap_ros::ObstacleData>("obstacle_data", 1);
 		mapManagerStatsPub_ = nh.advertise<rtabmap_ros::MapManagerStats>("map_manager_stats", 1);
 
+		if (threadedMode_)
+		{
+			inputProcessThreadStatsPub_ = nh.advertise<rtabmap_ros::InputDataStats>("input_process_thread_stats", 1);
+		}
+
 		landmarkInsertSrv_ = nh.advertiseService("landmarks_insert", &CoreWrapper::landmarksInsertSrvCallback, this);
 		landmarksQuerySrv_ = nh.advertiseService("landmarks_available", &CoreWrapper::landmarksQuerySrvCallback, this);
 		landmarksRemoveSrv_ = nh.advertiseService("landmarks_remove", &CoreWrapper::landmarksRemoveSrvCallback, this);
@@ -985,10 +992,10 @@ namespace rtabmap_ros
 		}
 
 		// this thread is only used in this mode.
-		if (threadedMode_) 
+		if (threadedMode_)
 		{
 			rtabmapProcessThreadRunning_ = true;
-			rtabmapProcessThread_ =  new boost::thread(boost::bind(&CoreWrapper::rtabmapProcessThread, this));
+			rtabmapProcessThread_ = new boost::thread(boost::bind(&CoreWrapper::rtabmapProcessThread, this));
 		}
 
 		mapManagerUpdateThreadRunning_ = true;
@@ -2907,7 +2914,16 @@ namespace rtabmap_ros
 			{
 				odomFrameId_ = odomFrameId;
 				timeMsgConversion += timer.ticks();
-				
+
+				// getting the time of over head
+				double overheadTimeCallback = 0;
+				if (timeInputLastProcess_ > 0)
+				{
+					overheadTimeCallback = ros::WallTime::now().toSec() - timeInputLastProcess_;
+					// removing the time msg conversion from the overhead.
+					overheadTimeCallback = overheadTimeCallback - timeMsgConversion;
+				}
+
 				boost::shared_ptr<PreProcessSignatureDataType> preprocessedData;
 				bool preprocess_ok = rtabmap_.preprocess_threaded(stamp.toSec(), data, odom, odomFrameId, covariance, odomVelocity, externalStats, preprocessedData);
 
@@ -2929,7 +2945,7 @@ namespace rtabmap_ros
 							// contains local occupancy grid information and post-processing
 							// (e.g., decimation) of the sensor data
 							rtabmap::SensorData &sd = *preprocessedData->data;
-							//rtabmap::SensorData sd = rtabmap_.getLastAddedData();
+							// rtabmap::SensorData sd = rtabmap_.getLastAddedData();
 
 							// publish the newest semantic mask added to map
 							mapsManager_.publishSemenaticMaskImage(sd);
@@ -2947,10 +2963,10 @@ namespace rtabmap_ros
 							// this is the same as the "data" sent to rtabmap except that it now
 							// contains local occupancy grid information and post-processing
 							// (e.g., decimation) of the sensor data
-							//rtabmap::SensorData sd = rtabmap_.getLastAddedData();
+							// rtabmap::SensorData sd = rtabmap_.getLastAddedData();
 
 							rtabmap::SensorData &sd = *preprocessedData->data;
-							//rtabmap::SensorData sd = rtabmap_.getLastAddedData();
+							// rtabmap::SensorData sd = rtabmap_.getLastAddedData();
 
 							// publish visual and depth image
 							publishVisualDepthImages(sd);
@@ -2960,12 +2976,27 @@ namespace rtabmap_ros
 					}
 				}
 				timeRtabmap = timer.ticks();
+				float total_processing_time = timeMsgConversion + timeRtabmap;
 
-				NODELET_INFO("rtabmap: set Rate=%.2fs, RTAB-Map conversion:%.4fs, processing=%.4fs (total=%.4fsec)",
-										rate_ > 0 ? 1.0f / rate_ : 0,
-										timeMsgConversion,
-										timeRtabmap,
-										timeMsgConversion + timeRtabmap);	
+				NODELET_INFO("  rtabmap (input callback): target Rate=%.2fs, RTAB-Map conversion:%.4fs, processing=%.4fs (total=%.4fsec)",
+										 rate_ > 0 ? 1 / rate_ : 0,
+										 timeMsgConversion,
+										 timeRtabmap,
+										 total_processing_time);
+
+				// stats message
+				rtabmap_ros::InputDataStats msg;
+				msg.header.stamp = ros::Time::now();
+				msg.time_elapsed_since_last_called = overheadTimeCallback;
+				msg.total_elapsed_time = total_processing_time;
+
+				// publish stats when there are subscribers.
+				if (inputProcessThreadStatsPub_.getNumSubscribers())
+				{
+					inputProcessThreadStatsPub_.publish(msg);
+				}
+
+				timeInputLastProcess_ = ros::WallTime::now().toSec();
 			}
 			else
 			{
@@ -5646,14 +5677,14 @@ namespace rtabmap_ros
 			rtabmap_mtx_.lock();
 			bool rtabmapProcessed = rtabmap_.process_threaded(preProcessedData);
 			rtabmap_mtx_.unlock();
-			
+
 			if (rtabmapProcessed)
 			{
 				// get last processed data
 				ros::Time stamp = ros::Time(preProcessedData->stamp);
 				Transform &odom = *preProcessedData->pose;
 				std::string &odomFrameId = preProcessedData->odomFrameId;
-				SensorData &data = *preProcessedData->data;				
+				SensorData &data = *preProcessedData->data;
 
 				timeRtabmap = timer.ticks();
 				mapToOdomMutex_.lock();
@@ -5759,24 +5790,23 @@ namespace rtabmap_ros
 					timeUpdateMaps = timer.ticks();
 				}
 
-				//NODELET_INFO("rtabmap (%d): Rate=%.2fs, Limit=%.3fs, Conversion=%.4fs, RTAB-Map=%.4fs, pub landmarks=%.4fs total=%.4fs (local map=%d, WM=%d)",
+				// NODELET_INFO("rtabmap (%d): Rate=%.2fs, Limit=%.3fs, Conversion=%.4fs, RTAB-Map=%.4fs, pub landmarks=%.4fs total=%.4fs (local map=%d, WM=%d)",
 				NODELET_INFO("rtabmap (%d): Rate=%.2fs, Limit=%.3fs, RTAB-Map=%.4fs, pub landmarks=%.4fs total=%.4fs (local map=%d, WM=%d)",
-										rtabmap_.getLastLocationId(),
-										rate_ > 0 ? 1.0f / rate_ : 0,
-										rtabmap_.getTimeThreshold() / 1000.0f,
-										//timeMsgConversion,
-										timeRtabmap,
-										timeUpdateMaps,
-										timeRtabmap + timeUpdateMaps,
-										(int)rtabmap_.getLocalOptimizedPoses().size(),
-										rtabmap_.getWMSize() + rtabmap_.getSTMSize());
+										 rtabmap_.getLastLocationId(),
+										 rate_ > 0 ? 1.0f / rate_ : 0,
+										 rtabmap_.getTimeThreshold() / 1000.0f,
+										 // timeMsgConversion,
+										 timeRtabmap,
+										 timeUpdateMaps,
+										 timeRtabmap + timeUpdateMaps,
+										 (int)rtabmap_.getLocalOptimizedPoses().size(),
+										 rtabmap_.getWMSize() + rtabmap_.getSTMSize());
 				rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/HasSubscribers/"), mapsManager_.hasSubscribers() ? 1 : 0));
-				//rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeMsgConversion/ms"), timeMsgConversion * 1000.0f));
+				// rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeMsgConversion/ms"), timeMsgConversion * 1000.0f));
 				rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeRtabmap/ms"), timeRtabmap * 1000.0f));
 				rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeUpdatingMaps/ms"), timeUpdateMaps * 1000.0f));
 				// rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimePublishing/ms"), timePublishMaps*1000.0f));
 				rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeTotal/ms"), (timeRtabmap + timeUpdateMaps) * 1000.0f));
-
 			}
 		}
 	}

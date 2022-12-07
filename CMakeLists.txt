@@ -164,6 +164,7 @@ add_message_files(
    Landmark.msg
    Landmarks.msg
    MapManagerStats.msg
+   InputDataStats.msg
 )
 
 ## Generate services in the 'srv' folder
