@@ -5993,8 +5993,6 @@ namespace rtabmap_ros
 				auto occupancyIter = occupancyAssociation.find(iter->first);
 				if (occupancyIter != occupancyAssociation.end())
 				{
-					/// TODO: talk to Nico
-					//        why is this fitler here? is this removing "unknown" category? why remove that from obstacle data?
 					if (occupancyIter->second == "static" ||
 							occupancyIter->second == "movable" ||
 							occupancyIter->second == "dynamic")
