@@ -588,8 +588,9 @@
       <param name="GTSAM/Optimizer"    type="string" value="0" />
 
       <!-- APL: added Rtabmap ros configuration parameters -->
-      <param name="threaded_mode"             type="bool" value="$(arg threaded_mode)"/>   
-      <param name="depth_Filters"             type="bool" value="$(arg depth_Filters)"/>  
+      <param name="num_worker_threads"        type="int"    value="4"/>  <!-- sets the number of thread available for nodelet -->
+      <param name="threaded_mode"             type="bool"   value="$(arg threaded_mode)"/>   
+      <param name="depth_Filters"             type="bool"   value="$(arg depth_Filters)"/>  
       <param name="tf_delay"                  type="double" value="$(arg tf_delay)"/>  
       <param name="map_always_update"         type="bool"   value="$(arg map_always_update)"/>
       <param name="octomap_raytracing"        type="bool"   value="$(arg octomap_raytracing)"/>

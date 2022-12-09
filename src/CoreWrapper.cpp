@@ -196,8 +196,21 @@ namespace rtabmap_ros
 
 	void CoreWrapper::onInit()
 	{
-		ros::NodeHandle &nh = getNodeHandle();
-		ros::NodeHandle &pnh = getPrivateNodeHandle();
+
+		// JHUAPL section
+		// allowing for nodelet to be use in multi thread mode.
+		int num_threads_param = -1;
+		getPrivateNodeHandle().getParam("num_worker_threads", num_threads_param);
+
+		NODELET_INFO("number of thread allocated for NODELET: %d", num_threads_param);
+
+		ros::NodeHandle &nh = getMTNodeHandle();
+		ros::NodeHandle &pnh = getMTPrivateNodeHandle();
+
+		// JHUAPL section
+
+		//ros::NodeHandle &nh = getNodeHandle();
+		//ros::NodeHandle &pnh = getPrivateNodeHandle();
 
 		mapsManager_.init(nh, pnh, getName(), true);
 
