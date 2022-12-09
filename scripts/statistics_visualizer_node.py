@@ -26,6 +26,7 @@ from stats_gui.statistic_gui import StatisticsGUI, RtabmapStruct
 
 from rtabmap_ros.msg import MapManagerStats
 from rtabmap_ros.msg import Info
+from rtabmap_ros.msg import InputDataStats
 
 ###
 class StatisticsVisualizer:
@@ -59,6 +60,7 @@ class StatisticsVisualizer:
     # Subscriber
     rospy.Subscriber("rtabmap/map_manager_stats", MapManagerStats, callback=self.mapManagerStatsCallback, queue_size=1)
     rospy.Subscriber("rtabmap/info", Info, callback=self.infoStatsCallback, queue_size=1)
+    rospy.Subscriber("rtabmap/input_process_thread_stats", InputDataStats, callback=self.inputProcessThreadStatsCallback, queue_size=1)
 
 
   def processingThread(self, stop):
@@ -158,6 +160,16 @@ class StatisticsVisualizer:
     self.gui.update_rtabmap_stat(self.rtabmap_stats)
 
     
+  def inputProcessThreadStatsCallback(self, msg):
+    """
+    """
+
+    total_processing_time = msg.total_elapsed_time
+    total_time_processing_plus_overhead = msg.time_elapsed_since_last_called + msg.total_elapsed_time
+
+    self.gui.update_input_data_thread_stats(total_time_processing_plus_overhead, total_processing_time)
+
+
 # main function
 if __name__ == '__main__':
   """
