@@ -2954,11 +2954,9 @@ namespace rtabmap_ros
 						// subscribing to this slows down the registration rate.
 						if (rtabmap_.getMemory()->getOccupancyGrid()->isEnableSemanticSegmentation())
 						{
-							// this is the same as the "data" sent to rtabmap except that it now
-							// contains local occupancy grid information and post-processing
-							// (e.g., decimation) of the sensor data
+							// This is the data struture with all data process in the preprocess functions
+							//   the last process data.
 							rtabmap::SensorData &sd = *preprocessedData->data;
-							// rtabmap::SensorData sd = rtabmap_.getLastAddedData();
 
 							// publish the newest semantic mask added to map
 							mapsManager_.publishSemenaticMaskImage(sd);
