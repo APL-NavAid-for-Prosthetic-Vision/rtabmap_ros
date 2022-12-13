@@ -426,6 +426,7 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 	// JHUAPL section
 	clearRegisteredMapSrv_ = nht->advertiseService("clear_registered_map", &MapsManager::clearRegisteredMapCallback , this);
 	mapAlwaysUpdateSrv_ = nht->advertiseService("map_always_update", &MapsManager::mapAlwaysUpdateCallback, this);
+	getMapAlwaysUpdateSrv_ = nht->advertiseService("get_map_always_update", &MapsManager::getMapAlwaysUpdateStateCallback, this);
 	// JHUAPL section end 
 
 #endif
@@ -2546,4 +2547,13 @@ bool MapsManager::mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_s
 	return true;
 }
 
+bool MapsManager::getMapAlwaysUpdateStateCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res){
+
+	// Trigger service that just returns the current state of alwaysUpdateMap_
+	always_map_update_mtx_.lock();
+	res.success = alwaysUpdateMap_;
+	always_map_update_mtx_.unlock();
+
+	return true;
+}
 // JHUAPL section end

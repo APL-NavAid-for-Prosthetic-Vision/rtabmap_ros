@@ -22,7 +22,7 @@
     <arg name="raytracing"              default="false"/>
 
     <!-- mapping configuration -->
-    <arg name="threaded_mode"                  default="true"/>
+    <arg name="threaded_mode"                  default="false"/>
     <arg name="rtabmap_detectionRate"          default="10"/>
     <arg name="rgbd_semantic_detection_sync"   default="false"/>
     <arg name="model_classes_file_path"        default="" />

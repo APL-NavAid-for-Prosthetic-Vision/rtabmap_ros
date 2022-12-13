@@ -56,6 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap_ros/MapManagerStats.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
+#include <std_srvs/Trigger.h>
 
 // JHUAPL section end
 
@@ -142,7 +143,7 @@ private:
 	bool clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
 
 	bool mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
-
+	bool getMapAlwaysUpdateStateCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
 	// JHUAPL section end
 
 private:
@@ -183,7 +184,7 @@ private:
 
 	ros::ServiceServer clearRegisteredMapSrv_;
 	ros::ServiceServer mapAlwaysUpdateSrv_;
-
+	ros::ServiceServer getMapAlwaysUpdateSrv_;
 	// JHUAPL end section
 
 	std::map<int, rtabmap::Transform> assembledGroundPoses_;
