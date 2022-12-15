@@ -102,7 +102,7 @@
         <arg name="rectifyOnlyFeatures"         default="$(arg rectifyOnlyFeatures)"/>  <!-- projection of RGB-D image to point cloud is assuming that images are rectified, so needs to be true -->
         <arg name="grid_maxObstacleHeight"      default="$(arg grid_maxObstacleHeight)"/>
         <arg name="rgbd_maxOdomCacheSize"       default="$(arg rgbd_maxOdomCacheSize)"/>
-        <arg name="rgbd_optimizeMaxError"       default="2"/>
+        <arg name="rgbd_optimizeMaxError"       default="1.5"/> <!-- recently 2.0, default 3.0 -->
         <!-- <arg name="optimizer_robust"            default="true"/> -->
         <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
         <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
