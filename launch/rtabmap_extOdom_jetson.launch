@@ -1,7 +1,7 @@
 <launch>
     <!--APL RTABMap parameters configuration -->
-    <arg name="rtabmap_workingDirectory" default="~/user_workspace/.rtabmap"/>
-    <arg name="database_path"            default="~/user_workspace/rtabmap.db"/>
+    <arg name="rtabmap_workingDirectory" default="~/workspace/.rtabmap"/>
+    <arg name="database_path"            default="~/workspace/rtabmap.db"/>
     <arg name="rtabmap_cfg"              default="" />
     <arg name="rtabmap_output"           default="screen"/> 
     <arg name="rtabmap_args"             default=""/>
