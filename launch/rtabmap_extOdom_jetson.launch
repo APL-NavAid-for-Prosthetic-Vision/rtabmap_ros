@@ -13,7 +13,7 @@
     <arg name="use_sim_time"            default="false"/>
     <arg name="rgb_topic"               default="/camera/color/image_rect"/>
     <arg name="camera_info_topic"       default="/camera/color/camera_info"/>
-    <arg name="depth_topic"             default="/camera/aligned_depth_to_color/image_rect"/>
+    <arg name="depth_topic"             default="/camera/aligned_depth_to_color/image_raw"/>   <!-- when align_depth=true ; image_raw is published as rectified -->
     <arg name="depth_camera_info_topic" default="/camera/aligned_depth_to_color/camera_info"/>
     <arg name="imageAlreadyRectify"     default="true"/>   <!-- Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false -->
     <arg name="rectifyOnlyFeatures"     default="false"/>  <!-- the whole RGB image will not be rectified, only the features. If imageAlreadyRectify is false otherwise this must be set to true -->
