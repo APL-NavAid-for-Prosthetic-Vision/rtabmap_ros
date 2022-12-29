@@ -2483,8 +2483,8 @@ bool MapsManager::clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs
   octomap_mtx_.lock();
   semanticOctomap_->clear_runtime();
   octomap_mtx_.unlock();
-  // gridAPLMaps_.clear();
-  // gridMapsViewpoints_.clear();
+  gridAPLMaps_.clear();
+  gridMapsViewpoints_.clear();
   grid_mtx_.unlock();
 
   return true;

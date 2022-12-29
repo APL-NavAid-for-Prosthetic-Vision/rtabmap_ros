@@ -96,7 +96,7 @@
         <arg name="rtabmap_detectionRate"       default="$(arg rtabmap_detectionRate)"/>      <!-- "Rtabmap/DetectionRate" : [Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.] --> 
         <arg name="tf_delay"                    default="0.0667"/>  <!-- (15 Hz: 0.0667 sec) (30 Hz: 0.0334 sec) in order to keep up with the odometry time update-->
         <arg name="queue_size_rgbd"             default="$(arg queue_size_rgbd)"/>
-        <arg name="mem_STMSize"                 default="30"/>
+        <arg name="mem_STMSize"                 default="20"/>
         <arg name="bayes_fullPredictionUpdate"  default="$(arg bayes_fullPredictionUpdate)"/>
         <arg name="imageAlreadyRectify"         default="$(arg imageAlreadyRectify)"/>  <!-- /color/image_raw has not been rectified -->
         <arg name="rectifyOnlyFeatures"         default="$(arg rectifyOnlyFeatures)"/>  <!-- projection of RGB-D image to point cloud is assuming that images are rectified, so needs to be true -->
