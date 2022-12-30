@@ -2478,7 +2478,6 @@ bool MapsManager::clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs
   ROS_INFO("rtabmap: clearing registered map");
 
   // the idea is to clear the grid and octomap addedNodes to force an update.
-
   grid_mtx_.lock();
   octomap_mtx_.lock();
   semanticOctomap_->clear_runtime();
