@@ -108,7 +108,7 @@
         <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
         <arg name="multi_level_cell_size"       default="$(arg multi_level_cell_size)"/>   
         <arg name="multi_level_cell_name"       default="$(arg multi_level_cell_name)"/>
-        <arg name="grid_rangeMax"                         default="10.0"/>  <!-- max range for the grid, in semantic octomap is max range of occupied points -->
+        <arg name="grid_rangeMax"                         default="5.0"/>  <!-- max range for the grid, in semantic octomap is max range of occupied points -->
         <arg name="grid_semanticDepthFusionCorrection"    default="$(arg grid_semanticDepthFusionCorrection)"/>
         <arg name="grid_semanticGroundCorrection"         default="$(arg grid_semanticGroundCorrection)"/>
         <arg name="grid_outlierRemoval"                   default="$(arg grid_outlierRemoval)"/>
