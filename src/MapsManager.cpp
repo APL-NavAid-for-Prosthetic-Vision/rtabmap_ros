@@ -2382,8 +2382,8 @@ bool MapsManager::octomapRayTracingInit(const rtabmap::SensorData & data)
   
 }
 
-bool MapsManager::mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) {
-
+bool MapsManager::mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) 
+{
   // req.data sets the map to always update when it is true, and when set to false the map will not always update.
   // always updating the map means to add the latest data to the occupancy map (not just keyframes).
   
@@ -2400,13 +2400,74 @@ bool MapsManager::mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_s
   return true;
 }
 
-bool MapsManager::getMapAlwaysUpdateStateCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res){
-
+bool MapsManager::getMapAlwaysUpdateStateCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res)
+{
   // Trigger service that just returns the current state of alwaysUpdateMap_
   always_map_update_mtx_.lock();
   res.success = alwaysUpdateMap_;
   always_map_update_mtx_.unlock();
 
   return true;
+}
+
+void MapsManager::semanticOctomapStoreData(rtabmap::Memory * memory, UMutex& memory_mtx)
+{
+  if (!memory)
+    return;
+
+  // Run-Time Profiling
+  UTimer runtime_Timer;
+  double runtime_conversion = 0.0;
+  
+  runtime_Timer.start();
+
+  // extract the data from semantic octomap and update it into signature datasensor's object
+
+  // extract data
+  octomap_mtx_.lock();
+  std::map<int, std::vector<octomap::point3d>> emptyPointsCache = semanticOctomap_->getEmptyPointCache();
+  //std::map<int, float> groundReferences = semanticOctomap_->getGroundReferences();
+  octomap_mtx_.unlock();
+
+  UWARN("emptyPointsCache size= %d", emptyPointsCache.size());
+
+  // For keyframes in the cache convert the points (empty)
+  // the data in memory stores cv Mat types 
+  std::map<int, cv::Mat> emptyPointsCacheMat;
+  for (auto emptyIter = emptyPointsCache.begin(); emptyIter != emptyPointsCache.end(); ++emptyIter)
+  {
+    // convert points to cv Mat types
+    int pointsSize = emptyIter->second.size();
+    cv::Mat empty = cv::Mat(1, pointsSize, CV_32FC3);
+    int oi = 0;
+    for (auto emptyPtsIter = emptyIter->second.begin(); emptyPtsIter != emptyIter->second.end(); ++emptyPtsIter)
+    {
+      octomap::point3d pt = *emptyPtsIter;
+
+      float * ptr = empty.ptr<float>(0, oi++);
+      ptr[0] = pt.x();
+      ptr[1] = pt.y();
+      ptr[2] = pt.z();
+    }
+
+    UWARN("emptyPointsCache : size = %d; mat size=%d", oi, empty.cols);
+    emptyPointsCacheMat.insert({emptyIter->first, empty});
+  }
+
+  runtime_conversion += runtime_Timer.ticks();
+  
+  memory_mtx.lock();
+  memory->updateSignatureData(emptyPointsCacheMat);
+  memory_mtx.unlock();
+
+  double runtime_total = runtime_Timer.ticks();
+  std::stringstream ss;
+  ss << std::endl
+  << "MapsManager::semanticOctomapStoreData() Runtime : emptyPointsCache size=" << emptyPointsCacheMat.size() << std::endl
+  << "\truntime_conversion       " << runtime_conversion << std::endl
+  << "\ttotal                    " << runtime_total << std::endl;
+
+  UWARN(ss.str().c_str());
+
 }
 // JHUAPL section end

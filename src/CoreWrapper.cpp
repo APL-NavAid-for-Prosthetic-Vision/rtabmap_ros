@@ -5898,6 +5898,13 @@ namespace rtabmap_ros
       rate.sleep();
     }
 
+    // update data to data base
+    // it pushes the updated data to the data base (e.g, empty points)
+    if (rtabmap_.getMemory()->isIncremental())
+    {
+      mapsManager_.semanticOctomapStoreData(rtabmap_._getMemory(), rtabmap_mtx_);
+    }
+
     publishMapThread.interrupt();
     // exiting thread - wait for publish map thread to finish before ending this thread.
     publishMapThread.join();

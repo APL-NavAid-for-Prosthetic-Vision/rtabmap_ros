@@ -136,6 +136,8 @@ public:
 
 	bool octomapRayTracingInit(const rtabmap::SensorData & data);
 
+	void semanticOctomapStoreData(rtabmap::Memory * memory, UMutex& memory_mtx);
+
 	// JHUAPL section end
 
 private:
