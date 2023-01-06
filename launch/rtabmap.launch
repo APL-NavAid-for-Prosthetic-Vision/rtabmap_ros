@@ -525,10 +525,10 @@
       <param name="Vis/MaxDepth"                type="string" value="10.0" />
       <param name="Vis/MinInliers"              type="string" value="30" />   <!-- default 20 : min features in two keyframes to match at registration -->
       <param name="Vis/CorGuessWinSize"         type="string" value="40" />
-      <param name="Vis/MaxFeatures"             type="string" value="600" />  <!-- Kp/MaxFeatures limits the keypoints extraction in an image -->
-      <param name="Vis/Iterations"              type="string" value="350" />  <!-- Maximum iterations to compute the transform. -->
+      <param name="Vis/MaxFeatures"             type="string" value="600" />    <!-- Kp/MaxFeatures limits the keypoints extraction in an image -->
+      <param name="Vis/Iterations"              type="string" value="350" />    <!-- Maximum iterations to compute the transform. -->
       <param name="Vis/MeanInliersDistance"     type="string" value="0.0" />    <!-- Maximum distance (m) of the mean distance of inliers from the camera to accept the transformation. 0 means disabled. -->
-      <param name="Vis/MinInliersDistribution"  type="string" value="0.0" />   <!-- Minimum distribution value of the inliers in the image to accept the transformation. The distribution is the second eigen value of the PCA (Principal Component Analysis) on the keypoints of the normalized image [-0.5, 0.5]. The value would be between 0 and 0.5. 0 means disabled. -->
+      <param name="Vis/MinInliersDistribution"  type="string" value="0.0" />    <!-- Minimum distribution value of the inliers in the image to accept the transformation. The distribution is the second eigen value of the PCA (Principal Component Analysis) on the keypoints of the normalized image [-0.5, 0.5]. The value would be between 0 and 0.5. 0 means disabled. -->
 
       <param name="GridGlobal/MaxNodes"       type="string" value="$(arg max_nodes)"/>
       <param name="GridGlobal/UpdateError"    type="string" value="0.01"/>

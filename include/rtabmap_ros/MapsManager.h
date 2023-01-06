@@ -177,10 +177,11 @@ private:
 	// JHUAPL section
 	
 	ros::Publisher octoMapFullGroundPub_;
-	ros::Publisher octoMapFullCeilingPub_;
-	ros::Publisher octoMapFullStaticPub_;
-	ros::Publisher octoMapFullMovablePub_;
-	ros::Publisher octoMapFullDynamicPub_;
+	ros::Publisher octoMapFullObstaclePub_;
+	// ros::Publisher octoMapFullCeilingPub_;
+	// ros::Publisher octoMapFullStaticPub_;
+	// ros::Publisher octoMapFullMovablePub_;
+	// ros::Publisher octoMapFullDynamicPub_;
 
 	ros::ServiceServer clearRegisteredMapSrv_;
 	ros::ServiceServer mapAlwaysUpdateSrv_;

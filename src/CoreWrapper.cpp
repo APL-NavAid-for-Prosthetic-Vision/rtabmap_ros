@@ -816,8 +816,8 @@ namespace rtabmap_ros
       // In Semantic Segmentation mode this needs to be configured.
       if (enableSemanticSegmentation)
       {
-        std::map<unsigned int, int> labelId2octreeId = mapsManager_.getSemanticOctomap()->getObjectIdToOctreeId();
-        rtabmap_.setOccupancyObjectAssociation(networkModelMap, labelId2octreeId);
+        std::map<unsigned int, int> classId2octreeId = mapsManager_.getSemanticOctomap()->getClassIdToOctreeId();
+        rtabmap_.setOccupancyObjectAssociation(networkModelMap, classId2octreeId);
       }
 
       // JHUAPL section end
@@ -5866,7 +5866,7 @@ namespace rtabmap_ros
             tmpSignature,
             &mapManagerStats);
 
-        UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
+        int filteredPoses_size = filteredPoses.size();   // need this due to std::move call below
 
         pflag_mtx_.lock();
         bool publishMapThreadRunning = publishMapThreadRunning_;
@@ -5881,12 +5881,9 @@ namespace rtabmap_ros
           std::string threadId = boost::lexical_cast<std::string>(publishMapThread.get_id());
           UDEBUG(" created new thread for publishing map! (%s)", threadId.c_str());
         }
-
-        double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-        NODELET_INFO("****  Map manager update in took %f sec", total_elapsed);
-
+        
         // update stats for ros message
-        mapManagerStats.map_manager_update_cache_time = total_elapsed;
+        mapManagerStats.map_manager_update_cache_time = (ros::WallTime::now() - startTime).toSec();
         mapManagerStats.header.stamp = ros::Time::now();
 
         // publish stats when there are subscribers.
@@ -5894,6 +5891,9 @@ namespace rtabmap_ros
         {
           mapManagerStatsPub_.publish(mapManagerStats);
         }
+
+        double total_elapsed = (ros::WallTime::now() - startTime).toSec();
+        NODELET_INFO("****  Map manager update : filteredPoses size= %d; runtime= %.4lf sec", filteredPoses_size, total_elapsed);
       }
       rate.sleep();
     }
@@ -5920,7 +5920,7 @@ namespace rtabmap_ros
       }
 
       double total_elapsed = (ros::WallTime::now() - startTime).toSec();
-      NODELET_INFO("       publishing map took %lf secs", total_elapsed);
+      NODELET_INFO("       publishing map took %.4lf secs", total_elapsed);
     }
     catch (boost::thread_interrupted &)
     {

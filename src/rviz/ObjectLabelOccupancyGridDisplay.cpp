@@ -561,7 +561,8 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
         return;
     }
 
-    ROS_DEBUG("Received OctomapBinary message (size: %d bytes)", (int)msg->data.size());
+    //ROS_DEBUG("Received OctomapBinary message (size: %d bytes)", (int)msg->data.size());
+    ROS_INFO("Received OctomapBinary message (size: %d bytes)", (int)msg->data.size());
 
     header_ = msg->header;
     if (!updateFromTF()) 
@@ -578,7 +579,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
 
     if(octomap_mode_property_->getOptionInt() == OctoMapMSGMode::Full_Map_Mode)
     {
-        //ROS_INFO(" OctoMap Msg Mode: Full_Map_Mode");
+        ROS_INFO(" OctoMap Msg Mode: Full_Map_Mode");
         octomap = new rtabmap::SemanticColorOcTree(msg->resolution);
 
         if(octomap)
@@ -586,6 +587,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
             std::stringstream datastream;
             if (msg->data.size() > 0)
             {
+                ROS_INFO("  reading data...");
                 datastream.write((const char*) &(msg->data[0]), msg->data.size());
                 octomap->readData(datastream);
             }
@@ -593,7 +595,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
     }
     else
     {
-        //ROS_INFO(" OctoMap Msg Mode: Binary_Map_Mode");
+        ROS_INFO(" OctoMap Msg Mode: Binary_Map_Mode");
         // Binary Octomap
         octomap::AbstractOcTree* tree;
         rtabmap::SemanticColorOcTree* octree = new rtabmap::SemanticColorOcTree(msg->resolution);
@@ -627,6 +629,9 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
     octomap->getMetricMax(maxX, maxY, maxZ);
     //ROS_INFO_STREAM("Metric max: "<< maxX <<","<< maxY <<","<< maxZ );
     
+
+    ROS_INFO("  ...done, octomap depth %d, minX %f, maxX %f", octomap->getTreeDepth(), minX, maxX);
+
     // reset rviz pointcloud classes
     for (std::size_t i = 0; i < max_octree_depth_; ++i)
     {
@@ -634,8 +639,11 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
         box_size_[i] = octomap->getNodeSize(i + 1);
     }
 
+    int itCount = 0;
     size_t pointCount = 0;
     {
+        ROS_INFO(" traversing leaves in tree...");
+
         // traverse all leafs in the tree:
         unsigned int treeDepth = std::min<unsigned int>(tree_depth_property_->getInt(), octomap->getTreeDepth());
         double maxHeight = std::min<double>(max_height_property_->getFloat(), maxZ);
@@ -643,15 +651,28 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
         int stepSize = 1 << (octomap->getTreeDepth() - treeDepth); // for pruning of occluded voxels
         for (typename OcTreeType::iterator it = octomap->begin(treeDepth), end = octomap->end(); it != end; ++it)
         {
+            if (itCount % 1000 == 0)
+            {
+                ROS_INFO("  ...leaf %d, display points %d", itCount + 1, pointCount);
+            }
+            ++itCount;
+
             if(it.getZ() <= maxHeight && it.getZ() >= minHeight)
             {
+                //ROS_INFO("  getZ() %f", it.getZ());
                 int render_mode_mask = octree_render_property_->getOptionInt();
 
                 bool display_voxel = false;
 
+                if ((int)octomap->isNodeOccupied(*it))
+                {
+                    ROS_INFO("  FOUND OCCUPIED");
+                }
+
                 // the left part evaluates to 1 for free voxels and 2 for occupied voxels
                 if (((int)octomap->isNodeOccupied(*it) + 1) & render_mode_mask)
                 {
+                    ROS_INFO("  check allNeighborsFound");
                     // check if current voxel has neighbors on all sides -> no need to be displayed
                     bool allNeighborsFound = true;
 
@@ -685,6 +706,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
                                     {
                                         // we do not have a neighbor => break!
                                         allNeighborsFound = false;
+                                        ROS_INFO("   allNeighborsFound = false");
                                     }
                                 }
                             }
@@ -697,6 +719,7 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
 
                 if (display_voxel)
                 {
+                    ROS_INFO(" display voxel");
                     PointCloud::Point newPoint;
 
                     newPoint.position.x = it.getX();
@@ -716,12 +739,16 @@ void TemplatedObjectLabelOccupancyGridDisplay<OcTreeType>::incomingMessageCallba
         }
     }
 
+    ROS_INFO(" publish internal msg to panel");
+
     // publish internal message to panel
     publishMsgs();
     
 
     if (pointCount)
     {
+        ROS_INFO(" adding points");
+
         boost::mutex::scoped_lock lock(mutex_);
 
         new_points_received_ = true;
