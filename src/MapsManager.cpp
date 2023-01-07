@@ -97,7 +97,7 @@ MapsManager::MapsManager() :
     latching_(true),
     semanticSegmentationEnable_(false),
     publishSemanticMask_(false),
-    gridMaxObstacleHeight_(std::numeric_limits<double>::max()),
+    maxPublishedHeight_(std::numeric_limits<double>::max()),
     octomapRayTracing_(false)
 {
 }
@@ -454,24 +454,26 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
   if(semanticSegmentationEnable_)
   {
      
-    Parameters::parse(parameters, Parameters::kGridMaxObstacleHeight(), gridMaxObstacleHeight_);
+    Parameters::parse(parameters, Parameters::kGridMaxPublishedHeight(), maxPublishedHeight_);
     int octoMapNumThreads = 2;
     Parameters::parse(parameters, Parameters::kGridOctoMapNumThreads(), octoMapNumThreads);
     float rangeMax = 10.0;
     Parameters::parse(parameters, Parameters::kGridRangeMax(), rangeMax);
 
-    float grd_stddev_factor = 3.0;
-    Parameters::parse(parameters, Parameters::kGridOctoMapGrdSTDDEVFactor(), grd_stddev_factor);
-    float grd_stddev_threshold = 0.1;
-    Parameters::parse(parameters, Parameters::kGridOctoMapGrdSTDDEVThreshold(), grd_stddev_threshold);
-    float grd_min_threshold = -2.0;
-    Parameters::parse(parameters, Parameters::kGridOctoMapGrdMinThreshold(), grd_min_threshold);
-    float grd_max_threshold = 0.0;
-    Parameters::parse(parameters, Parameters::kGridOctoMapGrdMaxThreshold(), grd_max_threshold);
-    float grd_offset_height = 0.0;
-    Parameters::parse(parameters, Parameters::kGridOctoMapGrdOffsetHeight(), grd_offset_height);
+    float gnd_stddev_factor = 3.0;
+    Parameters::parse(parameters, Parameters::kGridOctoMapGrdSTDDEVFactor(), gnd_stddev_factor);
+    float gnd_stddev_threshold = 0.1;
+    Parameters::parse(parameters, Parameters::kGridOctoMapGrdSTDDEVThreshold(), gnd_stddev_threshold);
+    float gnd_min_threshold = -2.0;
+    Parameters::parse(parameters, Parameters::kGridOctoMapGrdMinThreshold(), gnd_min_threshold);
+    float gnd_max_threshold = 0.0;
+    Parameters::parse(parameters, Parameters::kGridOctoMapGrdMaxThreshold(), gnd_max_threshold);
+    float gnd_offset_height = 0.0;
+    Parameters::parse(parameters, Parameters::kGridOctoMapGrdOffsetHeight(), gnd_offset_height);
     int empty_point_cache_size = 100;
     Parameters::parse(parameters, Parameters::kGridOctoMapEmptyPointsCacheSize(), empty_point_cache_size);
+    float maxObstacleHeightAboveGnd = 0.0;
+    Parameters::parse(parameters, Parameters::kGridMaxObstacleHeightAboveGnd(), maxObstacleHeightAboveGnd);
 
     bool clipVerticalBoundary = false;
     Parameters::parse(parameters, Parameters::kGridRayTracingClipVertBoundary(), clipVerticalBoundary);
@@ -497,15 +499,15 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
     float probClampingMax = 0.971;
     Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), probClampingMax);
     
-    ROS_INFO("Grid/MaxObstacleHeight = %f", gridMaxObstacleHeight_);
+    ROS_INFO("Grid/MaxPublishedHeight = %f", maxPublishedHeight_);
     ROS_INFO("Grid/RangeMax = %f", rangeMax);
 
     ROS_INFO("Grid/OctoMapNumThreads = %d", octoMapNumThreads);
-    ROS_INFO("Grid/OctoMapGrdSTDDEVFactor = %f", grd_stddev_factor);
-    ROS_INFO("Grid/OctoMapGrdSTDDEVThreshold = %f", grd_stddev_threshold);
-    ROS_INFO("Grid/OctoMapGrdMinThreshold = %f", grd_min_threshold);
-    ROS_INFO("Grid/OctoMapGrdMaxThreshold = %f", grd_max_threshold);
-    ROS_INFO("Grid/OctoMapGrdOffsetHeight = %f", grd_offset_height);
+    ROS_INFO("Grid/OctoMapGrdSTDDEVFactor = %f", gnd_stddev_factor);
+    ROS_INFO("Grid/OctoMapGrdSTDDEVThreshold = %f", gnd_stddev_threshold);
+    ROS_INFO("Grid/OctoMapGrdMinThreshold = %f", gnd_min_threshold);
+    ROS_INFO("Grid/OctoMapGrdMaxThreshold = %f", gnd_max_threshold);
+    ROS_INFO("Grid/OctoMapGrdOffsetHeight = %f", gnd_offset_height);
     ROS_INFO("Grid/OctoMapEmptyPointsCacheSize = %d", empty_point_cache_size);
     ROS_INFO("Grid/RaytracingStartOffset = %f", raytracingStartOffset);
     ROS_INFO("Grid/RaytracingMaxRange = %f", raytracingMaxRange);
@@ -513,6 +515,8 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
     ROS_INFO("Grid/RayTracingclipVertBoundary = %s", clipVerticalBoundary?"true":"false");
     ROS_INFO("Grid/RayTracingVertBoundaryMaxHeight = %f", verticalBoundaryMaxHeight);
     ROS_INFO("Grid/RayTracingFOVSizeFactor = %f", rayTracingFOVSizeFactor);
+    ROS_INFO("Grid/MaxObstacleHeightAboveGnd = %f", maxObstacleHeightAboveGnd);
+    
 
     SemanticOctoMap::Params sematicOctoMapParams;
     // setting params for Sematic Octomap
@@ -525,11 +529,12 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
     sematicOctoMapParams.probMiss = probMiss;
     sematicOctoMapParams.clampingMin = probClampingMin;
     sematicOctoMapParams.clampingMax = probClampingMax;
-    sematicOctoMapParams.grd_stddev_factor = grd_stddev_factor;
-    sematicOctoMapParams.grd_stddev_threshold = grd_stddev_threshold;
-    sematicOctoMapParams.grd_min_threshold = grd_min_threshold;
-    sematicOctoMapParams.grd_max_threshold = grd_max_threshold;
-    sematicOctoMapParams.grd_offset_height = grd_offset_height;
+    sematicOctoMapParams.gnd_stddev_factor = gnd_stddev_factor;
+    sematicOctoMapParams.gnd_stddev_threshold = gnd_stddev_threshold;
+    sematicOctoMapParams.gnd_min_threshold = gnd_min_threshold;
+    sematicOctoMapParams.gnd_max_threshold = gnd_max_threshold;
+    sematicOctoMapParams.gnd_offset_height = gnd_offset_height;
+    sematicOctoMapParams.maxObstacleHeightAboveGnd = maxObstacleHeightAboveGnd;
     sematicOctoMapParams.empty_point_cache_size = empty_point_cache_size;
     sematicOctoMapParams.raytracingParams.startOffset = raytracingStartOffset;
     sematicOctoMapParams.raytracingParams.maxRange = raytracingMaxRange;
@@ -722,11 +727,6 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
         octoMapProj_.getNumSubscribers() != 0 ||
         octoMapFullGroundPub_.getNumSubscribers() != 0 ||
         octoMapFullObstaclePub_.getNumSubscribers() != 0;
-
-        // octoMapFullCeilingPub_.getNumSubscribers() != 0 ||
-        // octoMapFullStaticPub_.getNumSubscribers() != 0 ||
-        // octoMapFullMovablePub_.getNumSubscribers() != 0 ||
-        // octoMapFullDynamicPub_.getNumSubscribers() != 0;
 
     updateGrid = projMapPub_.getNumSubscribers() != 0 ||
         gridMapPub_.getNumSubscribers() != 0 ||
@@ -2102,7 +2102,7 @@ void MapsManager::publishAPLMaps(
 
       float maxValue = std::numeric_limits<float>::max();
       float minValue = -1*std::numeric_limits<float>::max();
-      Eigen::Vector3f maxBoundMap(maxValue, maxValue, gridMaxObstacleHeight_);
+      Eigen::Vector3f maxBoundMap(maxValue, maxValue, maxPublishedHeight_);
       Eigen::Vector3f minBoundMap(minValue, minValue, minValue);
 
       semanticOctomap_->multiOctreesToMergeOctree(octreeLayersCopy, m_octreePtr.get(), multiLevelOctreeName, minBoundMap, maxBoundMap);
@@ -2120,7 +2120,7 @@ void MapsManager::publishAPLMaps(
 
       float maxValue = std::numeric_limits<float>::max();
       float minValue = -1*std::numeric_limits<float>::max();
-      Eigen::Vector3f maxBoundMap(maxValue, maxValue, gridMaxObstacleHeight_);
+      Eigen::Vector3f maxBoundMap(maxValue, maxValue, maxPublishedHeight_);
       Eigen::Vector3f minBoundMap(minValue, minValue, minValue);
 
       semanticOctomap_->multiOctreesToMergeOctree(octreeLayersCopy, binary_octreePtr.get(), multiLevelOctreeName, minBoundMap, maxBoundMap);
