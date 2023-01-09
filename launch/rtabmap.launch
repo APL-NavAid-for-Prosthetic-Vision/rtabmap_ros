@@ -108,8 +108,10 @@
   <arg name="grid_octomap_ground_max_threshold"     default="0.0"/>
   <arg name="grid_octomap_ground_offset_height"     default="0.0"/>
   <arg name="grid_octomap_empty_points_cache_size"  default="1000"/>
+  <arg name="grid_max_publish_height"               default="10.0"/>
+  <arg name="grid_maxObstacleHeightAboveGnd"        default="0.0"/>   <!-- default set to disabled -->
 
-  
+
   <!-- JHU APL : end -->
 
   <arg name="compressed"              default="false"/>         <!-- If you want to subscribe to compressed image topics -->
@@ -175,7 +177,7 @@
   <arg name="tag_angular_variance"     default="9999" />             <!-- >=9999 means ignore rotation in optimization, when rotation estimation of the tag is not reliable -->
   
 
-  <!-- APL parameters modified -->
+  <!-- APL parameters -->
   <arg name="queue_size_rgbd"              default="30" />
   <arg name="queue_size_stereo"            default="30" />
   <arg name="raytracing"                   default="false" />
@@ -193,7 +195,6 @@
   <arg name="grid_footprintLength"         default="0.0"/>
   <arg name="grid_footprintWidth"          default="0.0"/>
   <arg name="grid_footprintHeight"         default="0.0"/>
-  <arg name="grid_maxObstacleHeight"       default="2.0"/>
   <arg name="map_always_update"            default="false"/>
   <arg name="mem_STMSize"                  default="10"/>
   <arg name="rgbd_optimizeMaxError"        default="3.0"/>  <!-- should be 0 if RGBD/OptimizeRobust is true --> 
@@ -525,10 +526,10 @@
       <param name="Vis/MaxDepth"                type="string" value="10.0" />
       <param name="Vis/MinInliers"              type="string" value="30" />   <!-- default 20 : min features in two keyframes to match at registration -->
       <param name="Vis/CorGuessWinSize"         type="string" value="40" />
-      <param name="Vis/MaxFeatures"             type="string" value="600" />  <!-- Kp/MaxFeatures limits the keypoints extraction in an image -->
-      <param name="Vis/Iterations"              type="string" value="350" />  <!-- Maximum iterations to compute the transform. -->
+      <param name="Vis/MaxFeatures"             type="string" value="600" />    <!-- Kp/MaxFeatures limits the keypoints extraction in an image -->
+      <param name="Vis/Iterations"              type="string" value="350" />    <!-- Maximum iterations to compute the transform. -->
       <param name="Vis/MeanInliersDistance"     type="string" value="0.0" />    <!-- Maximum distance (m) of the mean distance of inliers from the camera to accept the transformation. 0 means disabled. -->
-      <param name="Vis/MinInliersDistribution"  type="string" value="0.0" />   <!-- Minimum distribution value of the inliers in the image to accept the transformation. The distribution is the second eigen value of the PCA (Principal Component Analysis) on the keypoints of the normalized image [-0.5, 0.5]. The value would be between 0 and 0.5. 0 means disabled. -->
+      <param name="Vis/MinInliersDistribution"  type="string" value="0.0" />    <!-- Minimum distribution value of the inliers in the image to accept the transformation. The distribution is the second eigen value of the PCA (Principal Component Analysis) on the keypoints of the normalized image [-0.5, 0.5]. The value would be between 0 and 0.5. 0 means disabled. -->
 
       <param name="GridGlobal/MaxNodes"       type="string" value="$(arg max_nodes)"/>
       <param name="GridGlobal/UpdateError"    type="string" value="0.01"/>
@@ -553,7 +554,9 @@
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>
-      <param name="Grid/MaxObstacleHeight"          type="string"   value="$(arg grid_maxObstacleHeight)"/>
+      <param name="Grid/MaxPublishedHeight"         type="string"   value="$(arg grid_max_publish_height)"/>
+      <param name="Grid/MaxObstacleHeightAboveGnd"  type="string"   value="$(arg grid_maxObstacleHeightAboveGnd)"/>
+      <param name="Grid/MaxObstacleHeight"          type="string"   value="0"/>    <!-- disable ONLY for Depth Mode-->
       <param name="Grid/MultiLevelCellSize"         type="string"   value="$(arg multi_level_cell_size)"/>
       <param name="Grid/MultiLevelTreeName"         type="string"   value="$(arg multi_level_cell_name)"/>
       <param name="Grid/SemanticDepthFusionCorrection"   type="string"   value="$(arg grid_semanticDepthFusionCorrection)"/>

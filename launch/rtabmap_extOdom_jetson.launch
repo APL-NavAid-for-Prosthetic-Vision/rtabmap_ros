@@ -18,7 +18,6 @@
     <arg name="imageAlreadyRectify"     default="true"/>   <!-- Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false -->
     <arg name="rectifyOnlyFeatures"     default="false"/>  <!-- the whole RGB image will not be rectified, only the features. If imageAlreadyRectify is false otherwise this must be set to true -->
     <arg name="map_frame_id"            default="world"/>
-    <arg name="grid_maxObstacleHeight"  default="1.5"/>
     <arg name="raytracing"              default="false"/>
 
     <!-- mapping configuration -->
@@ -46,6 +45,8 @@
     <arg name="grid_octomap_ground_max_threshold"     default="0.0"/>
     <arg name="grid_octomap_ground_offset_height"     default="0.0"/>
     <arg name="grid_octomap_empty_points_cache_size"  default="1000"/>
+    <arg name="grid_max_publish_height"               default="10.0"/>
+    <arg name="grid_maxObstacleHeightAboveGnd"        default="0.0"/>   <!-- default set to disabled -->
     
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -100,7 +101,6 @@
         <arg name="bayes_fullPredictionUpdate"  default="$(arg bayes_fullPredictionUpdate)"/>
         <arg name="imageAlreadyRectify"         default="$(arg imageAlreadyRectify)"/>  <!-- /color/image_raw has not been rectified -->
         <arg name="rectifyOnlyFeatures"         default="$(arg rectifyOnlyFeatures)"/>  <!-- projection of RGB-D image to point cloud is assuming that images are rectified, so needs to be true -->
-        <arg name="grid_maxObstacleHeight"      default="$(arg grid_maxObstacleHeight)"/>
         <arg name="rgbd_maxOdomCacheSize"       default="$(arg rgbd_maxOdomCacheSize)"/>
         <arg name="rgbd_optimizeMaxError"       default="2.0"/> <!-- recently 2.0, default 3.0 -->
         <!-- <arg name="optimizer_robust"            default="true"/> -->
@@ -125,6 +125,8 @@
         <arg name="grid_octomap_ground_max_threshold"     default="$(arg grid_octomap_ground_max_threshold)"/>
         <arg name="grid_octomap_ground_offset_height"     default="$(arg grid_octomap_ground_offset_height)"/>
         <arg name="grid_octomap_empty_points_cache_size"  default="$(arg grid_octomap_empty_points_cache_size)"/>
+        <arg name="grid_max_publish_height"               default="$(arg grid_max_publish_height)"/>
+        <arg name="grid_maxObstacleHeightAboveGnd"        default="$(arg grid_maxObstacleHeightAboveGnd)"/>   <!-- default set to disabled -->
     </include>
 
 </launch>
