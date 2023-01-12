@@ -2429,11 +2429,10 @@ void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatur
   if (!memory)
     return;
 
-  // Run-Time Profiling
-  UTimer runtime_Timer;
-  double runtime_conversion = 0.0;
-  
-  runtime_Timer.start();
+  // // Run-Time Profiling
+  // UTimer runtime_Timer;
+  // double runtime_conversion = 0.0;
+  // runtime_Timer.start();
 
   // For keyframes in the cache convert the points (empty)
   // the data in memory stores cv Mat types 
@@ -2455,28 +2454,27 @@ void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatur
     }
     emptyPointsMat.push_back(std::make_pair(frameId, empty));
 
-    if(emptyIter == auxSignatureData.emptyPoints.begin())
-    {
-      octomap::point3d pt = *emptyIter->second.begin();
-      UERROR("Storing empty points to DB, frameId (%d) : size=%d : first empty point=(%0.2f, %0.2f, %0.2f)", 
-          frameId, pointsSize, pt.x(), pt.y(), pt.z());
-    }
+    // if(emptyIter == auxSignatureData.emptyPoints.begin())
+    // {
+    //   octomap::point3d pt = *emptyIter->second.begin();
+    //   UERROR("Storing empty points to DB, frameId (%d) : size=%d : first empty point=(%0.2f, %0.2f, %0.2f)", 
+    //       frameId, pointsSize, pt.x(), pt.y(), pt.z());
+    // }
   }
 
-  runtime_conversion += runtime_Timer.ticks();
+  //runtime_conversion += runtime_Timer.ticks();
 
   memory_mtx.lock();
   memory->updateSignatureData(emptyPointsMat);
   memory_mtx.unlock();
 
-  double runtime_total = runtime_Timer.ticks();
-  std::stringstream ss;
-  ss << std::endl
-  << "MapsManager::semanticOctomapStoreData() Runtime : emptyPointsCache size=" << emptyPointsMat.size() << std::endl
-  << "\truntime_conversion       " << runtime_conversion << std::endl
-  << "\ttotal                    " << runtime_total << std::endl;
-  UWARN(ss.str().c_str());
-
+  // double runtime_total = runtime_Timer.ticks();
+  // std::stringstream ss;
+  // ss << std::endl
+  // << "MapsManager::semanticOctomapStoreData() Runtime : emptyPointsCache size=" << emptyPointsMat.size() << std::endl
+  // << "\truntime_conversion       " << runtime_conversion << std::endl
+  // << "\ttotal                    " << runtime_total << std::endl;
+  // UWARN(ss.str().c_str());
 }
 #endif
 
