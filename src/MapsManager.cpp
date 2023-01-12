@@ -2441,23 +2441,30 @@ void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatur
   for (auto emptyIter = auxSignatureData.emptyPoints.begin(); emptyIter != auxSignatureData.emptyPoints.end(); ++emptyIter)
   {
     // convert points to cv Mat types
+    int frameId = emptyIter->first;
     int pointsSize = emptyIter->second.size();
     cv::Mat empty = cv::Mat(1, pointsSize, CV_32FC3);
     int oi = 0;
     for (auto emptyPtsIter = emptyIter->second.begin(); emptyPtsIter != emptyIter->second.end(); ++emptyPtsIter)
     {
       octomap::point3d pt = *emptyPtsIter;
-
       float * ptr = empty.ptr<float>(0, oi++);
       ptr[0] = pt.x();
       ptr[1] = pt.y();
       ptr[2] = pt.z();
     }
-    emptyPointsMat.push_back(std::make_pair(emptyIter->first, empty));
+    emptyPointsMat.push_back(std::make_pair(frameId, empty));
+
+    if(emptyIter == auxSignatureData.emptyPoints.begin())
+    {
+      octomap::point3d pt = *emptyIter->second.begin();
+      UERROR("Storing empty points to DB, frameId (%d) : size=%d : first empty point=(%0.2f, %0.2f, %0.2f)", 
+          frameId, pointsSize, pt.x(), pt.y(), pt.z());
+    }
   }
 
   runtime_conversion += runtime_Timer.ticks();
-  
+
   memory_mtx.lock();
   memory->updateSignatureData(emptyPointsMat);
   memory_mtx.unlock();
@@ -2468,7 +2475,6 @@ void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatur
   << "MapsManager::semanticOctomapStoreData() Runtime : emptyPointsCache size=" << emptyPointsMat.size() << std::endl
   << "\truntime_conversion       " << runtime_conversion << std::endl
   << "\ttotal                    " << runtime_total << std::endl;
-
   UWARN(ss.str().c_str());
 
 }
