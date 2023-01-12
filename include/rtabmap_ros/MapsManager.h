@@ -89,6 +89,17 @@ public:
 			bool updateOctomap,
 			const std::map<int, rtabmap::Signature> & signatures = std::map<int, rtabmap::Signature>());
 
+#ifdef RTABMAP_OCTOMAP
+	std::map<int, rtabmap::Transform> updateMapCaches(
+			const std::map<int, rtabmap::Transform> & poses,
+			const rtabmap::Memory * memory,
+			bool updateGrid,
+			bool updateOctomap,
+			UMutex& memory_mtx,
+			rtabmap::SemanticOctoMap::AuxSignatureData & auxSignatureData,
+			const std::map<int, rtabmap::Signature> & signatures = std::map<int, rtabmap::Signature>(),
+			rtabmap_ros::MapManagerStats * mapManagerStatsPtr = nullptr);
+#else
 	std::map<int, rtabmap::Transform> updateMapCaches(
 			const std::map<int, rtabmap::Transform> & poses,
 			const rtabmap::Memory * memory,
@@ -97,6 +108,7 @@ public:
 			UMutex& memory_mtx,
 			const std::map<int, rtabmap::Signature> & signatures = std::map<int, rtabmap::Signature>(),
 			rtabmap_ros::MapManagerStats * mapManagerStatsPtr = nullptr);
+#endif
 
 	void publishMaps(
 			const std::map<int, rtabmap::Transform> & poses,
@@ -136,7 +148,9 @@ public:
 
 	bool octomapRayTracingInit(const rtabmap::SensorData & data);
 
-	void semanticOctomapStoreData(rtabmap::Memory * memory, UMutex& memory_mtx);
+#ifdef RTABMAP_OCTOMAP
+	void semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatureData & auxSignatureData, const rtabmap::Memory * memory, UMutex& memory_mtx);
+#endif
 
 	// JHUAPL section end
 
@@ -180,10 +194,6 @@ private:
 	
 	ros::Publisher octoMapFullGroundPub_;
 	ros::Publisher octoMapFullObstaclePub_;
-	// ros::Publisher octoMapFullCeilingPub_;
-	// ros::Publisher octoMapFullStaticPub_;
-	// ros::Publisher octoMapFullMovablePub_;
-	// ros::Publisher octoMapFullDynamicPub_;
 
 	ros::ServiceServer clearRegisteredMapSrv_;
 	ros::ServiceServer mapAlwaysUpdateSrv_;

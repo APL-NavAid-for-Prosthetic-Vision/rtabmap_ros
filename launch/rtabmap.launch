@@ -107,7 +107,7 @@
   <arg name="grid_octomap_ground_min_threshold"     default="-2.0"/>
   <arg name="grid_octomap_ground_max_threshold"     default="0.0"/>
   <arg name="grid_octomap_ground_offset_height"     default="0.0"/>
-  <arg name="grid_octomap_empty_points_cache_size"  default="1000"/>
+  <arg name="grid_octomap_empty_points_cache_size"  default="10000"/>
   <arg name="grid_max_publish_height"               default="10.0"/>
   <arg name="grid_maxObstacleHeightAboveGnd"        default="0.0"/>   <!-- default set to disabled -->
 

@@ -298,7 +298,7 @@ IF(RTABMAP_SYNC_MULTI_RGBD)
   )
 ENDIF(RTABMAP_SYNC_MULTI_RGBD)
   
-SET(rtabmap_ros_lib_src
+SET(rtabmap_ros_lib_src 
    src/MsgConversion.cpp
    src/MapsManager.cpp
    ${RTABMAP_ROS_PATH}/src/OdometryROS.cpp

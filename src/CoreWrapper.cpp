@@ -76,6 +76,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef RTABMAP_OCTOMAP
 #include <octomap_msgs/conversions.h>
 #include <rtabmap/core/OctoMap.h>
+#include <rtabmap/core/SemanticOctoMap.h>
 #endif
 #endif
 
@@ -839,10 +840,10 @@ namespace rtabmap_ros
     getNodeDataSrv_ = nh.advertiseService("get_node_data", &CoreWrapper::getNodeDataCallback, this);
     getMapDataSrv_ = nh.advertiseService("get_map_data", &CoreWrapper::getMapDataCallback, this);
     getMapData2Srv_ = nh.advertiseService("get_map_data2", &CoreWrapper::getMapData2Callback, this);
-    getMapSrv_ = nh.advertiseService("get_map", &CoreWrapper::getMapCallback, this);
-    getProbMapSrv_ = nh.advertiseService("get_prob_map", &CoreWrapper::getProbMapCallback, this);
-    getGridMapSrv_ = nh.advertiseService("get_grid_map", &CoreWrapper::getGridMapCallback, this);
-    getProjMapSrv_ = nh.advertiseService("get_proj_map", &CoreWrapper::getProjMapCallback, this);
+    //getMapSrv_ = nh.advertiseService("get_map", &CoreWrapper::getMapCallback, this);
+    //getProbMapSrv_ = nh.advertiseService("get_prob_map", &CoreWrapper::getProbMapCallback, this);
+    //getGridMapSrv_ = nh.advertiseService("get_grid_map", &CoreWrapper::getGridMapCallback, this);
+    //getProjMapSrv_ = nh.advertiseService("get_proj_map", &CoreWrapper::getProjMapCallback, this);
     publishMapDataSrv_ = nh.advertiseService("publish_map", &CoreWrapper::publishMapCallback, this);
     getPlanSrv_ = nh.advertiseService("get_plan", &CoreWrapper::getPlanCallback, this);
     getPlanNodesSrv_ = nh.advertiseService("get_plan_nodes", &CoreWrapper::getPlanNodesCallback, this);
@@ -4377,111 +4378,111 @@ namespace rtabmap_ros
     return true;
   }
 
-  bool CoreWrapper::getProjMapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
-  {
-    if (parameters_.find(Parameters::kGridSensor()) != parameters_.end() &&
-        uStr2Int(parameters_.at(Parameters::kGridSensor())) == 0)
-    {
-      NODELET_WARN("/get_proj_map service is deprecated! Call /get_grid_map service "
-                   "instead with <param name=\"%s\" type=\"string\" value=\"1\"/>. "
-                   "Do \"$ rosrun rtabmap_ros rtabmap --params | grep Grid\" to see "
-                   "all occupancy grid parameters.",
-                   Parameters::kGridSensor().c_str());
-    }
-    else
-    {
-      NODELET_WARN("/get_proj_map service is deprecated! Call /get_grid_map service instead.");
-    }
-    return getGridMapCallback(req, res);
-  }
+  // bool CoreWrapper::getProjMapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
+  // {
+  //   if (parameters_.find(Parameters::kGridSensor()) != parameters_.end() &&
+  //       uStr2Int(parameters_.at(Parameters::kGridSensor())) == 0)
+  //   {
+  //     NODELET_WARN("/get_proj_map service is deprecated! Call /get_grid_map service "
+  //                  "instead with <param name=\"%s\" type=\"string\" value=\"1\"/>. "
+  //                  "Do \"$ rosrun rtabmap_ros rtabmap --params | grep Grid\" to see "
+  //                  "all occupancy grid parameters.",
+  //                  Parameters::kGridSensor().c_str());
+  //   }
+  //   else
+  //   {
+  //     NODELET_WARN("/get_proj_map service is deprecated! Call /get_grid_map service instead.");
+  //   }
+  //   return getGridMapCallback(req, res);
+  // }
 
-  bool CoreWrapper::getGridMapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
-  {
-    NODELET_WARN("/get_grid_map service is deprecated! Call /get_map service instead.");
-    return getMapCallback(req, res);
-  }
+  // bool CoreWrapper::getGridMapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
+  // {
+  //   NODELET_WARN("/get_grid_map service is deprecated! Call /get_map service instead.");
+  //   return getMapCallback(req, res);
+  // }
 
-  bool CoreWrapper::getMapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
-  {
-    // Make sure grid map cache is up to date (in case there is no subscriber on map topics)
-    std::map<int, Transform> poses = rtabmap_.getLocalOptimizedPoses();
-    mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), true, false);
+  // bool CoreWrapper::getMapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
+  // {
+  //   // Make sure grid map cache is up to date (in case there is no subscriber on map topics)
+  //   std::map<int, Transform> poses = rtabmap_.getLocalOptimizedPoses();
+  //   mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), true, false);
 
-    // create the grid map
-    float xMin = 0.0f, yMin = 0.0f, gridCellSize = 0.05f;
-    cv::Mat pixels = mapsManager_.getGridMap(xMin, yMin, gridCellSize);
+  //   // create the grid map
+  //   float xMin = 0.0f, yMin = 0.0f, gridCellSize = 0.05f;
+  //   cv::Mat pixels = mapsManager_.getGridMap(xMin, yMin, gridCellSize);
 
-    if (!pixels.empty())
-    {
-      // init
-      res.map.info.resolution = gridCellSize;
-      res.map.info.origin.position.x = 0.0;
-      res.map.info.origin.position.y = 0.0;
-      res.map.info.origin.position.z = 0.0;
-      res.map.info.origin.orientation.x = 0.0;
-      res.map.info.origin.orientation.y = 0.0;
-      res.map.info.origin.orientation.z = 0.0;
-      res.map.info.origin.orientation.w = 1.0;
+  //   if (!pixels.empty())
+  //   {
+  //     // init
+  //     res.map.info.resolution = gridCellSize;
+  //     res.map.info.origin.position.x = 0.0;
+  //     res.map.info.origin.position.y = 0.0;
+  //     res.map.info.origin.position.z = 0.0;
+  //     res.map.info.origin.orientation.x = 0.0;
+  //     res.map.info.origin.orientation.y = 0.0;
+  //     res.map.info.origin.orientation.z = 0.0;
+  //     res.map.info.origin.orientation.w = 1.0;
 
-      res.map.info.width = pixels.cols;
-      res.map.info.height = pixels.rows;
-      res.map.info.origin.position.x = xMin;
-      res.map.info.origin.position.y = yMin;
-      res.map.data.resize(res.map.info.width * res.map.info.height);
+  //     res.map.info.width = pixels.cols;
+  //     res.map.info.height = pixels.rows;
+  //     res.map.info.origin.position.x = xMin;
+  //     res.map.info.origin.position.y = yMin;
+  //     res.map.data.resize(res.map.info.width * res.map.info.height);
 
-      memcpy(res.map.data.data(), pixels.data, res.map.info.width * res.map.info.height);
+  //     memcpy(res.map.data.data(), pixels.data, res.map.info.width * res.map.info.height);
 
-      res.map.header.frame_id = mapFrameId_;
-      res.map.header.stamp = ros::Time::now();
-      return true;
-    }
-    else
-    {
-      NODELET_WARN("rtabmap: The map is empty!");
-    }
-    return false;
-  }
+  //     res.map.header.frame_id = mapFrameId_;
+  //     res.map.header.stamp = ros::Time::now();
+  //     return true;
+  //   }
+  //   else
+  //   {
+  //     NODELET_WARN("rtabmap: The map is empty!");
+  //   }
+  //   return false;
+  // }
 
-  bool CoreWrapper::getProbMapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
-  {
-    // Make sure grid map cache is up to date (in case there is no subscriber on map topics)
-    std::map<int, Transform> poses = rtabmap_.getLocalOptimizedPoses();
-    mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), true, false);
+  // bool CoreWrapper::getProbMapCallback(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
+  // {
+  //   // Make sure grid map cache is up to date (in case there is no subscriber on map topics)
+  //   std::map<int, Transform> poses = rtabmap_.getLocalOptimizedPoses();
+  //   mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), true, false);
 
-    // create the grid map
-    float xMin = 0.0f, yMin = 0.0f, gridCellSize = 0.05f;
-    cv::Mat pixels = mapsManager_.getGridProbMap(xMin, yMin, gridCellSize);
+  //   // create the grid map
+  //   float xMin = 0.0f, yMin = 0.0f, gridCellSize = 0.05f;
+  //   cv::Mat pixels = mapsManager_.getGridProbMap(xMin, yMin, gridCellSize);
 
-    if (!pixels.empty())
-    {
-      // init
-      res.map.info.resolution = gridCellSize;
-      res.map.info.origin.position.x = 0.0;
-      res.map.info.origin.position.y = 0.0;
-      res.map.info.origin.position.z = 0.0;
-      res.map.info.origin.orientation.x = 0.0;
-      res.map.info.origin.orientation.y = 0.0;
-      res.map.info.origin.orientation.z = 0.0;
-      res.map.info.origin.orientation.w = 1.0;
+  //   if (!pixels.empty())
+  //   {
+  //     // init
+  //     res.map.info.resolution = gridCellSize;
+  //     res.map.info.origin.position.x = 0.0;
+  //     res.map.info.origin.position.y = 0.0;
+  //     res.map.info.origin.position.z = 0.0;
+  //     res.map.info.origin.orientation.x = 0.0;
+  //     res.map.info.origin.orientation.y = 0.0;
+  //     res.map.info.origin.orientation.z = 0.0;
+  //     res.map.info.origin.orientation.w = 1.0;
 
-      res.map.info.width = pixels.cols;
-      res.map.info.height = pixels.rows;
-      res.map.info.origin.position.x = xMin;
-      res.map.info.origin.position.y = yMin;
-      res.map.data.resize(res.map.info.width * res.map.info.height);
+  //     res.map.info.width = pixels.cols;
+  //     res.map.info.height = pixels.rows;
+  //     res.map.info.origin.position.x = xMin;
+  //     res.map.info.origin.position.y = yMin;
+  //     res.map.data.resize(res.map.info.width * res.map.info.height);
 
-      memcpy(res.map.data.data(), pixels.data, res.map.info.width * res.map.info.height);
+  //     memcpy(res.map.data.data(), pixels.data, res.map.info.width * res.map.info.height);
 
-      res.map.header.frame_id = mapFrameId_;
-      res.map.header.stamp = ros::Time::now();
-      return true;
-    }
-    else
-    {
-      NODELET_WARN("rtabmap: The map is empty!");
-    }
-    return false;
-  }
+  //     res.map.header.frame_id = mapFrameId_;
+  //     res.map.header.stamp = ros::Time::now();
+  //     return true;
+  //   }
+  //   else
+  //   {
+  //     NODELET_WARN("rtabmap: The map is empty!");
+  //   }
+  //   return false;
+  // }
 
   ///
   /// TODO: need to evaluate use of rtabmap_mtx_ in callback below if using this callback;
@@ -4603,6 +4604,7 @@ namespace rtabmap_ros
           }
           if (signatures.size())
           {
+          #ifndef RTABMAP_OCTOMAP
             filteredPoses = mapsManager_.updateMapCaches(
                 filteredPoses,
                 rtabmap_.getMemory(),
@@ -4610,6 +4612,17 @@ namespace rtabmap_ros
                 false,
                 rtabmap_mtx_,
                 signatures);
+          #else
+            rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
+            filteredPoses = mapsManager_.updateMapCaches(
+                filteredPoses,
+                rtabmap_.getMemory(),
+                false,
+                false,
+                rtabmap_mtx_,
+                auxSignatureData,
+                signatures);
+          #endif
           }
           else
           {
@@ -5569,10 +5582,6 @@ namespace rtabmap_ros
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
 
-  ///
-  /// TODO: need to evaluate use of rtabmap_mtx_ in callbacks below if using these callbacks;
-  ///       (hasn't been fully evaluated at present since we aren't using these callbacks)
-  ///
   bool CoreWrapper::octomapBinaryCallback(
       octomap_msgs::GetOctomap::Request &req,
       octomap_msgs::GetOctomap::Response &res)
@@ -5589,7 +5598,8 @@ namespace rtabmap_ros
     }
 
     rtabmap_mtx_.unlock();
-    poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true, rtabmap_mtx_);
+    rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
+    poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true, rtabmap_mtx_, auxSignatureData);
 
     const rtabmap::OctoMap *octomap = mapsManager_.getOctomap();
     bool success = octomap->octree()->size() && octomap_msgs::binaryMapToMsg(*octomap->octree(), res.map);
@@ -5612,12 +5622,14 @@ namespace rtabmap_ros
     }
 
     rtabmap_mtx_.unlock();
-    poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true, rtabmap_mtx_);
+    rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
+    poses = mapsManager_.updateMapCaches(poses, rtabmap_.getMemory(), false, true, rtabmap_mtx_, auxSignatureData);
 
     const rtabmap::OctoMap *octomap = mapsManager_.getOctomap();
     bool success = octomap->octree()->size() && octomap_msgs::fullMapToMsg(*octomap->octree(), res.map);
     return success;
   }
+
 #endif
 #endif
 
@@ -5857,6 +5869,8 @@ namespace rtabmap_ros
 
       if (!filteredPoses.empty())
       {
+      #ifndef RTABMAP_OCTOMAP
+        // built without Octomap library
         filteredPoses = mapsManager_.updateMapCaches(
             filteredPoses,
             rtabmap_.getMemory(),
@@ -5865,6 +5879,27 @@ namespace rtabmap_ros
             rtabmap_mtx_,
             tmpSignature,
             &mapManagerStats);
+      #else
+
+        rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
+
+        filteredPoses = mapsManager_.updateMapCaches(
+            filteredPoses,
+            rtabmap_.getMemory(),
+            false,
+            false,
+            rtabmap_mtx_,
+            auxSignatureData,
+            tmpSignature,
+            &mapManagerStats);
+
+        // updates map to the data base
+        if (rtabmap_.getMemory()->isIncremental())
+        {
+          mapsManager_.semanticOctomapStoreData(auxSignatureData, rtabmap_.getMemory(), rtabmap_mtx_);
+        }
+
+      #endif
 
         int filteredPoses_size = filteredPoses.size();   // need this due to std::move call below
 
@@ -5896,13 +5931,6 @@ namespace rtabmap_ros
         NODELET_INFO("****  Map manager update : filteredPoses size= %d; runtime= %.4lf sec", filteredPoses_size, total_elapsed);
       }
       rate.sleep();
-    }
-
-    // update data to data base
-    // it pushes the updated data to the data base (e.g, empty points)
-    if (rtabmap_.getMemory()->isIncremental())
-    {
-      mapsManager_.semanticOctomapStoreData(rtabmap_._getMemory(), rtabmap_mtx_);
     }
 
     publishMapThread.interrupt();

@@ -470,7 +470,7 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
     Parameters::parse(parameters, Parameters::kGridOctoMapGrdMaxThreshold(), gnd_max_threshold);
     float gnd_offset_height = 0.0;
     Parameters::parse(parameters, Parameters::kGridOctoMapGrdOffsetHeight(), gnd_offset_height);
-    int empty_point_cache_size = 100;
+    int empty_point_cache_size = 100000;
     Parameters::parse(parameters, Parameters::kGridOctoMapEmptyPointsCacheSize(), empty_point_cache_size);
     float maxObstacleHeightAboveGnd = 0.0;
     Parameters::parse(parameters, Parameters::kGridMaxObstacleHeightAboveGnd(), maxObstacleHeightAboveGnd);
@@ -674,11 +674,6 @@ bool MapsManager::hasSubscribers() const
       octoMapProj_.getNumSubscribers() != 0 ||
       octoMapFullGroundPub_.getNumSubscribers() != 0 ||
       octoMapFullObstaclePub_.getNumSubscribers() != 0;
-
-      // octoMapFullCeilingPub_.getNumSubscribers() != 0 ||
-      // octoMapFullStaticPub_.getNumSubscribers() != 0 ||
-      // octoMapFullMovablePub_.getNumSubscribers() != 0 ||
-      // octoMapFullDynamicPub_.getNumSubscribers() != 0;
 }
 
 std::map<int, Transform> MapsManager::getFilteredPoses(const std::map<int, Transform> & poses)
@@ -700,10 +695,26 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
       const std::map<int, rtabmap::Signature> & signatures)
 {
   UMutex mutex;
+#ifdef RTABMAP_OCTOMAP
+  rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
+  return updateMapCaches(poses, memory, updateGrid, updateOctomap, mutex, auxSignatureData, signatures);
+#else
   return updateMapCaches(poses, memory, updateGrid, updateOctomap, mutex, signatures);
+#endif
 }
 
+#ifdef RTABMAP_OCTOMAP
 std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
+    const std::map<int, rtabmap::Transform> & posesIn,
+    const rtabmap::Memory * memory,
+    bool updateGrid,
+    bool updateOctomap,
+    UMutex& memory_mtx,
+    rtabmap::SemanticOctoMap::AuxSignatureData & auxSignatureData,
+    const std::map<int, rtabmap::Signature> & signaturesIn,
+    rtabmap_ros::MapManagerStats * mapManagerStatsPtr)
+#else
+  std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
     const std::map<int, rtabmap::Transform> & posesIn,
     const rtabmap::Memory * memory,
     bool updateGrid,
@@ -711,6 +722,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
     UMutex& memory_mtx,
     const std::map<int, rtabmap::Signature> & signaturesIn,
     rtabmap_ros::MapManagerStats * mapManagerStatsPtr)
+#endif
 {
   bool updateGridCache = updateGrid || updateOctomap;
   if(!updateGrid && !updateOctomap)
@@ -1144,7 +1156,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
       if(octomapRayTracing_) 
       {
         UTimer time;
-        octomapUpdated_ = semanticOctomap_->update(filteredPoses, true);
+        octomapUpdated_ = semanticOctomap_->update(filteredPoses, auxSignatureData, true);
         mapManagerStatsPtr->octomap_update_time = time.ticks();
         mapManagerStatsPtr->octomap_grd_height = semanticOctomap_->getGrdReferenceHeight();
         UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
@@ -1152,7 +1164,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
       else 
       {
         UTimer time;
-        octomapUpdated_ = semanticOctomap_->update(filteredPoses);
+        octomapUpdated_ = semanticOctomap_->update(filteredPoses, auxSignatureData);
         mapManagerStatsPtr->octomap_update_time = time.ticks();
         mapManagerStatsPtr->octomap_grd_height = semanticOctomap_->getGrdReferenceHeight();
         UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
@@ -2410,7 +2422,9 @@ bool MapsManager::getMapAlwaysUpdateStateCallback(std_srvs::Trigger::Request& re
   return true;
 }
 
-void MapsManager::semanticOctomapStoreData(rtabmap::Memory * memory, UMutex& memory_mtx)
+
+#ifdef RTABMAP_OCTOMAP
+void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatureData & auxSignatureData, const rtabmap::Memory * memory, UMutex& memory_mtx)
 {
   if (!memory)
     return;
@@ -2421,20 +2435,10 @@ void MapsManager::semanticOctomapStoreData(rtabmap::Memory * memory, UMutex& mem
   
   runtime_Timer.start();
 
-  // extract the data from semantic octomap and update it into signature datasensor's object
-
-  // extract data
-  octomap_mtx_.lock();
-  std::map<int, std::vector<octomap::point3d>> emptyPointsCache = semanticOctomap_->getEmptyPointCache();
-  //std::map<int, float> groundReferences = semanticOctomap_->getGroundReferences();
-  octomap_mtx_.unlock();
-
-  UWARN("emptyPointsCache size= %d", emptyPointsCache.size());
-
   // For keyframes in the cache convert the points (empty)
   // the data in memory stores cv Mat types 
-  std::map<int, cv::Mat> emptyPointsCacheMat;
-  for (auto emptyIter = emptyPointsCache.begin(); emptyIter != emptyPointsCache.end(); ++emptyIter)
+  std::vector<std::pair<int, cv::Mat>> emptyPointsMat;
+  for (auto emptyIter = auxSignatureData.emptyPoints.begin(); emptyIter != auxSignatureData.emptyPoints.end(); ++emptyIter)
   {
     // convert points to cv Mat types
     int pointsSize = emptyIter->second.size();
@@ -2449,25 +2453,25 @@ void MapsManager::semanticOctomapStoreData(rtabmap::Memory * memory, UMutex& mem
       ptr[1] = pt.y();
       ptr[2] = pt.z();
     }
-
-    UWARN("emptyPointsCache : size = %d; mat size=%d", oi, empty.cols);
-    emptyPointsCacheMat.insert({emptyIter->first, empty});
+    emptyPointsMat.push_back(std::make_pair(emptyIter->first, empty));
   }
 
   runtime_conversion += runtime_Timer.ticks();
   
   memory_mtx.lock();
-  memory->updateSignatureData(emptyPointsCacheMat);
+  memory->updateSignatureData(emptyPointsMat);
   memory_mtx.unlock();
 
   double runtime_total = runtime_Timer.ticks();
   std::stringstream ss;
   ss << std::endl
-  << "MapsManager::semanticOctomapStoreData() Runtime : emptyPointsCache size=" << emptyPointsCacheMat.size() << std::endl
+  << "MapsManager::semanticOctomapStoreData() Runtime : emptyPointsCache size=" << emptyPointsMat.size() << std::endl
   << "\truntime_conversion       " << runtime_conversion << std::endl
   << "\ttotal                    " << runtime_total << std::endl;
 
   UWARN(ss.str().c_str());
 
 }
+#endif
+
 // JHUAPL section end
