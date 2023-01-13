@@ -827,7 +827,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
           std::map<int, rtabmap::Signature>::const_iterator findIter = signatures.find(iter->first);
           if(findIter == signatures.end())
           {
-            rtabmap::SensorData tmpData = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+            rtabmap::SensorData tmpData = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, true, true);
             signatures.insert(std::make_pair(iter->first, Signature(iter->first, -1, 0, tmpData.stamp(), "", Transform(), Transform(), tmpData)));
           }
         
@@ -891,7 +891,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
           else if(memory)
           {
             memory_mtx.lock();
-            data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+            data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, true, true);
             memory_mtx.unlock();
           }
           
@@ -899,6 +899,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
           cv::Point3f viewPoint;
           std::map<unsigned int, cv::Mat> obstaclesCellsMap;
           cv::Mat emptyCells;
+          cv::Mat groundReference;
           
           cv::Mat rgb, depth, semanticMask;
           bool generateGrid = true;
@@ -934,10 +935,13 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
               occupancyGrid_->isGridFromDepth() && generateGrid?&depth:0,
               semanticSegmentationEnable_ && generateGrid?&semanticMask:0,
               generateGrid?0:&obstaclesCellsMap,
-              generateGrid?0:&emptyCells);
+              generateGrid?0:&emptyCells,
+              generateGrid?0:&groundReference);
 
           UDEBUG(" obstaclesCellsMap size=%d", (int)obstaclesCellsMap.size());
           UDEBUG(" emptyCells size=%d", (int)emptyCells.cols );
+          UDEBUG(" groundReference size=%d", (int)groundReference.cols );
+          
 
           if(generateGrid)
           {
@@ -945,13 +949,13 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
             Signature tmp(data);
             tmp.setPose(iter->second);
             occupancyGrid_->createLocalMap(tmp, obstaclesCellsMap, emptyCells, viewPoint);
-            uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+            uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_tuple(obstaclesCellsMap, emptyCells, groundReference)));
             uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
           }
           else
           {
             viewPoint = data.gridViewPoint();
-            uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_pair(obstaclesCellsMap, emptyCells)));
+            uInsert(gridAPLMaps_, std::make_pair(iter->first, std::make_tuple(obstaclesCellsMap, emptyCells, groundReference)));
             uInsert(gridMapsViewpoints_, std::make_pair(iter->first, viewPoint));
           }
         
@@ -967,7 +971,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
           else if(memory)
           {
             memory_mtx.lock();
-            data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, false, true);
+            data = memory->getNodeData(iter->first, occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, !occupancyGrid_->isGridFromDepth() && !occupancySavedInDB, true, true);
             memory_mtx.unlock();
           }
 
@@ -1094,15 +1098,19 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
           (iter->first == 0 || 
             semanticOctomap_->addedNodes().find(iter->first) == semanticOctomap_->addedNodes().end()))
         {
-          std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > >::iterator mter = gridAPLMaps_.find(iter->first);
+          auto mter = gridAPLMaps_.find(iter->first);
           std::map<int, cv::Point3f>::iterator pter = gridMapsViewpoints_.find(iter->first);
           if(mter != gridAPLMaps_.end() && pter != gridMapsViewpoints_.end())
           {
-            if( (mter->second.first.begin() != mter->second.first.end()) && 
-                (mter->second.first.begin()->second.empty() || mter->second.first.begin()->second.channels() > 2) &&
-                (mter->second.second.empty() || mter->second.second.channels() > 2) )
+            auto first = std::get<0>(mter->second);
+            auto second = std::get<1>(mter->second);
+            auto third = std::get<2>(mter->second);
+            if( (first.begin() != first.end()) && 
+                (first.begin()->second.empty() || first.begin()->second.channels() > 2) &&
+                (second.empty() || second.channels() > 2) &&
+                (third.empty() || third.channels() > 0) )
             {
-              semanticOctomap_->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
+              semanticOctomap_->addToCache(iter->first, first, second, pter->second, third);
             }
             else
             {
@@ -1228,7 +1236,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
     else
     {
       // In Semantic Segmentation Mode
-      for(std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat> >::iterator iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
+      for(auto iter=gridAPLMaps_.begin(); iter!=gridAPLMaps_.end();)
       {
         if(!uContains(poses, iter->first))
         {
@@ -2436,23 +2444,23 @@ void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatur
 
   // For keyframes in the cache convert the points (empty)
   // the data in memory stores cv Mat types 
-  std::vector<std::pair<int, cv::Mat>> emptyPointsMat;
+  std::vector<std::pair<int, cv::Mat>> emptyPoints;
   for (auto emptyIter = auxSignatureData.emptyPoints.begin(); emptyIter != auxSignatureData.emptyPoints.end(); ++emptyIter)
   {
     // convert points to cv Mat types
     int frameId = emptyIter->first;
     int pointsSize = emptyIter->second.size();
-    cv::Mat empty = cv::Mat(1, pointsSize, CV_32FC3);
+    cv::Mat emptyMat = cv::Mat(1, pointsSize, CV_32FC3);
     int oi = 0;
     for (auto emptyPtsIter = emptyIter->second.begin(); emptyPtsIter != emptyIter->second.end(); ++emptyPtsIter)
     {
       octomap::point3d pt = *emptyPtsIter;
-      float * ptr = empty.ptr<float>(0, oi++);
+      float * ptr = emptyMat.ptr<float>(0, oi++);
       ptr[0] = pt.x();
       ptr[1] = pt.y();
       ptr[2] = pt.z();
     }
-    emptyPointsMat.push_back(std::make_pair(frameId, empty));
+    emptyPoints.push_back(std::make_pair(frameId, emptyMat));
 
     // if(emptyIter == auxSignatureData.emptyPoints.begin())
     // {
@@ -2464,8 +2472,25 @@ void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatur
 
   //runtime_conversion += runtime_Timer.ticks();
 
+  std::vector<std::pair<int, cv::Mat>> groundReferences;
+  for (auto gndRefIter = auxSignatureData.groundReferences.begin(); gndRefIter != auxSignatureData.groundReferences.end(); ++gndRefIter)
+  {
+    // convert points to cv Mat types
+    int frameId = gndRefIter->first;
+    float gndRefValue = gndRefIter->second;
+    cv::Mat gndRefMat = cv::Mat(1, 1, CV_32FC1);
+    gndRefMat.at<float>(0,0) = gndRefValue;  // row = 0; col = 0
+
+    groundReferences.push_back(std::make_pair(frameId, gndRefMat));
+
+    // if(gndRefIter == auxSignatureData.groundReferences.begin())
+    // {
+    //   UERROR("Storing ground reference to DB, frameId (%d): gndRef=(%0.2f)", frameId, gndRefMat.at<float>(0));
+    // }
+  }
+
   memory_mtx.lock();
-  memory->updateSignatureData(emptyPointsMat);
+  memory->setAuxSignatureData(emptyPoints, groundReferences);
   memory_mtx.unlock();
 
   // double runtime_total = runtime_Timer.ticks();

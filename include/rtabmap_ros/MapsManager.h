@@ -230,7 +230,7 @@ private:
 
 	rtabmap::SemanticOctoMap * semanticOctomap_;
 	bool semanticSegmentationEnable_;
-	std::map<int, std::pair< std::map<unsigned int, cv::Mat>, cv::Mat > > gridAPLMaps_; // map< keyframe_ID, pairs < map<class_id, pointcloud> , empty_cells > >
+	std::map<int, std::tuple<std::map<unsigned int, cv::Mat>, cv::Mat, cv::Mat> > gridAPLMaps_; // map< keyframe_ID, pairs < map<class_id, pointcloud> , empty_cells, ground_reference > >
 	std::string semanticSegmentationModelFilePath_;
 	bool publishSemanticMask_;
 	image_transport::Publisher semanticMaskPub_;
