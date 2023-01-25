@@ -524,7 +524,7 @@
       
       <param name="Vis/FeatureType"             type="string" value="10" />
       <param name="Vis/MaxDepth"                type="string" value="10.0" />
-      <param name="Vis/MinInliers"              type="string" value="30" />   <!-- default 20 : min features in two keyframes to match at registration -->
+      <param name="Vis/MinInliers"              type="string" value="25" />   <!-- default 20 : min features in two keyframes to match at registration -->
       <param name="Vis/CorGuessWinSize"         type="string" value="40" />
       <param name="Vis/MaxFeatures"             type="string" value="600" />    <!-- Kp/MaxFeatures limits the keypoints extraction in an image -->
       <param name="Vis/Iterations"              type="string" value="350" />    <!-- Maximum iterations to compute the transform. -->
@@ -569,7 +569,7 @@
       <param name="Grid/RayTracingClipVertBoundary" type="string"   value="$(arg grid_rayTracingClipVertBoundary)"/>
       <param name="Grid/RayTracingFOVSizeFactor"    type="string"   value="$(arg grid_rayTracingFOVSizeFactor)"/>
       <param name="Grid/OctoMapGrdSTDDEVFactor"     type="string"   value="3.0"/>
-      <param name="Grid/OctoMapGrdSTDDEVThreshold"  type="string"   value="0.1"/>
+      <param name="Grid/OctoMapGrdSTDDEVThreshold"  type="string"   value="0.12"/>
       <param name="Grid/OctoMapGrdMinThreshold"     type="string"   value="$(arg grid_octomap_ground_min_threshold)"/>
       <param name="Grid/OctoMapGrdMaxThreshold"     type="string"   value="$(arg grid_octomap_ground_max_threshold)"/>
       <param name="Grid/OctoMapGrdOffsetHeight"     type="string"   value="$(arg grid_octomap_ground_offset_height)"/>
@@ -585,7 +585,7 @@
       <param name="ORB/Gpu"             type="string" value="$(arg orb_cuda)" />
 
       <param name="Optimizer/GravitySigma"  type="string" value="0.3" />
-      <param name="Optimizer/Iterations"    type="string" value="20" />
+      <param name="Optimizer/Iterations"    type="string" value="30" />
       <param name="Optimizer/Strategy"      type="string" value="2" />
       <param name="Optimizer/Epsilon"       type="string" value="0.00001" />
       <param name="Optimizer/PriorsIgnored" type="string" value="true" />
