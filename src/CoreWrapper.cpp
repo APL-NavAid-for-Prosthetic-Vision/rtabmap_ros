@@ -2920,6 +2920,11 @@ namespace rtabmap_ros
           // ray tracing needs camera instrinsic params and image size.
           mapManagerInitialized_ = mapsManager_.octomapRayTracingInit(data);
         }
+        else 
+        {
+          // it needs tobe set to true for the map manager thread to start.
+          mapManagerInitialized_ = true;
+        }
       }
 
       // JHUAPL end of Section

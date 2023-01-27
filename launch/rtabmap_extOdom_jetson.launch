@@ -105,9 +105,14 @@
         <arg name="rgbd_optimizeMaxError"       default="3.0"/>
         <!-- <arg name="optimizer_robust"            default="true"/> -->
         <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
-        <arg name="orb_cuda"                    default="$(arg orb_cuda)" />
-        <arg name="multi_level_cell_size"       default="$(arg multi_level_cell_size)"/>   
-        <arg name="multi_level_cell_name"       default="$(arg multi_level_cell_name)"/>
+        <arg name="orb_cuda"                              default="$(arg orb_cuda)" />
+        <arg name="depth_Filters"                         default="true"/>
+        <arg name="publish_semantic_mask"                 default="true"/>
+        <arg name="publish_depth_image"                   default="true"/>
+        <arg name="publish_visual_image"                  default="true"/>
+        <arg name="map_manager_update_rate"               default="0.5"/>    <!-- map manager update rate (time [secs] to process one iteration) is the thread processing rate. Ex: 2 Hz, use 1/2 = 0.5 -->
+        <arg name="multi_level_cell_size"                 default="$(arg multi_level_cell_size)"/>   
+        <arg name="multi_level_cell_name"                 default="$(arg multi_level_cell_name)"/>
         <arg name="grid_rangeMax"                         default="5.0"/>  <!-- max range for the grid, in semantic octomap is max range of occupied points -->
         <arg name="grid_semanticDepthFusionCorrection"    default="$(arg grid_semanticDepthFusionCorrection)"/>
         <arg name="grid_semanticGroundCorrection"         default="$(arg grid_semanticGroundCorrection)"/>
