@@ -938,6 +938,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
               generateGrid?0:&emptyCells,
               generateGrid?0:&groundReference);
 
+          //UWARN("node_id:%d", iter->first);
           UDEBUG(" obstaclesCellsMap size=%d", (int)obstaclesCellsMap.size());
           UDEBUG(" emptyCells size=%d", (int)emptyCells.cols );
           UDEBUG(" groundReference size=%d", (int)groundReference.cols );
@@ -2489,9 +2490,12 @@ void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatur
     // }
   }
 
-  memory_mtx.lock();
-  memory->setAuxSignatureData(emptyPoints, groundReferences);
-  memory_mtx.unlock();
+  if (groundReferences.size() > 0 || emptyPoints.size() > 0)
+  {
+    memory_mtx.lock();
+    memory->setAuxSignatureData(emptyPoints, groundReferences);
+    memory_mtx.unlock();
+  }
 
   // double runtime_total = runtime_Timer.ticks();
   // std::stringstream ss;

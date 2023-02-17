@@ -5899,7 +5899,7 @@ namespace rtabmap_ros
             &mapManagerStats);
 
         // updates map to the data base
-        if (rtabmap_.getMemory()->isIncremental())
+        if (auxSignatureData.emptyPoints.size() > 0 || auxSignatureData.groundReferences.size() > 0)
         {
           mapsManager_.semanticOctomapStoreData(auxSignatureData, rtabmap_.getMemory(), rtabmap_mtx_);
         }
