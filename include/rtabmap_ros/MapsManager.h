@@ -161,7 +161,11 @@ private:
 	bool clearRegisteredMapCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
 
 	bool mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
+
 	bool getMapAlwaysUpdateStateCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
+	
+	bool globalGndCorrectionCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
+
 	// JHUAPL section end
 
 private:
@@ -201,6 +205,7 @@ private:
 	ros::ServiceServer clearRegisteredMapSrv_;
 	ros::ServiceServer mapAlwaysUpdateSrv_;
 	ros::ServiceServer getMapAlwaysUpdateSrv_;
+	ros::ServiceServer globalGndCorrectionSrv_;
 	// JHUAPL end section
 
 	std::map<int, rtabmap::Transform> assembledGroundPoses_;
