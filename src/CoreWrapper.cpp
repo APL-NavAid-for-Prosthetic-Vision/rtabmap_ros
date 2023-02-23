@@ -184,6 +184,7 @@ namespace rtabmap_ros
                                mapManagerUpdateThread_(0),
                                mapManagerUpdateThreadRunning_(false),
                                publishMapThreadRunning_(false),
+                               last_mapToPose_(rtabmap::Transform::getIdentity()),
                                mapToOdomPrev_(rtabmap::Transform::getIdentity()),
                                mapManagerInitialized_(false),
                                threadedMode_(false),
@@ -3031,6 +3032,8 @@ namespace rtabmap_ros
           odomFrameId_ = odomFrameId;
           mapToOdomMutex_.unlock();
 
+          rtabmap::Transform mapToPose = rtabmap::Transform::getIdentity();
+
           if (data.id() < 0)
           {
             NODELET_INFO("Intermediate node added");
@@ -3085,14 +3088,16 @@ namespace rtabmap_ros
               poseMsg.pose.covariance;
               if (!rtabmap_.getStatistics().localizationCovariance().empty())
               {
-                rtabmap_ros::transformToPoseMsg(mapToOdom_ * odom, poseMsg.pose.pose);
+                mapToPose = mapToOdom_ * odom;
+                rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
                 const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
                 memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
                 mapToOdomPrev_ = mapToOdom_;
               }
               else
               {
-                rtabmap_ros::transformToPoseMsg(mapToOdomPrev_ * odom, poseMsg.pose.pose);
+                mapToPose = mapToOdomPrev_ * odom;
+                rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
               }
               localizationPosePub_.publish(poseMsg);
             }
@@ -3156,6 +3161,7 @@ namespace rtabmap_ros
             filteredPoses_ = filteredPoses;
             tmpSignature_ = tmpSignature;
             stamp_ = stamp;
+            last_mapToPose_ = mapToPose;
             mmu_data_mtx_.unlock();
 
             this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
@@ -5722,6 +5728,8 @@ namespace rtabmap_ros
         rtabmap::Transform mapToOdom = mapToOdom_;
         mapToOdomMutex_.unlock();
 
+        rtabmap::Transform mapToPose = rtabmap::Transform::getIdentity();
+
         if (data.id() < 0)
         {
           NODELET_INFO("Intermediate node added");
@@ -5741,14 +5749,16 @@ namespace rtabmap_ros
             poseMsg.pose.covariance;
             if (!rtabmap_.getStatistics().localizationCovariance().empty())
             {
-              rtabmap_ros::transformToPoseMsg(mapToOdom * odom, poseMsg.pose.pose);
+              mapToPose = mapToOdom * odom;
+              rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
               const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
               memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
               mapToOdomPrev_ = mapToOdom;
             }
             else
             {
-              rtabmap_ros::transformToPoseMsg(mapToOdomPrev_ * odom, poseMsg.pose.pose);
+              mapToPose = mapToOdomPrev_ * odom;
+              rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
             }
             localizationPosePub_.publish(poseMsg);
           }
@@ -5811,6 +5821,7 @@ namespace rtabmap_ros
           filteredPoses_ = filteredPoses;
           tmpSignature_ = tmpSignature;
           stamp_ = stamp;
+          last_mapToPose_ = mapToPose;
           mmu_data_mtx_.unlock();
 
           this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
@@ -5864,12 +5875,14 @@ namespace rtabmap_ros
       std::map<int, rtabmap::Transform> filteredPoses;
       std::map<int, rtabmap::Signature> tmpSignature;
       ros::Time stamp;
+      rtabmap::Transform mapToPose;
 
       // grab latest signature pose estimates
       mmu_data_mtx_.lock();
       filteredPoses = filteredPoses_;
       tmpSignature = tmpSignature_;
       stamp = stamp_;
+      mapToPose = last_mapToPose_;
       mmu_data_mtx_.unlock();
 
       if (!filteredPoses.empty())
@@ -5916,7 +5929,7 @@ namespace rtabmap_ros
         {
           // the thread has finished, creating a new one. no need to lock for variable
           publishMapThreadRunning_ = true;
-          publishMapThread = boost::thread(boost::bind(&CoreWrapper::publishMapThread, this, std::move(filteredPoses), stamp, mapFrameId_));
+          publishMapThread = boost::thread(boost::bind(&CoreWrapper::publishMapThread, this, std::move(filteredPoses), mapToPose, stamp, mapFrameId_));
 
           std::string threadId = boost::lexical_cast<std::string>(publishMapThread.get_id());
           UDEBUG(" created new thread for publishing map! (%s)", threadId.c_str());
@@ -5943,20 +5956,26 @@ namespace rtabmap_ros
     publishMapThread.join();
   }
 
-  void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses, const ros::Time &stamp, const std::string &mapFrameId)
+  void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses,
+        const rtabmap::Transform &mapToPose, 
+        const ros::Time &stamp, 
+        const std::string &mapFrameId)
   {
     try
     {
       ros::WallTime startTime = ros::WallTime::now();
 
+      ros::Time timeStamp = stamp;
+      rtabmap::Transform pose = mapToPose;
+
       if (!mapsManager_.isSemanticSegmentationEnabled())
       {
-        mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId);
+        mapsManager_.publishMaps(filteredPoses, timeStamp, mapFrameId);
       }
       else
       {
         // publish maps in semantic segmentation mode
-        mapsManager_.publishAPLMaps(stamp, mapFrameId);
+        mapsManager_.publishAPLMaps(pose, timeStamp, mapFrameId);
       }
 
       double total_elapsed = (ros::WallTime::now() - startTime).toSec();

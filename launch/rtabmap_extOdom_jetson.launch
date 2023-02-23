@@ -30,6 +30,7 @@
     <arg name="queue_size"                     default="200"/> <!--default for depth mode --> 
     <arg name="multi_level_cell_size"          default="0.05 0.05 0.05 0.05 0.05"/>   <!-- 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
     <arg name="multi_level_cell_name"          default="ground ceiling static movable dynamic"/>   <!-- Name of octree per layer. -->
+    <arg name="map_always_update"              default="true"/>
     <arg name="grid_semanticDepthFusionCorrection"    default="false"/>
     <arg name="grid_semanticGroundCorrection"         default="false"/>
     <arg name="grid_outlierRemoval"                   default="false"/>
@@ -50,7 +51,6 @@
     
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
-    <arg name="map_always_update"           default="false"/>
     <arg name="bayes_fullPredictionUpdate"  default="false"/>
     <arg name="rgbd_maxOdomCacheSize"       default="0"/>
      

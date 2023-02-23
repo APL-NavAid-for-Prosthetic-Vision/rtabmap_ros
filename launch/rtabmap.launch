@@ -111,6 +111,14 @@
   <arg name="grid_max_publish_height"               default="10.0"/>
   <arg name="grid_maxObstacleHeightAboveGnd"        default="0.0"/>   <!-- default set to disabled -->
 
+  <arg name="publish_obstacles_bbx_min_x"           default="-5.0"/> <!-- must be negative -->
+  <arg name="publish_obstacles_bbx_min_y"           default="-5.0"/> <!-- must be negative -->
+  <arg name="publish_obstacles_bbx_min_z"           default="-2.0"/> <!-- must be negative -->
+
+  <arg name="publish_obstacles_bbx_max_x"           default="5.0"/> <!-- must be positive -->
+  <arg name="publish_obstacles_bbx_max_y"           default="5.0"/> <!-- must be positive -->
+  <arg name="publish_obstacles_bbx_max_z"           default="2.0"/> <!-- must be positive -->
+
 
   <!-- JHU APL : end -->
 
@@ -554,7 +562,6 @@
       <param name="Grid/FootprintLength"            type="string"   value="$(arg grid_footprintLength)"/>
       <param name="Grid/FootprintWidth"             type="string"   value="$(arg grid_footprintWidth)"/>
       <param name="Grid/FootprintHeight"            type="string"   value="$(arg grid_footprintHeight)"/>
-      <param name="Grid/MaxPublishedHeight"         type="string"   value="$(arg grid_max_publish_height)"/>
       <param name="Grid/MaxObstacleHeightAboveGnd"  type="string"   value="$(arg grid_maxObstacleHeightAboveGnd)"/>
       <param name="Grid/MaxObstacleHeight"          type="string"   value="0"/>    <!-- disable ONLY for Depth Mode-->
       <param name="Grid/MultiLevelCellSize"         type="string"   value="$(arg multi_level_cell_size)"/>
@@ -608,8 +615,15 @@
       <param name="map_manager_update_rate"  type="double" value="$(arg map_manager_update_rate)" />
       <param name="landmark_to_multi_signature_id"  type="bool" value="$(arg landmark_to_multi_signature_id)" />
 
-      <param name="latch"   type="bool" value="false"/>  <!--If true, the last message published on the map topics will be saved and sent to new subscribers when they connect -->
-      
+      <param name="latch"                        type="bool"    value="false"/>  <!--If true, the last message published on the map topics will be saved and sent to new subscribers when they connect -->
+      <param name="octomap_maxPublishedHeight"   type="double"  value="$(arg grid_max_publish_height)"/>
+      <param name="publish_obstacles_bbx_min_x"  type="double"  value="$(arg publish_obstacles_bbx_min_x)"/>
+      <param name="publish_obstacles_bbx_min_y"  type="double"  value="$(arg publish_obstacles_bbx_min_y)"/>
+      <param name="publish_obstacles_bbx_min_z"  type="double"  value="$(arg publish_obstacles_bbx_min_z)"/>
+      <param name="publish_obstacles_bbx_max_x"  type="double"  value="$(arg publish_obstacles_bbx_max_x)"/>
+      <param name="publish_obstacles_bbx_max_y"  type="double"  value="$(arg publish_obstacles_bbx_max_y)"/>
+      <param name="publish_obstacles_bbx_max_z"  type="double"  value="$(arg publish_obstacles_bbx_max_z)"/>
+
     </node>
   
     <!-- Visualisation RTAB-Map -->

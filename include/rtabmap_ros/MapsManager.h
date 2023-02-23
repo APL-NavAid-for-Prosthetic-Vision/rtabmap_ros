@@ -133,8 +133,10 @@ public:
 
 	bool isSemanticSegmentationEnabled() { return semanticSegmentationEnable_; }
 
-	void publishAPLMaps(const ros::Time & stamp,
-			const std::string & mapFrameId);
+	void publishAPLMaps(
+					const rtabmap::Transform & mapToPose,
+					const ros::Time & stamp,
+					const std::string & mapFrameId);
 
 	void publishSemenaticMaskImage(const rtabmap::SensorData & data);
 
@@ -194,6 +196,7 @@ private:
 	
 	ros::Publisher octoMapFullGroundPub_;
 	ros::Publisher octoMapFullObstaclePub_;
+	ros::Publisher semanticOctoMapObstaclePub_;
 
 	ros::ServiceServer clearRegisteredMapSrv_;
 	ros::ServiceServer mapAlwaysUpdateSrv_;
@@ -241,6 +244,11 @@ private:
 	UMutex octomap_u_mtx_;
 	UMutex grid_mtx_;
 	UMutex always_map_update_mtx_;
+
+#ifdef RTABMAP_OCTOMAP
+	octomap::point3d publish_bbx_min_range_obstacles_;
+	octomap::point3d publish_bbx_max_range_obstacles_;
+#endif
 
 	// JHUAPL section end
 };

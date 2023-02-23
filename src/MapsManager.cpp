@@ -90,6 +90,8 @@ MapsManager::MapsManager() :
 #ifdef RTABMAP_OCTOMAP
     octomap_(new OctoMap),
     semanticOctomap_(0),
+    publish_bbx_max_range_obstacles_(2,2,2),
+    publish_bbx_min_range_obstacles_(-2,-2,-2),
 #endif
 #endif
     octomapTreeDepth_(16),
@@ -146,15 +148,15 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
   pnh.param("cloud_subtract_filtering", cloudSubtractFiltering_, cloudSubtractFiltering_);
   pnh.param("cloud_subtract_filtering_min_neighbors", cloudSubtractFilteringMinNeighbors_, cloudSubtractFilteringMinNeighbors_);
 
-  ROS_INFO("%s(maps): map_filter_radius          = %f", name.c_str(), mapFilterRadius_);
-  ROS_INFO("%s(maps): map_filter_angle           = %f", name.c_str(), mapFilterAngle_);
-  ROS_INFO("%s(maps): map_cleanup                = %s", name.c_str(), mapCacheCleanup_?"true":"false");
-  ROS_INFO("%s(maps): map_always_update          = %s", name.c_str(), alwaysUpdateMap_?"true":"false");
-  ROS_INFO("%s(maps): map_empty_ray_tracing      = %s", name.c_str(), scanEmptyRayTracing_?"true":"false");
-  ROS_INFO("%s(maps): cloud_output_voxelized     = %s", name.c_str(), cloudOutputVoxelized_?"true":"false");
-  ROS_INFO("%s(maps): cloud_subtract_filtering   = %s", name.c_str(), cloudSubtractFiltering_?"true":"false");
-  ROS_INFO("%s(maps): cloud_subtract_filtering_min_neighbors = %d", name.c_str(), cloudSubtractFilteringMinNeighbors_);
-  
+  ROS_INFO("%s (maps): map_filter_radius          = %.4f", name.c_str(), mapFilterRadius_);
+  ROS_INFO("%s (maps): map_filter_angle           = %.4f", name.c_str(), mapFilterAngle_);
+  ROS_INFO("%s (maps): map_cleanup                = %s", name.c_str(), mapCacheCleanup_?"true":"false");
+  ROS_INFO("%s (maps): map_always_update          = %s", name.c_str(), alwaysUpdateMap_?"true":"false");
+  ROS_INFO("%s (maps): map_empty_ray_tracing      = %s", name.c_str(), scanEmptyRayTracing_?"true":"false");
+  ROS_INFO("%s (maps): cloud_output_voxelized     = %s", name.c_str(), cloudOutputVoxelized_?"true":"false");
+  ROS_INFO("%s (maps): cloud_subtract_filtering   = %s", name.c_str(), cloudSubtractFiltering_?"true":"false");
+  ROS_INFO("%s (maps): cloud_subtract_filtering_min_neighbors = %d", name.c_str(), cloudSubtractFilteringMinNeighbors_);
+
   // JHUAPL section
   
   std::string semanticSegmentationEnable = "false"; 
@@ -162,9 +164,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
   if (semanticSegmentationEnable == "true") {
     semanticSegmentationEnable_ = true;
   }
-  ROS_INFO("%s(maps): Grid/EnableSemanticSegmentation = %s", name.c_str(), semanticSegmentationEnable_?"true":"false");
+  ROS_INFO("%s (maps): Grid/EnableSemanticSegmentation = %s", name.c_str(), semanticSegmentationEnable_?"true":"false");
   pnh.param("model_classes_file_path", semanticSegmentationModelFilePath_, semanticSegmentationModelFilePath_);
-  ROS_INFO("%s(maps): model_classes_file_path = %s", name.c_str(), semanticSegmentationModelFilePath_.empty()?"NOT_PATH":
+  ROS_INFO("%s (maps): model_classes_file_path = %s", name.c_str(), semanticSegmentationModelFilePath_.empty()?"NOT_PATH":
         semanticSegmentationModelFilePath_.c_str());
 
   pnh.param("publish_semantic_mask", publishSemanticMask_, publishSemanticMask_);
@@ -178,6 +180,30 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
   pnh.param("octomap_raytracing", octomapRayTracing_, octomapRayTracing_);
   ROS_INFO("octomap_raytracing = %s", octomapRayTracing_?"True":"False");
 
+  pnh.param("octomap_maxPublishedHeight", maxPublishedHeight_, maxPublishedHeight_);
+  ROS_INFO("%s(maps): maxPublishedHeight = %.2f", name.c_str(), maxPublishedHeight_);
+
+#ifdef WITH_OCTOMAP_MSGS
+#ifdef RTABMAP_OCTOMAP
+  float publish_obstacles_bbx_min_x = -2, publish_obstacles_bbx_min_y = -2, publish_obstacles_bbx_min_z = -2;
+  float publish_obstacles_bbx_max_x = 2, publish_obstacles_bbx_max_y = 2, publish_obstacles_bbx_max_z = 2;
+  pnh.param("publish_obstacles_bbx_min_x", publish_obstacles_bbx_min_x, publish_obstacles_bbx_min_x);
+  pnh.param("publish_obstacles_bbx_min_y", publish_obstacles_bbx_min_y, publish_obstacles_bbx_min_y);
+  pnh.param("publish_obstacles_bbx_min_z", publish_obstacles_bbx_min_z, publish_obstacles_bbx_min_z);
+
+  pnh.param("publish_obstacles_bbx_max_x", publish_obstacles_bbx_max_x, publish_obstacles_bbx_max_x);
+  pnh.param("publish_obstacles_bbx_max_y", publish_obstacles_bbx_max_y, publish_obstacles_bbx_max_y);
+  pnh.param("publish_obstacles_bbx_max_z", publish_obstacles_bbx_max_z, publish_obstacles_bbx_max_z);
+
+  publish_bbx_min_range_obstacles_ = octomap::point3d(publish_obstacles_bbx_min_x, publish_obstacles_bbx_min_y, publish_obstacles_bbx_min_z);
+  publish_bbx_max_range_obstacles_ = octomap::point3d(publish_obstacles_bbx_max_x, publish_obstacles_bbx_max_y, publish_obstacles_bbx_max_z);
+
+  ROS_INFO("%s (maps): publish_bbx_min_range_obstacles_(x,y,z)  = (%.2f,%.2f,%.2f) ", name.c_str(), 
+          publish_bbx_min_range_obstacles_.x(), publish_bbx_min_range_obstacles_.y(), publish_bbx_min_range_obstacles_.z());
+  ROS_INFO("%s (maps): publish_bbx_max_range_obstacles_(x,y,z)  = (%.2f,%.2f,%.2f) ", name.c_str(), 
+          publish_bbx_max_range_obstacles_.x(), publish_bbx_max_range_obstacles_.y(), publish_bbx_max_range_obstacles_.z());
+#endif
+#endif
   // JHUAPL section end
 
 #ifdef WITH_OCTOMAP_MSGS
@@ -279,6 +305,8 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
     latched_.insert(std::make_pair((void*)&octoMapFullGroundPub_, false));
     octoMapFullObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_full_obstacle", 1, latching_);
     latched_.insert(std::make_pair((void*)&octoMapFullObstaclePub_, false));
+    semanticOctoMapObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_bbx_obstacles", 1, latching_);
+    latched_.insert(std::make_pair((void*)&semanticOctoMapObstaclePub_, false));
   }
   else 
   {
@@ -453,8 +481,6 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
   // JHUAPL section
   if(semanticSegmentationEnable_)
   {
-     
-    Parameters::parse(parameters, Parameters::kGridMaxPublishedHeight(), maxPublishedHeight_);
     int octoMapNumThreads = 2;
     Parameters::parse(parameters, Parameters::kGridOctoMapNumThreads(), octoMapNumThreads);
     float rangeMax = 10.0;
@@ -498,8 +524,7 @@ void MapsManager::setParameters(const rtabmap::ParametersMap & parameters)
     Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMin(), probClampingMin);
     float probClampingMax = 0.971;
     Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), probClampingMax);
-    
-    ROS_INFO("Grid/MaxPublishedHeight = %f", maxPublishedHeight_);
+
     ROS_INFO("Grid/RangeMax = %f", rangeMax);
 
     ROS_INFO("Grid/OctoMapNumThreads = %d", octoMapNumThreads);
@@ -673,7 +698,8 @@ bool MapsManager::hasSubscribers() const
       octoMapEmptySpace_.getNumSubscribers() != 0 ||
       octoMapProj_.getNumSubscribers() != 0 ||
       octoMapFullGroundPub_.getNumSubscribers() != 0 ||
-      octoMapFullObstaclePub_.getNumSubscribers() != 0;
+      octoMapFullObstaclePub_.getNumSubscribers() != 0 ||
+      semanticOctoMapObstaclePub_.getNumSubscribers() != 0;
 }
 
 std::map<int, Transform> MapsManager::getFilteredPoses(const std::map<int, Transform> & poses)
@@ -738,7 +764,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
         octoMapEmptySpace_.getNumSubscribers() != 0 ||
         octoMapProj_.getNumSubscribers() != 0 ||
         octoMapFullGroundPub_.getNumSubscribers() != 0 ||
-        octoMapFullObstaclePub_.getNumSubscribers() != 0;
+        octoMapFullObstaclePub_.getNumSubscribers() != 0 ||
+        semanticOctoMapObstaclePub_.getNumSubscribers() != 0;
 
     updateGrid = projMapPub_.getNumSubscribers() != 0 ||
         gridMapPub_.getNumSubscribers() != 0 ||
@@ -2053,8 +2080,9 @@ cv::Mat MapsManager::getGridProbMap(
 // JHUAPL section
 
 void MapsManager::publishAPLMaps(
-    const ros::Time & stamp,
-    const std::string & mapFrameId)
+        const rtabmap::Transform & mapToPose,
+        const ros::Time & stamp,
+        const std::string & mapFrameId)
 {
   UDEBUG("Publishing APL maps...");
 
@@ -2074,7 +2102,8 @@ void MapsManager::publishAPLMaps(
       (octoMapPubBin_.getNumSubscribers() && !latched_.at(&octoMapPubBin_)) ||
       (octoMapPubFull_.getNumSubscribers() && !latched_.at(&octoMapPubFull_)) ||
       (octoMapFullGroundPub_.getNumSubscribers() && !latched_.at(&octoMapFullGroundPub_)) ||
-      (octoMapFullObstaclePub_.getNumSubscribers() && !latched_.at(&octoMapFullObstaclePub_)))
+      (octoMapFullObstaclePub_.getNumSubscribers() && !latched_.at(&octoMapFullObstaclePub_)) ||
+      (semanticOctoMapObstaclePub_.getNumSubscribers() && !latched_.at(&semanticOctoMapObstaclePub_)))
   {
     octomap_mtx_.lock();
 	
@@ -2094,13 +2123,21 @@ void MapsManager::publishAPLMaps(
       bool copyOctree = false;
 
       if (octoMapPubFull_.getNumSubscribers() > 0) 
+      {
         copyOctree = true;
-      else if ((octoMapPubBin_.getNumSubscribers() || octoMapFullObstaclePub_.getNumSubscribers()) &&
+      }
+      else if ((octoMapPubBin_.getNumSubscribers() > 0 || 
+                octoMapFullObstaclePub_.getNumSubscribers() > 0 ||
+                semanticOctoMapObstaclePub_.getNumSubscribers() > 0) &&
                 octreeId == SemanticOctoMap::LayerType::kTypeObstacle)
+      {
         copyOctree = true;
+      }
       else if (octoMapFullGroundPub_.getNumSubscribers() && octreeId == SemanticOctoMap::LayerType::kTypeGround)
+      {
         copyOctree = true;
-
+      }
+        
       if (copyOctree)
       {
         semanticOctomap_->octreeDeepCopy(octreePtr, newOcTree);
@@ -2112,7 +2149,7 @@ void MapsManager::publishAPLMaps(
     }
     octomap_mtx_.unlock();
 
-    // this merges layers into a single tree for pusblishing.
+    // this merges layers into a single tree for publishing.
     boost::shared_ptr<SemanticColorOcTree> m_octreePtr(new SemanticColorOcTree(0.05));
     if(octoMapPubFull_.getNumSubscribers() > 0)
     {	
@@ -2126,7 +2163,7 @@ void MapsManager::publishAPLMaps(
       Eigen::Vector3f maxBoundMap(maxValue, maxValue, maxPublishedHeight_);
       Eigen::Vector3f minBoundMap(minValue, minValue, minValue);
 
-      semanticOctomap_->multiOctreesToMergeOctree(octreeLayersCopy, m_octreePtr.get(), multiLevelOctreeName, minBoundMap, maxBoundMap);
+      semanticOctomap_->multiOctreesToMergeOctree(octreeLayersCopy, m_octreePtr.get(), multiLevelOctreeName, minBoundMap, maxBoundMap, true);
     }
 
     // filtering a section above a set height
@@ -2145,7 +2182,30 @@ void MapsManager::publishAPLMaps(
       Eigen::Vector3f minBoundMap(minValue, minValue, minValue);
 
       semanticOctomap_->multiOctreesToMergeOctree(octreeLayersCopy, binary_octreePtr.get(), multiLevelOctreeName, minBoundMap, maxBoundMap);
+    }
 
+    // obstacle semantic octomap of a bounded region around platform
+    boost::shared_ptr<SemanticColorOcTree> obstacles_octreePtr(new SemanticColorOcTree(0.05));
+    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0)
+    {
+      std::string octreeName = "obstacle_SemanticMap";
+      obstacles_octreePtr->setOctTreeName(octreeName);
+
+      std::vector<enum SemanticOctoMap::LayerType> multiLevelOctreeName = {SemanticOctoMap::LayerType::kTypeObstacle};
+
+      octomap::point3d pose(mapToPose.x(), mapToPose.y(), mapToPose.z());
+      octomap::point3d minBoundRange = pose + publish_bbx_min_range_obstacles_;
+      octomap::point3d maxBoundRange = pose + publish_bbx_max_range_obstacles_;
+
+      auto layerIter = octreeLayersCopy.find(SemanticOctoMap::LayerType::kTypeObstacle);
+      if (layerIter != octreeLayersCopy.end())
+      {
+        SemanticColorOcTree* octreePtr = layerIter->second;
+        if (octreePtr)
+        {
+          semanticOctomap_->mergeOctreeBBX(obstacles_octreePtr.get(), octreePtr, minBoundRange, maxBoundRange, true);
+        }
+      }
     }
 
     if(octoMapFullGroundPub_.getNumSubscribers() > 0)
@@ -2197,17 +2257,18 @@ void MapsManager::publishAPLMaps(
       }
     }
 
-    // publishes the full octree (with data). it corresponds to the obstacle layer {static,movable,dynamic} 
-    if(octoMapPubFull_.getNumSubscribers() > 0)
+
+    // publishes the bounded octree (with data). it corresponds to the obstacle layer {static,movable,dynamic} 
+    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0)
     {
       octomap_msgs::Octomap msg;
-      octomap_msgs::fullMapToMsg(*m_octreePtr, msg);
+      octomap_msgs::fullMapToMsg(*obstacles_octreePtr, msg);
       msg.header.frame_id = mapFrameId;
       msg.header.stamp = stamp;
-      octoMapPubFull_.publish(msg);
-      latched_.at(&octoMapPubFull_) = true;
+      semanticOctoMapObstaclePub_.publish(msg);
+      latched_.at(&semanticOctoMapObstaclePub_) = true;
     }
-
+    
     // publishes the binary octree. it corresponds to the obstacle layer {static,movable,dynamic} 
     if(octoMapPubBin_.getNumSubscribers() > 0)
     {
@@ -2217,6 +2278,17 @@ void MapsManager::publishAPLMaps(
       msg.header.stamp = stamp;
       octoMapPubBin_.publish(msg);
       latched_.at(&octoMapPubBin_) = true;
+    }
+
+    // publishes the full octree (with data). it corresponds to the obstacle layer {static,movable,dynamic} 
+    if(octoMapPubFull_.getNumSubscribers() > 0)
+    {
+      octomap_msgs::Octomap msg;
+      octomap_msgs::fullMapToMsg(*m_octreePtr, msg);
+      msg.header.frame_id = mapFrameId;
+      msg.header.stamp = stamp;
+      octoMapPubFull_.publish(msg);
+      latched_.at(&octoMapPubFull_) = true;
     }
 
     // remove local copy of octree from memory
@@ -2231,7 +2303,8 @@ void MapsManager::publishAPLMaps(
     octoMapPubBin_.getNumSubscribers() == 0 &&
     octoMapPubFull_.getNumSubscribers() == 0 &&
     octoMapFullGroundPub_.getNumSubscribers() == 0 &&
-    octoMapFullObstaclePub_.getNumSubscribers() == 0 )
+    octoMapFullObstaclePub_.getNumSubscribers() == 0 &&
+    semanticOctoMapObstaclePub_.getNumSubscribers() == 0)
   {
     octomap_mtx_.lock();
     semanticOctomap_->clear();
@@ -2253,6 +2326,10 @@ void MapsManager::publishAPLMaps(
   if(octoMapFullObstaclePub_.getNumSubscribers() == 0)
   {
     latched_.at(&octoMapFullObstaclePub_) = false;
+  }
+  if(semanticOctoMapObstaclePub_.getNumSubscribers() == 0)
+  {
+    latched_.at(&semanticOctoMapObstaclePub_) = false;
   }
 
 #endif
