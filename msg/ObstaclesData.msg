@@ -1,7 +1,10 @@
+std_msgs/Header header
+
 #
-#   pose:
-#
-#   pointClouds : point Cloud (set of points) belonging to class id. each point cloud is contained 
+# 
+#  obstacleIds : list of each obstacle id (class id) which corresponds to set of points in the same index position
+#                 of the variable pointClouds
+#   pointClouds : list of point Clouds (set of points) belonging to class id. each point cloud is contained 
 #                 in a sensor_msgs::Image so it can be used with cv_bridge.
 #                 
 #
@@ -19,8 +22,9 @@
 #   
 #     Note: sensor_msgs/Image.data stores the data as bytes, a 32FC4 would use 16 bytes for one encasulated point.
 
-geometry_msgs/Pose pose
-sensor_msgs/Image pointCloud
+int32 signatureId   # for debug
+uint32[] obstacleIds
+sensor_msgs/Image[] pointClouds
 
 # transform from point coords to camera coords
 geometry_msgs/Pose T_cam_pts

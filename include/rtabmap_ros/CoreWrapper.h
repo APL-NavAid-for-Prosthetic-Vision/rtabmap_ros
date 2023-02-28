@@ -140,7 +140,7 @@ public:
 
 	///
 	///
-	void publishObstacleData(const rtabmap::SensorData & data);
+	void publishObstaclesData(const rtabmap::SensorData & data);
 
 
 private:

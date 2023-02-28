@@ -109,7 +109,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap_ros/Landmarks.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include <rtabmap_ros/ObstacleData.h>
+#include <rtabmap_ros/ObstaclesData.h>
 #include <rtabmap_ros/MapManagerStats.h>
 #include <rtabmap_ros/InputDataStats.h>
 
@@ -133,7 +133,7 @@ namespace rtabmap_ros
     rtabmap::SensorData sd = core_wrapper->get_rtabmap()->getMemory()->getLastAddedData();
 
     // publish obstacle data
-    core_wrapper->publishObstacleData(sd);
+    core_wrapper->publishObstaclesData(sd);
   }
 
   CoreWrapper::CoreWrapper() : CommonDataSubscriber(false),
@@ -979,7 +979,7 @@ namespace rtabmap_ros
     // JHUAPL section
 
     landmarksMapPub_ = nh.advertise<visualization_msgs::MarkerArray>("landmarks_map", 1);
-    obstaclesDataPub_ = nh.advertise<rtabmap_ros::ObstacleData>("obstacle_data", 1);
+    obstaclesDataPub_ = nh.advertise<rtabmap_ros::ObstaclesData>("obstacles_data", 1);
     mapManagerStatsPub_ = nh.advertise<rtabmap_ros::MapManagerStats>("map_manager_stats", 1);
 
     if (threadedMode_)
@@ -2939,7 +2939,7 @@ namespace rtabmap_ros
         double overheadTimeCallback = 0;
         if (timeInputLastProcess_ > 0)
         {
-          overheadTimeCallback = ros::WallTime::now().toSec() - timeInputLastProcess_;
+          overheadTimeCallback = ros::Time::now().toSec() - timeInputLastProcess_;
           // removing the time msg conversion from the overhead.
           overheadTimeCallback = overheadTimeCallback - timeMsgConversion;
         }
@@ -2972,7 +2972,7 @@ namespace rtabmap_ros
               publishVisualDepthImages(sd);
 
               // publish obstacles data of the last added Data
-              publishObstacleData(sd);
+              publishObstaclesData(sd);
             }
             else
             {
@@ -3014,7 +3014,7 @@ namespace rtabmap_ros
           inputProcessThreadStatsPub_.publish(msg);
         }
 
-        timeInputLastProcess_ = ros::WallTime::now().toSec();
+        timeInputLastProcess_ = ros::Time::now().toSec();
       }
       else
       {
@@ -3058,7 +3058,7 @@ namespace rtabmap_ros
 
               // moved this to callback to publish sooner
               // publish obstacles data of the last added Data
-              // publishObstacleData(sd);
+              // publishObstaclesData(sd);
             }
             else
             {
@@ -5865,11 +5865,11 @@ namespace rtabmap_ros
       rate.sleep();
     }
 
-    ros::WallTime startTime;
+    ros::Time startTime;
 
     while (mapManagerUpdateThreadRunning_)
     {
-      startTime = ros::WallTime::now();
+      startTime = ros::Time::now();
       rtabmap_ros::MapManagerStats mapManagerStats;
 
       std::map<int, rtabmap::Transform> filteredPoses;
@@ -5936,7 +5936,7 @@ namespace rtabmap_ros
         }
         
         // update stats for ros message
-        mapManagerStats.map_manager_update_cache_time = (ros::WallTime::now() - startTime).toSec();
+        mapManagerStats.map_manager_update_cache_time = (ros::Time::now() - startTime).toSec();
         mapManagerStats.header.stamp = ros::Time::now();
 
         // publish stats when there are subscribers.
@@ -5945,7 +5945,7 @@ namespace rtabmap_ros
           mapManagerStatsPub_.publish(mapManagerStats);
         }
 
-        double total_elapsed = (ros::WallTime::now() - startTime).toSec();
+        double total_elapsed = (ros::Time::now() - startTime).toSec();
         NODELET_INFO("****  Map manager update : filteredPoses size= %d; runtime= %.4lf sec", filteredPoses_size, total_elapsed);
       }
       rate.sleep();
@@ -5963,7 +5963,7 @@ namespace rtabmap_ros
   {
     try
     {
-      ros::WallTime startTime = ros::WallTime::now();
+      ros::Time startTime = ros::Time::now();
 
       ros::Time timeStamp = stamp;
       rtabmap::Transform pose = mapToPose;
@@ -5978,7 +5978,7 @@ namespace rtabmap_ros
         mapsManager_.publishAPLMaps(pose, timeStamp, mapFrameId);
       }
 
-      double total_elapsed = (ros::WallTime::now() - startTime).toSec();
+      double total_elapsed = (ros::Time::now() - startTime).toSec();
       NODELET_INFO("       publishing map took %.4lf secs", total_elapsed);
     }
     catch (boost::thread_interrupted &)
@@ -6021,14 +6021,14 @@ namespace rtabmap_ros
     return true;
   }
 
-  void CoreWrapper::publishObstacleData(const rtabmap::SensorData &data)
+  void CoreWrapper::publishObstaclesData(const rtabmap::SensorData &data)
   {
     if (obstaclesDataPub_.getNumSubscribers())
     {
       UTimer timer;
       timer.start();
 
-      rtabmap_ros::ObstacleData msg;
+      rtabmap_ros::ObstaclesData msg;
       msg.header.seq = ++obstacleDataSeq;
       msg.header.stamp = ros::Time(data.stamp());
       msg.header.frame_id = frameId_;
@@ -6074,10 +6074,10 @@ namespace rtabmap_ros
           }
         }
       }
-      NODELET_DEBUG(" publishObstacleData copying msg time elapsed: %f secs", timer.ticks());
+      NODELET_DEBUG(" publishObstaclesData copying msg time elapsed: %f secs", timer.ticks());
       timer.start();
       obstaclesDataPub_.publish(msg);
-      NODELET_DEBUG(" publishObstacleData sending msg time elapsed: %f secs", timer.ticks());
+      NODELET_DEBUG(" publishObstaclesData sending msg time elapsed: %f secs", timer.ticks());
     }
   }
 

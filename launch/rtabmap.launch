@@ -111,6 +111,8 @@
   <arg name="grid_max_publish_height"               default="10.0"/>
   <arg name="grid_maxObstacleHeightAboveGnd"        default="0.0"/>   <!-- default set to disabled -->
 
+  <arg name="obstacles_feedback_processing"         default="$(arg rgbd_semantic_detection_sync)"/> 
+  
   <arg name="publish_obstacles_bbx_min_x"           default="-5.0"/> <!-- must be negative -->
   <arg name="publish_obstacles_bbx_min_y"           default="-5.0"/> <!-- must be negative -->
   <arg name="publish_obstacles_bbx_min_z"           default="-2.0"/> <!-- must be negative -->
@@ -262,6 +264,10 @@
           <!-- <remap from="rgbd_semantic_detection_image"      to="$(arg rgbd_semantic_detection_image_topic)"/> -->
           <param name="approx_sync"     type="bool"   value="$(arg approx_rgbd_sync)"/>
           <param name="queue_size"      type="int"    value="$(arg queue_size_rgbd)"/>
+        </node>
+      </group>
+      <group if="$(arg obstacles_feedback_processing)">
+        <node pkg="nodelet" type="nodelet" name="obstacles_feedback_processing" args="standalone rtabmap_ros/obstacles_feedback_processing" output="$(arg output)">
         </node>
       </group>
     </group>

@@ -128,14 +128,6 @@
     </description>
   </class>
 
-  <class name="rtabmap_ros/rgbd_semantic_detection_sync"
-         type="rtabmap_ros::RGBDSemanticDetectionSync" 
-         base_class_type="nodelet::Nodelet">
-    <description>
-      This is my nodelet.
-    </description>
-  </class>
-
   <class name="rtabmap_ros/rgbdx_sync" 
          type="rtabmap_ros::RGBDXSync" 
          base_class_type="nodelet::Nodelet">
@@ -191,6 +183,24 @@
       This is my nodelet.
     </description>
   </class>
+
+  <!-- APL added nodelets -->
+  <class name="rtabmap_ros/rgbd_semantic_detection_sync"
+         type="rtabmap_ros::RGBDSemanticDetectionSync" 
+         base_class_type="nodelet::Nodelet">
+    <description>
+      This is my nodelet.
+    </description>
+  </class>
+
+  <class name="rtabmap_ros/obstacles_feedback_processing"
+         type="rtabmap_ros::ObstaclesFeedbackProcessing" 
+         base_class_type="nodelet::Nodelet">
+    <description>
+      This is my nodelet.
+    </description>
+  </class>
+  <!-- end of section : APL added nodelets -->
 
 </library>
 

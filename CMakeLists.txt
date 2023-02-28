@@ -160,11 +160,14 @@ add_message_files(
    RGBDSemanticDetection.msg
    SemanticClassIdElement.msg 
    SemanticClassIdMap.msg
-   ObstacleData.msg
+   ObstaclesData.msg
    Landmark.msg
    Landmarks.msg
    MapManagerStats.msg
    InputDataStats.msg
+   ObstaclesBBXMapData.msg
+   OccupancyData.msg
+   ObstacleData.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -401,12 +404,18 @@ if(objectrecognition_FOUND)
       ${objectrecognition_LIBRARIES}
    )
 
-   SET(rtabmap_plugins_lib_src 
+   set(rtabmap_plugins_lib_src 
       ${rtabmap_plugins_lib_src} 
       src/nodelets/rgbd_semantic_detection_sync.cpp
    )
 endif(objectrecognition_FOUND)
 
+if(octomap_msgs_FOUND)
+   set(rtabmap_plugins_lib_src 
+      ${rtabmap_plugins_lib_src} 
+      src/nodelets/obstacles_feedback_processing.cpp
+   )
+endif(octomap_msgs_FOUND)
 # ---- 
 
 
