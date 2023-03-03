@@ -91,7 +91,7 @@
         <arg name="raytracing"                  default="$(arg raytracing)"/>     <!-- this occurs at the occupancy grid only -->
         <arg name="time_threshold"              default="700"/>   <!-- "Rtabmap/TimeThr" : If the map takes longer than this threshold in milliseconds to update then it is moved to long term storage (does not impact octomap) -->
         <arg name="memory_threshold"            default="1000"/>  <!--  "Rtabmap/MemoryThr" : number of nodes in octomap before moved to long-term storage-->
-        <arg name="map_resolution"              default="0.05"/>  <!-- "Grid/CellSize": resolution in m of grid/octomap-->
+        <arg name="map_resolution"              default="0.02"/>  <!-- "Grid/CellSize": resolution in m of grid/octomap: In semantic Segmentation mode: spacing at the occupancy extraction -->
         <arg name="max_nodes"                   default="1000"/>  <!--  "GridGlobal/MaxNodes:" : Maximum nodes assembled in the map starting from the last node (octomap)-->
         <arg name="queue_size"                  default="$(arg queue_size)"/>
         <arg name="rtabmap_detectionRate"       default="$(arg rtabmap_detectionRate)"/>      <!-- "Rtabmap/DetectionRate" : [Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.] --> 

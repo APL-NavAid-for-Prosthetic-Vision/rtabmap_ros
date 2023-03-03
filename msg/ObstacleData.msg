@@ -22,5 +22,5 @@
 geometry_msgs/Pose pose
 sensor_msgs/Image pointCloud
 
-# transform from point coords to camera coords
+# transformation from camera coordinates to the base frame
 geometry_msgs/Pose T_cam_pts
