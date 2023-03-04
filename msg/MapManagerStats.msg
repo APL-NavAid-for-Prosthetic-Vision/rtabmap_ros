@@ -12,7 +12,7 @@ float32 map_manager_update_cache_time
 
 # is_octomap_data: it's set to true when statitics were captured, othewise it is set to false. 
 # octomap_update_time: it's the total time it takes to update the octomap update function.
-# octomap_grd_height: current ground reference height estimated with octomap
+# octomap_gnd_height: current ground reference height estimated with octomap
 bool is_octomap_data
 float32 octomap_update_time
-float32 octomap_grd_height
+float32 octomap_gnd_height

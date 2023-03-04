@@ -1196,7 +1196,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
         UTimer time;
         octomapUpdated_ = semanticOctomap_->update(filteredPoses, auxSignatureData, true);
         mapManagerStatsPtr->octomap_update_time = time.ticks();
-        mapManagerStatsPtr->octomap_grd_height = semanticOctomap_->getGrdReferenceHeight();
+        mapManagerStatsPtr->octomap_gnd_height = semanticOctomap_->getGndReferenceHeight();
         UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
       }
       else 
@@ -1204,7 +1204,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
         UTimer time;
         octomapUpdated_ = semanticOctomap_->update(filteredPoses, auxSignatureData);
         mapManagerStatsPtr->octomap_update_time = time.ticks();
-        mapManagerStatsPtr->octomap_grd_height = semanticOctomap_->getGrdReferenceHeight();
+        mapManagerStatsPtr->octomap_gnd_height = semanticOctomap_->getGndReferenceHeight();
         UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
       }
     }
