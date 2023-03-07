@@ -188,7 +188,8 @@ namespace rtabmap_ros
                                mapToOdomPrev_(rtabmap::Transform::getIdentity()),
                                mapManagerInitialized_(false),
                                threadedMode_(false),
-                               timeInputLastProcess_(0)
+                               timeInputLastProcess_(0),
+                               camTobaseTransform_(rtabmap::Transform::getIdentity())
   {
     char *rosHomePath = getenv("ROS_HOME");
     std::string workingDir = rosHomePath ? rosHomePath : UDirectory::homeDir() + "/.ros";
@@ -991,6 +992,7 @@ namespace rtabmap_ros
     landmarksQuerySrv_ = nh.advertiseService("landmarks_available", &CoreWrapper::landmarksQuerySrvCallback, this);
     landmarksRemoveSrv_ = nh.advertiseService("landmarks_remove", &CoreWrapper::landmarksRemoveSrvCallback, this);
     semanticDataAssociationSrv_ = nh.advertiseService("semantic_data_association_map", &CoreWrapper::semanticDataAssociationSrvCallback, this);
+    baseToCamTransformUpdateSrc_ = nh.advertiseService("baseToCam_Transform", &CoreWrapper::baseToCamTransformSrvCallback, this);
 
     if (publishVisualImage)
     {
@@ -2965,6 +2967,14 @@ namespace rtabmap_ros
               //   the last process data.
               rtabmap::SensorData &sd = *preprocessedData->data;
 
+              // one time update to set the  transformation base to camera frame.
+              camTobaseT_mtx_.lock();
+              if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
+              {
+                camTobaseTransform_ = sd.cameraModels().at(0).localTransform();
+              }
+              camTobaseT_mtx_.unlock();
+              
               // publish the newest semantic mask added to map
               mapsManager_.publishSemenaticMaskImage(sd);
 
@@ -2985,6 +2995,14 @@ namespace rtabmap_ros
 
               rtabmap::SensorData &sd = *preprocessedData->data;
               // rtabmap::SensorData sd = rtabmap_.getLastAddedData();
+
+              // one time update to set the  transformation base to camera frame.
+              camTobaseT_mtx_.lock();
+              if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
+              {
+                camTobaseTransform_ = sd.cameraModels().at(0).localTransform();
+              }
+              camTobaseT_mtx_.unlock();
 
               // publish visual and depth image
               publishVisualDepthImages(sd);
@@ -3050,6 +3068,14 @@ namespace rtabmap_ros
               // (e.g., decimation) of the sensor data
               rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
 
+              // one time update to set the  transformation base to camera frame.
+              camTobaseT_mtx_.lock();
+              if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
+              {
+                camTobaseTransform_ = sd.cameraModels().at(0).localTransform();
+              }
+              camTobaseT_mtx_.unlock();
+
               // publish the newest semantic mask added to map
               mapsManager_.publishSemenaticMaskImage(sd);
 
@@ -3068,6 +3094,14 @@ namespace rtabmap_ros
               // contains local occupancy grid information and post-processing
               // (e.g., decimation) of the sensor data
               rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
+
+              // one time update to set the  transformation base to camera frame.
+              camTobaseT_mtx_.lock();
+              if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
+              {
+                camTobaseTransform_ = sd.cameraModels().at(0).localTransform();
+              }
+              camTobaseT_mtx_.unlock();
 
               // publish visual and depth image
               publishVisualDepthImages(sd);
@@ -6079,6 +6113,28 @@ namespace rtabmap_ros
       obstaclesDataPub_.publish(msg);
       NODELET_DEBUG(" publishObstaclesData sending msg time elapsed: %f secs", timer.ticks());
     }
+  }
+
+  bool CoreWrapper::baseToCamTransformSrvCallback(rtabmap_ros::BaseToCamTransform::Request &req, rtabmap_ros::BaseToCamTransform::Response &res)
+  {
+    camTobaseT_mtx_.lock();
+    if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
+    {
+      res.status = false;
+      camTobaseT_mtx_.unlock();
+      return true;
+    }
+    
+    res.frame_id = odomFrameId_;
+    res.child_frame_id = frameId_;
+    // sending transformation from base frame to camera frame
+    transformToGeometryMsg(camTobaseTransform_.inverse(), res.T_cam_base);
+
+    camTobaseT_mtx_.unlock();
+
+    res.status = true;
+
+    return  true;
   }
 
   // JHUAPL section end

@@ -105,6 +105,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 #include <rtabmap_ros/LandmarksRemove.h>
 #include <rtabmap_ros/LandmarksInsert.h>
 #include <rtabmap_ros/SemanticDataAssociation.h>
+#include <rtabmap_ros/BaseToCamTransform.h>
 
 // system
 #include <string>
@@ -365,6 +366,11 @@ private:
 	void publishGlobalPath(const ros::Time & stamp);
 	void republishMaps();
 
+	// JHU APL
+	bool baseToCamTransformSrvCallback(rtabmap_ros::BaseToCamTransform::Request &req, rtabmap_ros::BaseToCamTransform::Response &res);
+
+	// JHUAPL end
+
 private:
 	rtabmap::Rtabmap rtabmap_;
 	bool paused_;
@@ -531,6 +537,7 @@ private:
 	ros::ServiceServer landmarksQuerySrv_;
 	ros::ServiceServer landmarksRemoveSrv_;
 	ros::ServiceServer semanticDataAssociationSrv_;
+	ros::ServiceServer baseToCamTransformUpdateSrc_;
 
 	bool depthFilters_;
 
@@ -558,6 +565,9 @@ private:
 	std::atomic<bool> mapManagerInitialized_;
 	bool threadedMode_;
 	double timeInputLastProcess_;
+
+	rtabmap::Transform camTobaseTransform_;
+	UMutex camTobaseT_mtx_;
 
 	//  JHUAPL section end
 };

@@ -200,6 +200,7 @@ add_message_files(
    LandmarksInsert.srv
    SemanticDataAssociation.srv
    SelectedLandmarks.srv
+   BaseToCamTransform.srv
  )
 
 ## Generate added messages and services with any dependencies listed here
