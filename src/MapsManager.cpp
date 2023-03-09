@@ -2646,6 +2646,9 @@ bool MapsManager::objectsOfInterestUpdate(rtabmap_ros::ObjectsOfInterestUpdate::
 
 void MapsManager::objectsOfInterestSemanticOctoMapPub()
 {
+  if (objectsOfInterestPub_.getNumSubscribers() <= 0)
+    return;
+
   rtabmap_ros::ObjectsOfInterest msg;
   msg.header.stamp = ros::Time::now();
 
