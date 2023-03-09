@@ -5951,6 +5951,9 @@ namespace rtabmap_ros
           mapsManager_.semanticOctomapStoreData(auxSignatureData, rtabmap_.getMemory(), rtabmap_mtx_);
         }
 
+        // publish objects of interest visible state from map
+        mapsManager_.objectsOfInterestSemanticOctoMapPub();
+
       #endif
 
         int filteredPoses_size = filteredPoses.size();   // need this due to std::move call below

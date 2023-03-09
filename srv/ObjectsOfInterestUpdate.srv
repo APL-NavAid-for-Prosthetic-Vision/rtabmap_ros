@@ -1,0 +1,17 @@
+#request
+
+# objectsOfInterest: list of Object data to be added into map
+#  if sent empty, no object data will be updated.
+#  if sent with data, it will clear older data from list and add the newest data from message
+Object[] objectsOfInterest
+
+# if true, data will be clear.
+bool clearObjects
+
+---
+
+#response
+
+# state of whether the data was updated successfully
+bool updated
+

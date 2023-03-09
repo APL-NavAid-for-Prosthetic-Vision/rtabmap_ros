@@ -325,10 +325,14 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
   }
 
   // JHUAPL section
+  objectsOfInterestPub_ = nht->advertise<rtabmap_ros::ObjectsOfInterest>("object_of_interest_map", 1);
+
   clearRegisteredMapSrv_ = nht->advertiseService("clear_registered_map", &MapsManager::clearRegisteredMapCallback , this);
   mapAlwaysUpdateSrv_ = nht->advertiseService("map_always_update", &MapsManager::mapAlwaysUpdateCallback, this);
   getMapAlwaysUpdateSrv_ = nht->advertiseService("get_map_always_update", &MapsManager::getMapAlwaysUpdateStateCallback, this);
   globalGndCorrectionSrv_ = nht->advertiseService("apply_global_ground_correction", &MapsManager::globalGndCorrectionCallback, this);
+  
+  objectsOfInterestUpdateSrv_ = nht->advertiseService("objects_of_interest_map_update", &MapsManager::objectsOfInterestUpdate, this);
   // JHUAPL section end 
 
 #endif
@@ -2599,5 +2603,76 @@ bool MapsManager::globalGndCorrectionCallback(std_srvs::Trigger::Request& req, s
 
   return true;
 }
+
+
+#ifdef WITH_OCTOMAP_MSGS
+#ifdef RTABMAP_OCTOMAP
+bool MapsManager::objectsOfInterestUpdate(rtabmap_ros::ObjectsOfInterestUpdate::Request& req,  rtabmap_ros::ObjectsOfInterestUpdate::Response& res)
+{
+  bool dataUpdated = false;
+
+  octomap_mtx_.lock();
+  if (req.clearObjects) 
+  {
+    semanticOctomap_->removeObjectsOfInterest();
+  }
+
+  if (!req.objectsOfInterest.empty())
+  {
+    std::list<rtabmap::Object> objectsList;
+    // coverting the msg into the data structure needed.
+    for (int n = 0; n < req.objectsOfInterest.size(); ++n)
+    {
+      rtabmap_ros::Object objMsg = req.objectsOfInterest.at(n);
+
+      std::string name = objMsg.name;
+      octomap::point3d pt(objMsg.x, objMsg.y, objMsg.z);
+      rtabmap::Object obj(name, pt);
+      
+      objectsList.push_back(obj);
+    }
+
+    // add to map
+    semanticOctomap_->addObjectsOfInterest(objectsList);
+
+    dataUpdated = true;
+  }
+  octomap_mtx_.unlock();
+
+  res.updated = dataUpdated;
+
+  return true;
+}
+
+void MapsManager::objectsOfInterestSemanticOctoMapPub()
+{
+  rtabmap_ros::ObjectsOfInterest msg;
+  msg.header.stamp = ros::Time::now();
+
+  octomap_mtx_.lock();
+  std::list<rtabmap::Object> objectsList = semanticOctomap_->getObjectOfInterest();
+
+  for (auto iter = objectsList.begin(); iter != objectsList.end(); ++iter)
+  {
+    rtabmap_ros::Object objMsg;
+    std::string name = iter->getName();
+    octomap::point3d pt = iter->getPoint();
+    bool visible = iter->isVisible();
+
+    objMsg.name = name;
+    // point w.r.t map
+    objMsg.x = pt.x();
+    objMsg.y = pt.y();
+    objMsg.z = pt.z();
+    objMsg.visible = visible;
+
+    msg.objectsOfInterest.push_back(objMsg);
+  }
+  octomap_mtx_.unlock();
+
+  objectsOfInterestPub_.publish(msg);
+}
+#endif
+#endif
 
 // JHUAPL section end
