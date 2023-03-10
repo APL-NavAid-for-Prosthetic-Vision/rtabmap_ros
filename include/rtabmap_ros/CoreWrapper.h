@@ -216,6 +216,11 @@ private:
 												const ros::Time & stamp, 
 												const std::string & mapFrameId);
 
+	/**
+	 * @brief thread event function ( replacing the ROS timer, not working with nodelet)
+	 */ 
+	void heartbeatEventThread();
+
 
 	/// ******************************************
 	///	JHUAPL section end
@@ -369,6 +374,7 @@ private:
 	// JHU APL
 	bool baseToCamTransformSrvCallback(rtabmap_ros::BaseToCamTransform::Request &req, rtabmap_ros::BaseToCamTransform::Response &res);
 
+	void aliveEventCb(const ros::TimerEvent& event);
 	// JHUAPL end
 
 private:
@@ -532,6 +538,7 @@ private:
 	ros::Publisher obstaclesDataPub_;
 	ros::Publisher mapManagerStatsPub_;
 	ros::Publisher inputProcessThreadStatsPub_;
+	ros::Publisher alive_publisher_;
 	
 	ros::ServiceServer landmarkInsertSrv_;
 	ros::ServiceServer landmarksQuerySrv_;
@@ -568,6 +575,8 @@ private:
 
 	rtabmap::Transform camTobaseTransform_;
 	UMutex camTobaseT_mtx_;
+
+	boost::thread* eventHandlerThread_;
 
 	//  JHUAPL section end
 };

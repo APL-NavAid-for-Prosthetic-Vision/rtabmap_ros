@@ -189,7 +189,8 @@ namespace rtabmap_ros
                                mapManagerInitialized_(false),
                                threadedMode_(false),
                                timeInputLastProcess_(0),
-                               camTobaseTransform_(rtabmap::Transform::getIdentity())
+                               camTobaseTransform_(rtabmap::Transform::getIdentity()),
+                               eventHandlerThread_()
   {
     char *rosHomePath = getenv("ROS_HOME");
     std::string workingDir = rosHomePath ? rosHomePath : UDirectory::homeDir() + "/.ros";
@@ -983,6 +984,8 @@ namespace rtabmap_ros
     obstaclesDataPub_ = nh.advertise<rtabmap_ros::ObstaclesData>("obstacles_data", 1);
     mapManagerStatsPub_ = nh.advertise<rtabmap_ros::MapManagerStats>("map_manager_stats", 1);
 
+    alive_publisher_ = nh.advertise<std_msgs::Empty>("heartbeat", 1);
+
     if (threadedMode_)
     {
       inputProcessThreadStatsPub_ = nh.advertise<rtabmap_ros::InputDataStats>("input_process_thread_stats", 1);
@@ -1007,6 +1010,11 @@ namespace rtabmap_ros
       image_transport::ImageTransport depth_it(depth_nh);
       depthImagePub_ = depth_it.advertise("depth_image_rect", 1);
     }
+
+    // THIS IS NOT WORKING IN NOETIC
+    //float heartbeat_time_update = 0.5; // in seconds [0.01 to 1.0]
+    //ros::Timer keepAliveTimer = nh.createTimer(ros::Duration(heartbeat_time_update), boost::bind(&CoreWrapper::aliveEventCb, this, _1));
+    eventHandlerThread_ = new boost::thread(boost::bind(&CoreWrapper::heartbeatEventThread, this));
 
     // this thread is only used in this mode.
     if (threadedMode_)
@@ -1037,13 +1045,6 @@ namespace rtabmap_ros
       rtabmapProcessThread_->join();
       delete rtabmapProcessThread_;
     }
-
-    if (mapManagerUpdateThread_)
-    {
-      mapManagerUpdateThreadRunning_ = false;
-      mapManagerUpdateThread_->join();
-      delete mapManagerUpdateThread_;
-    }
     // JHUAPL section  end
 
     this->saveParameters(configPath_);
@@ -1061,7 +1062,25 @@ namespace rtabmap_ros
         rtabmap_.getMemory()->save2DMap(pixels, xMin, yMin, gridCellSize);
       }
     }
+    rtabmap_mtx_.unlock();
 
+    // JHUAPL section
+    if (mapManagerUpdateThread_)
+    {
+      mapManagerUpdateThreadRunning_ = false;
+      mapManagerUpdateThread_->join();
+      delete mapManagerUpdateThread_;
+    }
+
+    if (eventHandlerThread_)
+    {
+      // ROS::okay should end it
+      eventHandlerThread_->join();
+      delete eventHandlerThread_;
+    }
+    // JHUAPL section  end
+
+    rtabmap_mtx_.lock();
     rtabmap_.close();
     rtabmap_mtx_.unlock();
     printf("rtabmap: Saving database/long-term memory...done! (located at %s, %ld MB)\n", databasePath_.c_str(), UFile::length(databasePath_) / (1024 * 1024));
@@ -6146,6 +6165,26 @@ namespace rtabmap_ros
     res.status = true;
 
     return  true;
+  }
+
+  // void CoreWrapper::aliveEventCb(const ros::TimerEvent& event)
+  // {
+  //   std_msgs::Empty alive_msg;
+  //   alive_publisher_.publish(alive_msg);
+  // }
+
+  void CoreWrapper::heartbeatEventThread()
+  {
+    float heartbeat_time_delay = 1.0;
+    ros::Rate rate(1.0 / heartbeat_time_delay);
+
+    while (ros::ok())
+    {
+      std_msgs::Empty alive_msg;
+      alive_publisher_.publish(alive_msg);
+
+      rate.sleep();
+    }
   }
 
   // JHUAPL section end
