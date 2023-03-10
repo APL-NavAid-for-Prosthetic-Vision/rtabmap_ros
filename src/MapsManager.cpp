@@ -2604,6 +2604,12 @@ bool MapsManager::globalGndCorrectionCallback(std_srvs::Trigger::Request& req, s
   return true;
 }
 
+void MapsManager::updateTransformMapPose(const rtabmap::Transform &g_map_pose)
+{
+  octomap_mtx_.lock();
+  semanticOctomap_->updateTransformMapPose(g_map_pose);
+  octomap_mtx_.unlock();
+}
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
@@ -2653,13 +2659,14 @@ void MapsManager::objectsOfInterestSemanticOctoMapPub()
   msg.header.stamp = ros::Time::now();
 
   octomap_mtx_.lock();
-  std::list<rtabmap::Object> objectsList = semanticOctomap_->getObjectOfInterest();
+  std::list<rtabmap::Object> &objectsList = semanticOctomap_->getObjectOfInterest();
 
   for (auto iter = objectsList.begin(); iter != objectsList.end(); ++iter)
   {
     rtabmap_ros::Object objMsg;
-    std::string name = iter->getName();
-    octomap::point3d pt = iter->getPoint();
+
+    std::string &name = iter->getName();
+    octomap::point3d &pt = iter->getPoint();
     bool visible = iter->isVisible();
 
     objMsg.name = name;

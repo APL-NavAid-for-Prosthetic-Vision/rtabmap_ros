@@ -153,6 +153,8 @@ public:
 
 	bool octomapRayTracingInit(const rtabmap::SensorData & data);
 
+	void updateTransformMapPose(const rtabmap::Transform &g_map_pose);
+
 #ifdef RTABMAP_OCTOMAP
 	void semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatureData & auxSignatureData, const rtabmap::Memory * memory, UMutex& memory_mtx);
 

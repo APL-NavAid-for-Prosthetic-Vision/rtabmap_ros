@@ -3046,6 +3046,7 @@ namespace rtabmap_ros
         {
           timeRtabmap = timer.ticks();
           mapToOdomMutex_.lock();
+          // mapToOdom_ : T_map_odom : it reads from odom to map frame
           mapToOdom_ = rtabmap_.getMapCorrection();
           odomFrameId_ = odomFrameId;
           mapToOdomMutex_.unlock();
@@ -3122,6 +3123,9 @@ namespace rtabmap_ros
               poseMsg.pose.covariance;
               if (!rtabmap_.getStatistics().localizationCovariance().empty())
               {
+                // odom : T_odom_baselink : pt transforms from baselink to odom frame
+                //  mapToOdom_ : T_map_odom : pt transforms from odom frame to map frame
+                //  mapToPose : T_map_baselink : pt transforms from baselink to map frame
                 mapToPose = mapToOdom_ * odom;
                 rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
                 const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
@@ -3195,6 +3199,7 @@ namespace rtabmap_ros
             filteredPoses_ = filteredPoses;
             tmpSignature_ = tmpSignature;
             stamp_ = stamp;
+            // last_mapToPose_ : last T_map_pose or T_map_baselink : pt transforms from baselink to map frame
             last_mapToPose_ = mapToPose;
             mmu_data_mtx_.unlock();
 
@@ -5855,6 +5860,7 @@ namespace rtabmap_ros
           filteredPoses_ = filteredPoses;
           tmpSignature_ = tmpSignature;
           stamp_ = stamp;
+          // last_mapToPose_ : last T_map_pose or T_map_baselink : reads from baselink to map frame
           last_mapToPose_ = mapToPose;
           mmu_data_mtx_.unlock();
 
@@ -5909,14 +5915,15 @@ namespace rtabmap_ros
       std::map<int, rtabmap::Transform> filteredPoses;
       std::map<int, rtabmap::Signature> tmpSignature;
       ros::Time stamp;
-      rtabmap::Transform mapToPose;
+      rtabmap::Transform g_map_pose;
 
       // grab latest signature pose estimates
       mmu_data_mtx_.lock();
       filteredPoses = filteredPoses_;
       tmpSignature = tmpSignature_;
       stamp = stamp_;
-      mapToPose = last_mapToPose_;
+      // last_mapToPose_ : last T_map_pose or T_map_base : reads from baselink to map frame
+      g_map_pose = last_mapToPose_;
       mmu_data_mtx_.unlock();
 
       if (!filteredPoses.empty())
@@ -5933,8 +5940,9 @@ namespace rtabmap_ros
             &mapManagerStats);
       #else
 
-        rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
+        mapsManager_.updateTransformMapPose(g_map_pose);
 
+        rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
         filteredPoses = mapsManager_.updateMapCaches(
             filteredPoses,
             rtabmap_.getMemory(),
@@ -5966,7 +5974,7 @@ namespace rtabmap_ros
         {
           // the thread has finished, creating a new one. no need to lock for variable
           publishMapThreadRunning_ = true;
-          publishMapThread = boost::thread(boost::bind(&CoreWrapper::publishMapThread, this, std::move(filteredPoses), mapToPose, stamp, mapFrameId_));
+          publishMapThread = boost::thread(boost::bind(&CoreWrapper::publishMapThread, this, std::move(filteredPoses), g_map_pose, stamp, mapFrameId_));
 
           std::string threadId = boost::lexical_cast<std::string>(publishMapThread.get_id());
           UDEBUG(" created new thread for publishing map! (%s)", threadId.c_str());
