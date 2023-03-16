@@ -2086,7 +2086,7 @@ cv::Mat MapsManager::getGridProbMap(
 // JHUAPL section
 
 void MapsManager::publishAPLMaps(
-        const rtabmap::Transform & mapToPose,
+        const rtabmap::Transform & baseToMap,
         const ros::Time & stamp,
         const std::string & mapFrameId)
 {
@@ -2199,7 +2199,7 @@ void MapsManager::publishAPLMaps(
 
       std::vector<enum SemanticOctoMap::LayerType> multiLevelOctreeName = {SemanticOctoMap::LayerType::kTypeObstacle};
 
-      octomap::point3d pose(mapToPose.x(), mapToPose.y(), mapToPose.z());
+      octomap::point3d pose(baseToMap.x(), baseToMap.y(), baseToMap.z());
       octomap::point3d minBoundRange = pose + publish_bbx_min_range_obstacles_;
       octomap::point3d maxBoundRange = pose + publish_bbx_max_range_obstacles_;
 

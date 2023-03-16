@@ -184,7 +184,7 @@ namespace rtabmap_ros
                                mapManagerUpdateThread_(0),
                                mapManagerUpdateThreadRunning_(false),
                                publishMapThreadRunning_(false),
-                               last_mapToPose_(rtabmap::Transform::getIdentity()),
+                               last_baseToMap_(rtabmap::Transform::getIdentity()),
                                mapToOdomPrev_(rtabmap::Transform::getIdentity()),
                                mapManagerInitialized_(false),
                                threadedMode_(false),
@@ -2986,7 +2986,7 @@ namespace rtabmap_ros
               //   the last process data.
               rtabmap::SensorData &sd = *preprocessedData->data;
 
-              // one time update to set the  transformation base to camera frame.
+              // one time update to set the transformation transforming points from camera to base frame.
               camTobaseT_mtx_.lock();
               if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
               {
@@ -3015,7 +3015,7 @@ namespace rtabmap_ros
               rtabmap::SensorData &sd = *preprocessedData->data;
               // rtabmap::SensorData sd = rtabmap_.getLastAddedData();
 
-              // one time update to set the  transformation base to camera frame.
+              // one time update to set the transformation transforming points from camera to base frame.
               camTobaseT_mtx_.lock();
               if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
               {
@@ -3065,12 +3065,17 @@ namespace rtabmap_ros
         {
           timeRtabmap = timer.ticks();
           mapToOdomMutex_.lock();
-          // mapToOdom_ : T_map_odom : it reads from odom to map frame
+          // The author of rtabmap is not consistent in his naming convention for transformation variables;
+          //  most of the time, AtoB means the transformation that transforms points from Frame A to Frame B;
+          //  however, for mapToOdom_ this naming convention is flipped
+          //
+          // mapToOdom_ : actually transforms points from Odom frame to Map frame
+          //
           mapToOdom_ = rtabmap_.getMapCorrection();
           odomFrameId_ = odomFrameId;
           mapToOdomMutex_.unlock();
 
-          rtabmap::Transform mapToPose = rtabmap::Transform::getIdentity();
+          rtabmap::Transform baseToMap = rtabmap::Transform::getIdentity();
 
           if (data.id() < 0)
           {
@@ -3088,7 +3093,7 @@ namespace rtabmap_ros
               // (e.g., decimation) of the sensor data
               rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
 
-              // one time update to set the  transformation base to camera frame.
+              // one time update to set the transformation transforming points from camera to base frame.
               camTobaseT_mtx_.lock();
               if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
               {
@@ -3115,7 +3120,7 @@ namespace rtabmap_ros
               // (e.g., decimation) of the sensor data
               rtabmap::SensorData sd = rtabmap_.getMemory()->getLastAddedData();
 
-              // one time update to set the  transformation base to camera frame.
+              // one time update to set the transformation transforming points from camera to base frame.
               camTobaseT_mtx_.lock();
               if (camTobaseTransform_.isIdentity() || camTobaseTransform_.isNull())
               {
@@ -3142,19 +3147,29 @@ namespace rtabmap_ros
               poseMsg.pose.covariance;
               if (!rtabmap_.getStatistics().localizationCovariance().empty())
               {
-                // odom : T_odom_baselink : pt transforms from baselink to odom frame
-                //  mapToOdom_ : T_map_odom : pt transforms from odom frame to map frame
-                //  mapToPose : T_map_baselink : pt transforms from baselink to map frame
-                mapToPose = mapToOdom_ * odom;
-                rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
+                // The author of rtabmap is not consistent in his naming convention for transformation variables;
+                //  most of the time, AtoB means the transformation that transforms points from Frame A to Frame B;
+                //  however, for mapToOdom_ this naming convention is flipped
+                //
+                //  mapToOdom_ : actually transforms points from Odom frame to Map frame
+                //
+                //  odom        : T_odom_base : transforms pt from base to odom frame
+                //  mapToOdom_  : T_map_odom  : transforms pt from odom frame to map frame [NAMING CONVENTION REVERSED FOR "mapToOdom_"]
+                //  baseToMap   : T_map_base  : transforms pt from base to map frame
+                baseToMap = mapToOdom_ * odom;
+                rtabmap_ros::transformToPoseMsg(baseToMap, poseMsg.pose.pose);
                 const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
                 memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
                 mapToOdomPrev_ = mapToOdom_;
               }
               else
               {
-                mapToPose = mapToOdomPrev_ * odom;
-                rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
+                // NOTE: due to mapToOdom_ naming convention being flipped, mapToOdomPrev_ also uses
+                //       a reverse naming convention, i.e.
+                //       mapToOdomPrev_  transforms point from odom frame to map frame
+                //
+                baseToMap = mapToOdomPrev_ * odom;
+                rtabmap_ros::transformToPoseMsg(baseToMap, poseMsg.pose.pose);
               }
               localizationPosePub_.publish(poseMsg);
             }
@@ -3218,8 +3233,8 @@ namespace rtabmap_ros
             filteredPoses_ = filteredPoses;
             tmpSignature_ = tmpSignature;
             stamp_ = stamp;
-            // last_mapToPose_ : last T_map_pose or T_map_baselink : pt transforms from baselink to map frame
-            last_mapToPose_ = mapToPose;
+            // last_baseToMap_ : last T_map_base : transform pt from base to map frame
+            last_baseToMap_ = baseToMap;
             mmu_data_mtx_.unlock();
 
             this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
@@ -5786,7 +5801,7 @@ namespace rtabmap_ros
         rtabmap::Transform mapToOdom = mapToOdom_;
         mapToOdomMutex_.unlock();
 
-        rtabmap::Transform mapToPose = rtabmap::Transform::getIdentity();
+        rtabmap::Transform baseToMap = rtabmap::Transform::getIdentity();
 
         if (data.id() < 0)
         {
@@ -5807,16 +5822,16 @@ namespace rtabmap_ros
             poseMsg.pose.covariance;
             if (!rtabmap_.getStatistics().localizationCovariance().empty())
             {
-              mapToPose = mapToOdom * odom;
-              rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
+              baseToMap = mapToOdom * odom;
+              rtabmap_ros::transformToPoseMsg(baseToMap, poseMsg.pose.pose);
               const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
               memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
               mapToOdomPrev_ = mapToOdom;
             }
             else
             {
-              mapToPose = mapToOdomPrev_ * odom;
-              rtabmap_ros::transformToPoseMsg(mapToPose, poseMsg.pose.pose);
+              baseToMap = mapToOdomPrev_ * odom;
+              rtabmap_ros::transformToPoseMsg(baseToMap, poseMsg.pose.pose);
             }
             localizationPosePub_.publish(poseMsg);
           }
@@ -5879,8 +5894,8 @@ namespace rtabmap_ros
           filteredPoses_ = filteredPoses;
           tmpSignature_ = tmpSignature;
           stamp_ = stamp;
-          // last_mapToPose_ : last T_map_pose or T_map_baselink : reads from baselink to map frame
-          last_mapToPose_ = mapToPose;
+          // last_baseToMap_ : last T_map_pose or T_map_baselink : reads from baselink to map frame
+          last_baseToMap_ = baseToMap;
           mmu_data_mtx_.unlock();
 
           this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
@@ -5941,8 +5956,8 @@ namespace rtabmap_ros
       filteredPoses = filteredPoses_;
       tmpSignature = tmpSignature_;
       stamp = stamp_;
-      // last_mapToPose_ : last T_map_pose or T_map_base : reads from baselink to map frame
-      g_map_pose = last_mapToPose_;
+      // last_baseToMap_ : last T_map_pose or T_map_base : reads from baselink to map frame
+      g_map_pose = last_baseToMap_;
       mmu_data_mtx_.unlock();
 
       if (!filteredPoses.empty())
@@ -6021,7 +6036,7 @@ namespace rtabmap_ros
   }
 
   void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses,
-        const rtabmap::Transform &mapToPose, 
+        const rtabmap::Transform &baseToMap, 
         const ros::Time &stamp, 
         const std::string &mapFrameId)
   {
@@ -6030,7 +6045,7 @@ namespace rtabmap_ros
       ros::Time startTime = ros::Time::now();
 
       ros::Time timeStamp = stamp;
-      rtabmap::Transform pose = mapToPose;
+      rtabmap::Transform pose = baseToMap;
 
       if (!mapsManager_.isSemanticSegmentationEnabled())
       {
@@ -6158,6 +6173,12 @@ namespace rtabmap_ros
     res.frame_id = odomFrameId_;
     res.child_frame_id = frameId_;
     // sending transformation from base frame to camera frame
+    //
+    // NOTE: a different naming convention is used for RTabmap vs ROS message variables
+    //
+    //       RTabmap:  AtoBTransform means:   Point_B = AtoBTransform * Point_A
+    //       ROS Msg:  T_b_a means:           Point_b = T_b_a * Point_a
+    //
     transformToGeometryMsg(camTobaseTransform_.inverse(), res.T_cam_base);
 
     camTobaseT_mtx_.unlock();

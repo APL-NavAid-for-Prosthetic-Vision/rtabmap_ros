@@ -212,7 +212,7 @@ private:
 	 * @brief function thread for publishing maps, it is called and managed from mapManagerUpdateThread
 	 */ 
 	void publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses, 
-												const rtabmap::Transform & mapToPose,
+												const rtabmap::Transform & baseToMap,
 												const ros::Time & stamp, 
 												const std::string & mapFrameId);
 
@@ -566,7 +566,7 @@ private:
 	bool publishMapThreadRunning_;
 	UMutex pflag_mtx_;
 	
-	rtabmap::Transform last_mapToPose_;
+	rtabmap::Transform last_baseToMap_;
 	rtabmap::Transform mapToOdomPrev_;
 	bool LandmarkToMultiSignatureId_;
 	std::atomic<bool> mapManagerInitialized_;

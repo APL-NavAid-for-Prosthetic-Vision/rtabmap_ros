@@ -137,7 +137,7 @@ public:
 	bool isSemanticSegmentationEnabled() { return semanticSegmentationEnable_; }
 
 	void publishAPLMaps(
-					const rtabmap::Transform & mapToPose,
+					const rtabmap::Transform & baseToMap,
 					const ros::Time & stamp,
 					const std::string & mapFrameId);
 
