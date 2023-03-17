@@ -1,0 +1,13 @@
+#request
+
+---
+
+#response
+#   the frame id
+string frame_id 
+#   the frame id of the child frame
+string child_frame_id 
+#    transformation from base frame to camera frame
+geometry_msgs/Transform T_cam_base
+#    state of whether the transformation was set.
+bool status

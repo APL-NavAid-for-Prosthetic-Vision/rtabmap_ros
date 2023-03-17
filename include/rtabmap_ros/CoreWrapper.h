@@ -105,6 +105,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 #include <rtabmap_ros/LandmarksRemove.h>
 #include <rtabmap_ros/LandmarksInsert.h>
 #include <rtabmap_ros/SemanticDataAssociation.h>
+#include <rtabmap_ros/BaseToCamTransform.h>
 
 // system
 #include <string>
@@ -211,9 +212,14 @@ private:
 	 * @brief function thread for publishing maps, it is called and managed from mapManagerUpdateThread
 	 */ 
 	void publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses, 
-												const rtabmap::Transform & mapToPose,
+												const rtabmap::Transform & baseToMap,
 												const ros::Time & stamp, 
 												const std::string & mapFrameId);
+
+	/**
+	 * @brief thread event function ( replacing the ROS timer, not working with nodelet)
+	 */ 
+	void heartbeatEventThread();
 
 
 	/// ******************************************
@@ -364,6 +370,12 @@ private:
 	void publishLocalPath(const ros::Time & stamp);
 	void publishGlobalPath(const ros::Time & stamp);
 	void republishMaps();
+
+	// JHU APL
+	bool baseToCamTransformSrvCallback(rtabmap_ros::BaseToCamTransform::Request &req, rtabmap_ros::BaseToCamTransform::Response &res);
+
+	void aliveEventCb(const ros::TimerEvent& event);
+	// JHUAPL end
 
 private:
 	rtabmap::Rtabmap rtabmap_;
@@ -526,11 +538,13 @@ private:
 	ros::Publisher obstaclesDataPub_;
 	ros::Publisher mapManagerStatsPub_;
 	ros::Publisher inputProcessThreadStatsPub_;
+	ros::Publisher alive_publisher_;
 	
 	ros::ServiceServer landmarkInsertSrv_;
 	ros::ServiceServer landmarksQuerySrv_;
 	ros::ServiceServer landmarksRemoveSrv_;
 	ros::ServiceServer semanticDataAssociationSrv_;
+	ros::ServiceServer baseToCamTransformUpdateSrc_;
 
 	bool depthFilters_;
 
@@ -552,12 +566,17 @@ private:
 	bool publishMapThreadRunning_;
 	UMutex pflag_mtx_;
 	
-	rtabmap::Transform last_mapToPose_;
+	rtabmap::Transform last_baseToMap_;
 	rtabmap::Transform mapToOdomPrev_;
 	bool LandmarkToMultiSignatureId_;
 	std::atomic<bool> mapManagerInitialized_;
 	bool threadedMode_;
 	double timeInputLastProcess_;
+
+	rtabmap::Transform camTobaseTransform_;
+	UMutex camTobaseT_mtx_;
+
+	boost::thread* eventHandlerThread_;
 
 	//  JHUAPL section end
 };

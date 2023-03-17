@@ -107,7 +107,7 @@ class StatisticsVisualizer:
     # if the msg contains octomap stats data
     if msg.is_octomap_data:
       octomap_time = msg.octomap_update_time
-      grd_height = msg.octomap_grd_height
+      grd_height = msg.octomap_gnd_height
 
     # update data in GUI
     if not msg.is_octomap_data:

@@ -26,5 +26,5 @@ int32 signatureId   # for debug
 uint32[] obstacleIds
 sensor_msgs/Image[] pointClouds
 
-# transformation from camera coordinates to the base frame
+# transformation from base frame to camera frame
 geometry_msgs/Pose T_cam_pts
