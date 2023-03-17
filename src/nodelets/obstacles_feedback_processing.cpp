@@ -35,7 +35,15 @@
 #include <pcl/point_cloud.h>
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
-
+#include <pcl/ModelCoefficients.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
 // cv2 library
 #include <opencv2/core/types.hpp>
 
@@ -52,7 +60,7 @@ namespace rtabmap_ros
   class ObstaclesFeedbackProcessing : public nodelet::Nodelet
   {
   public:
-    ObstaclesFeedbackProcessing() : t_mapToPose_(rtabmap::Transform::getIdentity()) {}
+    ObstaclesFeedbackProcessing() : g_map_base_(rtabmap::Transform::getIdentity()) {}
 
     virtual ~ObstaclesFeedbackProcessing() {}
 
@@ -85,14 +93,15 @@ namespace rtabmap_ros
         return;
       }
 
-      pose_mtx_.lock();
-      if (t_mapToPose_.isNull() || t_mapToPose_.isIdentity())
+      g_map2base_mtx_.lock();
+      if (g_map_base_.isNull() || g_map_base_.isIdentity())
       {
         NODELET_WARN("base_link pose has not updated, transform has null or it's an idntity");
         return;
       }
-      rtabmap::Transform t_mapToPose = t_mapToPose_;
-      pose_mtx_.unlock();
+      // g_map_base : Transforms points from base frame to map frame
+      rtabmap::Transform g_map_base = g_map_base_;
+      g_map2base_mtx_.unlock();
 
       // creating octree
       rtabmap::SemanticColorOcTree *octomapPtr = NULL;
@@ -113,7 +122,10 @@ namespace rtabmap_ros
       }
 
       obstacles_data_mtx_.lock();
-      rtabmap::Transform t_poseToMap = t_mapToPose.inverse();
+
+
+      // g_base_map : transform pts from map frame to base frame
+      rtabmap::Transform g_base_map = g_map_base.inverse();
       // converting semantic octomap to data structure
       for (auto octreeNodeIter = octomapPtr->begin(), end = octomapPtr->end(); octreeNodeIter != end; ++octreeNodeIter)
       {
@@ -121,31 +133,33 @@ namespace rtabmap_ros
         {
           // octomap::OcTreeKey key = octreeNodeIter.getKey();
 
-          // transform point w.r.t base_link pose
-          cv::Point3f pt_from_map(octreeNodeIter.getX(), octreeNodeIter.getY(), octreeNodeIter.getZ());
-          cv::Point3f pt_from_pose = rtabmap::util3d::transformPoint(pt_from_map, t_poseToMap);
+          // transform point from map to the base frame 
+          cv::Point3f pt_map(octreeNodeIter.getX(), octreeNodeIter.getY(), octreeNodeIter.getZ());
+          cv::Point3f pt_base = rtabmap::util3d::transformPoint(pt_map, g_base_map);
 
           rtabmap::SemanticColorOcTreeNode::Color pt_color = octreeNodeIter->getColor();
           int occupancyType = octreeNodeIter->getOccupancyType();
           int referenceNodeId = octreeNodeIter->getNodeRefId();
           unsigned int classId = octreeNodeIter->getClassLabel();
           // cv::Point3f semanticObjColor = octreeNodeIter->getMaskColor();
-
-          pcl::PointXYZRGB ptTransformed(pt_from_pose.x,
-                                         pt_from_pose.y,
-                                         pt_from_pose.z);
+          
+          // pt of the bbx map w.r.t base
+          pcl::PointXYZRGB ptTransformed;
+          ptTransformed.x = pt_base.x;
+          ptTransformed.y = pt_base.y;
+          ptTransformed.z = pt_base.z;
           ptTransformed.r = pt_color.r;
           ptTransformed.g = pt_color.g;
           ptTransformed.b = pt_color.b;
-
-          // add obstacles to data structure w.r.t to the base_link pose
+      
+          // add obstacles to data structure w.r.t to the base frame
           auto occupancy_iter = obstacles_data_.find(occupancyType);
           if (occupancy_iter == obstacles_data_.end())
           {
             // add new occupancy type group
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
             pointCloudPtr->push_back(ptTransformed);
-
+        
             std::vector<int> nodeIds;
             nodeIds.push_back(referenceNodeId);
             // all data can be added
@@ -162,7 +176,7 @@ namespace rtabmap_ros
               // add new class id group
               pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudPtr(new pcl::PointCloud<pcl::PointXYZRGB>);
               pointCloudPtr->push_back(ptTransformed);
-
+              
               std::vector<int> nodeIds;
               nodeIds.push_back(referenceNodeId);
 
@@ -181,7 +195,7 @@ namespace rtabmap_ros
         }
       }
       // update orientation vector
-      poseOrientationVector_ = rtabmap::util3d::transformPoint(cv::Point3f(1, 0, 0), t_poseToMap);
+      poseOrientationVector_ = rtabmap::util3d::transformPoint(cv::Point3f(1, 0, 0), g_base_map);
       obstacles_data_mtx_.unlock();
 
       delete octomapPtr;
@@ -191,9 +205,10 @@ namespace rtabmap_ros
 
     void poseUpdateCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg)
     {
-      pose_mtx_.lock();
-      t_mapToPose_ = rtabmap_ros::transformFromPoseMsg(msg->pose.pose);
-      pose_mtx_.unlock();
+      g_map2base_mtx_.lock();
+      // transforms points from base frame to map frame
+      g_map_base_ = rtabmap_ros::transformFromPoseMsg(msg->pose.pose);
+      g_map2base_mtx_.unlock();
     }
 
     void feedbackProcessingThread(const double &updateRateHz)
@@ -209,11 +224,16 @@ namespace rtabmap_ros
 
         //NODELET_WARN_STREAM("poseOrientationVector : " << poseOrientationVector_);
         rtabmap_ros::ObstaclesBBXMapData data_msg;
-
+        
         // loop over all occupancy type groups
         for (auto occupancyIter = obstacles_data_.begin(); occupancyIter != obstacles_data_.end(); ++occupancyIter)
         {
           int occupancyType = occupancyIter->first;
+         
+          // for now only looking at static objects
+          if (occupancyType != rtabmap::SemanticColorOcTreeNode::OccupancyType::kTypeStatic)
+            continue;
+        
           // add data to msg
           data_msg.occupancyTypesId.push_back(occupancyType);
           
@@ -222,25 +242,105 @@ namespace rtabmap_ros
           for (auto obstaclesIter = occupancyIter->second.begin(); obstaclesIter != occupancyIter->second.end(); ++obstaclesIter)
           {
             unsigned int classId = obstaclesIter->first;
-
             //occupancy_msg.obstaclesName.push_back();   /// TODO: load id name and look it up
             occupancy_msg.obstaclesId.push_back(classId);
             
             // obstacle message data
             rtabmap_ros::ObstacleData obstacleDataMsg;
 
+            // pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointCloudPtr
             auto pointCloudPtr = std::get<0>(obstaclesIter->second);
+            
+            //NODELET_ERROR("classId: %d", classId);
+
+            // std::vector<int> nodeIds
             auto nodeIds = std::get<1>(obstaclesIter->second);
+
+            //NODELET_ERROR("pointcloud size: %d", (unsigned int)pointCloudPtr->size());
+            // for (auto pointIter = pointCloudPtr->begin(); pointIter != pointCloudPtr->end(); ++pointIter){
+            //   NODELET_ERROR("x: %f, y: %f, z: %f", pointIter->x, pointIter->y, pointIter->z);
+            // }
+            
 
             // identify the pose of the object
             // point cloud is w.r.t the base_link pose
+            // pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_f(new pcl::PointCloud<pcl::PointXYZRGB>);
+            // pcl::VoxelGrid<pcl::PointXYZRGB> vg;
+            // pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGB>);
+            // vg.setInputCloud(pointCloudPtr);
+            // vg.setLeafSize(0.01f, 0.01f, 0.01f);
+            // vg.filter(*cloud_filtered);
+            
 
+            // std::cout << "PointCloud after filtering has: " << cloud_filtered->size() << "data points." << std::endl;
+ 
+            // pcl::SACSegmentation<pcl::PointXYZRGB> seg;
+            // pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+            // pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+            // pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGB>());
+            // seg.setOptimizeCoefficients(true);
+            // seg.setModelType(pcl::SACMODEL_SPHERE);
+            // seg.setMethodType(pcl::SAC_RANSAC);
+            // seg.setMaxIterations(100);
+            // seg.setDistanceThreshold(0.02);
 
+            // NODELET_ERROR("before while(cloud_filtered) loop!!!!");
+            // int nr_points = (int) cloud_filtered->size();
+            // while(cloud_filtered->size() > 0.3 * nr_points)
+            // {
+            //   seg.setInputCloud(pointCloudPtr);
+            //   seg.segment(*inliers, *coefficients);
+            //   if(inliers->indices.size() == 0)
+            //   {
+            //     std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
+            //     break;
+            //   }
+              
+            //   pcl::ExtractIndices<pcl::PointXYZRGB> extract;
+            //   extract.setInputCloud(cloud_filtered);
+            //   extract.setIndices(inliers);
+            //   extract.setNegative(false);
 
+            //   extract.filter(*cloud_plane);
+            //   std::cout << "PointCloud representing the planar component: " << cloud_plane->size() << " data points." << std::endl;
+
+            //   extract.setNegative(true);
+            //   extract.filter(*cloud_f);
+            //   *cloud_filtered = *cloud_f;
+            // }
+            // NODELET_ERROR("after while(cloud_filtered) loop!!!!");
+            // break;
+
+            // pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGB>);
+            // tree->setInputCloud(pointCloudPtr);
+
+            // std::vector<pcl::PointIndices> cluster_indices;
+            // pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
+            // ec.setClusterTolerance(0.02);
+            // ec.setMinClusterSize(3);
+            // // ec.setMaxClusterSize(25000);
+            // ec.setSearchMethod(tree);
+            // ec.setInputCloud(pointCloudPtr);
+            // ec.extract(cluster_indices);
+            // NODELET_ERROR("Cluster indices size: %d", (unsigned int)cluster_indices.size());
+           
+            // for (const auto& cluster : cluster_indices)
+            // {
+            //   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZRGB>);
+            //   for (const auto& idx : cluster.indices)
+            //   {
+            //     cloud_cluster->push_back((*pointCloudPtr)[idx]);
+            //   }
+            //   cloud_cluster->width = cloud_cluster->size();
+            //   cloud_cluster->height = 1;
+            //   cloud_cluster->is_dense = true;
+
+            //   std::cout << "PointCloud representing the cluster: " << cloud_cluster->size() << " datapoints." << std::endl;
+            // }
+            
             // obstacle msg filling in 
-            //obstacleDataMsg.pose
-          
-            occupancy_msg.obstaclesData.push_back(obstacleDataMsg);
+            
+            //occupancy_msg.obstaclesData.push_back(obstacleDataMsg);
           }
           // insert the occupancy object to the msg
           data_msg.occupancyTypesData.push_back(occupancy_msg);
@@ -267,8 +367,8 @@ namespace rtabmap_ros
     ros::Subscriber semanticObstaclesProcessingSub_;
     ros::Subscriber poseSub_;
 
-    rtabmap::Transform t_mapToPose_;
-    boost::mutex pose_mtx_;
+    rtabmap::Transform g_map_base_;
+    boost::mutex g_map2base_mtx_;
     cv::Point3f poseOrientationVector_;
     boost::mutex obstacles_data_mtx_;
 
