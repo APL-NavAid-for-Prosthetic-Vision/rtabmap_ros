@@ -88,7 +88,7 @@ namespace rtabmap_ros
 
       // publisher
       obstaclesFeedbackPub_ = nh.advertise<rtabmap_ros::ObstaclesBBXMapData>("obstacles_map_feedback", 1);
-      // pointCloudPub_ = nh.advertise<rtabmap_ros::SelectedPointCloud>("obstacle_points_selected", 1);
+      pointCloudPub_ = nh.advertise<rtabmap_ros::SelectedPointCloud>("obstacle_points_selected", 1);
       processingThread_ = boost::thread(boost::bind(&ObstaclesFeedbackProcessing::feedbackProcessingThread, this, rate));
     }
 
@@ -253,10 +253,10 @@ namespace rtabmap_ros
         rtabmap_ros::SelectedPointCloud pointCloud_msg;
         pointCloud_msg.pointCloud = pointImage;
         pointCloudPub_.publish(pointCloud_msg);
-        publish message
-        data_msg.header.stamp = ros::Time::now();
-        data_msg.header.frame_id = "base_link";
-        obstaclesFeedbackPub_.publish(data_msg);
+        // // publish message
+        // data_msg.header.stamp = ros::Time::now();
+        // data_msg.header.frame_id = "base_link";
+        // obstaclesFeedbackPub_.publish(data_msg);
 
         NODELET_ERROR("(obstacles processing) Semantic Octomap post-processing time = %0.4f sec", total_timer.ticks());
 
