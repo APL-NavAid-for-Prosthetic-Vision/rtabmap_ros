@@ -157,6 +157,7 @@ add_message_files(
 add_message_files(
    DIRECTORY msg
    FILES
+   OctomapWithBBox.msg
    RGBDSemanticDetection.msg
    SemanticClassIdElement.msg 
    SemanticClassIdMap.msg
@@ -170,6 +171,8 @@ add_message_files(
    ObstacleData.msg
    Object.msg
    ObjectsOfInterest.msg
+   SelectedPointCloud.msg
+   
 )
 
 ## Generate services in the 'srv' folder
@@ -213,6 +216,7 @@ generate_messages(
    geometry_msgs
    sensor_msgs
    nav_msgs
+   octomap_msgs
 )
 
 #add dynamic reconfigure api

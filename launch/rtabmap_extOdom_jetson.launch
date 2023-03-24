@@ -48,11 +48,20 @@
     <arg name="grid_octomap_empty_points_cache_size"  default="10000"/>
     <arg name="grid_max_publish_height"               default="10.0"/>
     <arg name="grid_maxObstacleHeightAboveGnd"        default="0.0"/>   <!-- default set to disabled -->
-    
+    <arg name="publish_obstacles_bbx_min_x"           default="-5.0"/> <!-- must be negative -->
+    <arg name="publish_obstacles_bbx_min_y"           default="-5.0"/> <!-- must be negative -->
+    <arg name="publish_obstacles_bbx_min_z"           default="-2.0"/> <!-- must be negative -->
+
+    <arg name="publish_obstacles_bbx_max_x"           default="5.0"/> <!-- must be positive -->
+    <arg name="publish_obstacles_bbx_max_y"           default="5.0"/> <!-- must be positive -->
+    <arg name="publish_obstacles_bbx_max_z"           default="2.0"/> <!-- must be positive -->
+
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
     <arg name="bayes_fullPredictionUpdate"  default="false"/>
     <arg name="rgbd_maxOdomCacheSize"       default="0"/>
+
+
      
     <!-- ********** RTABMAP ********** -->
     <!-- 
@@ -132,6 +141,13 @@
         <arg name="grid_octomap_empty_points_cache_size"  default="$(arg grid_octomap_empty_points_cache_size)"/>
         <arg name="grid_max_publish_height"               default="$(arg grid_max_publish_height)"/>
         <arg name="grid_maxObstacleHeightAboveGnd"        default="$(arg grid_maxObstacleHeightAboveGnd)"/>   <!-- default set to disabled -->
+        <arg name="publish_obstacles_bbx_min_x"           default="$(arg publish_obstacles_bbx_min_x)"/> <!-- must be negative -->
+        <arg name="publish_obstacles_bbx_min_y"           default="$(arg publish_obstacles_bbx_min_y)"/> <!-- must be negative -->
+        <arg name="publish_obstacles_bbx_min_z"           default="$(arg publish_obstacles_bbx_min_z)"/> <!-- must be negative -->
+        <arg name="publish_obstacles_bbx_max_x"           default="$(arg publish_obstacles_bbx_max_x)"/> <!-- must be positive -->
+        <arg name="publish_obstacles_bbx_max_y"           default="$(arg publish_obstacles_bbx_max_y)"/> <!-- must be positive -->
+        <arg name="publish_obstacles_bbx_max_z"           default="$(arg publish_obstacles_bbx_max_z)"/> <!-- must be positive -->
+
     </include>
 
 </launch>

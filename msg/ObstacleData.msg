@@ -21,6 +21,6 @@
 
 geometry_msgs/Pose pose
 sensor_msgs/Image pointCloud
-
+geometry_msgs/Point center
 #  transformation from base frame to camera frame
 geometry_msgs/Pose T_cam_pts

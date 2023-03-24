@@ -57,9 +57,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap_ros/ObjectsOfInterest.h>
 #include <rtabmap_ros/ObjectsOfInterestUpdate.h>
 #include <rtabmap_ros/Object.h>
+#include <rtabmap_ros/OctomapWithBBox.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
 #include <std_srvs/Trigger.h>
+#include <geometry_msgs/Point.h>
 
 // JHUAPL section end
 

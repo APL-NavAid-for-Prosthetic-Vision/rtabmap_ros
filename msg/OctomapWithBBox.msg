@@ -1,0 +1,4 @@
+octomap_msgs/Octomap octomap
+geometry_msgs/Point position_map
+geometry_msgs/Point min_bbox_range_map
+geometry_msgs/Point max_bbox_range_map

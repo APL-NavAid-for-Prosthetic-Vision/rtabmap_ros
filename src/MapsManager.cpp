@@ -305,7 +305,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
     latched_.insert(std::make_pair((void*)&octoMapFullGroundPub_, false));
     octoMapFullObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_full_obstacle", 1, latching_);
     latched_.insert(std::make_pair((void*)&octoMapFullObstaclePub_, false));
-    semanticOctoMapObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_bbx_obstacles", 1, latching_);
+    // semanticOctoMapObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_bbx_obstacles", 1, latching_);
+    // latched_.insert(std::make_pair((void*)&semanticOctoMapObstaclePub_, false));
+    semanticOctoMapObstaclePub_ = nht->advertise<rtabmap_ros::OctomapWithBBox>("octomap_bbx_obstacles", 1, latching_);
     latched_.insert(std::make_pair((void*)&semanticOctoMapObstaclePub_, false));
   }
   else 
@@ -2267,10 +2269,39 @@ void MapsManager::publishAPLMaps(
     // publishes the bounded octree (with data). it corresponds to the obstacle layer {static,movable,dynamic} 
     if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0)
     {
-      octomap_msgs::Octomap msg;
-      octomap_msgs::fullMapToMsg(*obstacles_octreePtr, msg);
-      msg.header.frame_id = mapFrameId;
-      msg.header.stamp = stamp;
+      rtabmap_ros::OctomapWithBBox msg;
+      octomap_msgs::Octomap octoMsg;
+      octomap_msgs::fullMapToMsg(*obstacles_octreePtr, octoMsg);
+
+      octoMsg.header.frame_id = mapFrameId;
+      octoMsg.header.stamp = stamp;
+
+      msg.octomap = octoMsg;
+
+      octomap::point3d pose(baseToMap.x(), baseToMap.y(), baseToMap.z());
+      octomap::point3d minBoundRange = pose + publish_bbx_min_range_obstacles_;
+      octomap::point3d maxBoundRange = pose + publish_bbx_max_range_obstacles_;
+
+      geometry_msgs::Point min_bbox_range_map;
+      geometry_msgs::Point max_bbox_range_map;
+      geometry_msgs::Point position_map;
+
+      min_bbox_range_map.x = minBoundRange.x();
+      min_bbox_range_map.y = minBoundRange.y();
+      min_bbox_range_map.z = minBoundRange.z();
+
+      max_bbox_range_map.x = maxBoundRange.x();
+      max_bbox_range_map.y = maxBoundRange.y();
+      max_bbox_range_map.z = maxBoundRange.z();
+
+      position_map.x = pose.x();
+      position_map.y = pose.y();
+      position_map.z = pose.z();
+
+      msg.min_bbox_range_map = min_bbox_range_map;
+      msg.max_bbox_range_map = max_bbox_range_map;
+      msg.position_map = position_map;
+
       semanticOctoMapObstaclePub_.publish(msg);
       latched_.at(&semanticOctoMapObstaclePub_) = true;
     }
