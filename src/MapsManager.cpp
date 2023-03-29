@@ -307,7 +307,9 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
     latched_.insert(std::make_pair((void*)&octoMapFullObstaclePub_, false));
     // semanticOctoMapObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_bbx_obstacles", 1, latching_);
     // latched_.insert(std::make_pair((void*)&semanticOctoMapObstaclePub_, false));
-    semanticOctoMapObstaclePub_ = nht->advertise<rtabmap_ros::OctomapWithBBox>("octomap_bbx_obstacles", 1, latching_);
+    semanticOctoMapWithBBOXObstaclePub_ = nht->advertise<rtabmap_ros::OctomapWithBBox>("octomap_with_bbx_obstacles", 1, latching_);
+    latched_.insert(std::make_pair((void*)&semanticOctoMapWithBBOXObstaclePub_, false));
+    semanticOctoMapObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_bbx_obstacles", 1, latching_);
     latched_.insert(std::make_pair((void*)&semanticOctoMapObstaclePub_, false));
   }
   else 
@@ -706,7 +708,8 @@ bool MapsManager::hasSubscribers() const
       octoMapProj_.getNumSubscribers() != 0 ||
       octoMapFullGroundPub_.getNumSubscribers() != 0 ||
       octoMapFullObstaclePub_.getNumSubscribers() != 0 ||
-      semanticOctoMapObstaclePub_.getNumSubscribers() != 0;
+      semanticOctoMapObstaclePub_.getNumSubscribers() != 0 ||
+      semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() != 0;
 }
 
 std::map<int, Transform> MapsManager::getFilteredPoses(const std::map<int, Transform> & poses)
@@ -772,7 +775,8 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
         octoMapProj_.getNumSubscribers() != 0 ||
         octoMapFullGroundPub_.getNumSubscribers() != 0 ||
         octoMapFullObstaclePub_.getNumSubscribers() != 0 ||
-        semanticOctoMapObstaclePub_.getNumSubscribers() != 0;
+        semanticOctoMapObstaclePub_.getNumSubscribers() != 0 ||
+        semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() != 0;
 
     updateGrid = projMapPub_.getNumSubscribers() != 0 ||
         gridMapPub_.getNumSubscribers() != 0 ||
@@ -2111,7 +2115,9 @@ void MapsManager::publishAPLMaps(
       (octoMapPubFull_.getNumSubscribers() && !latched_.at(&octoMapPubFull_)) ||
       (octoMapFullGroundPub_.getNumSubscribers() && !latched_.at(&octoMapFullGroundPub_)) ||
       (octoMapFullObstaclePub_.getNumSubscribers() && !latched_.at(&octoMapFullObstaclePub_)) ||
-      (semanticOctoMapObstaclePub_.getNumSubscribers() && !latched_.at(&semanticOctoMapObstaclePub_)))
+      (semanticOctoMapObstaclePub_.getNumSubscribers() && !latched_.at(&semanticOctoMapObstaclePub_)) ||
+      (semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() && !latched_.at(&semanticOctoMapObstaclePub_))
+    )
   {
     octomap_mtx_.lock();
 	
@@ -2136,7 +2142,8 @@ void MapsManager::publishAPLMaps(
       }
       else if ((octoMapPubBin_.getNumSubscribers() > 0 || 
                 octoMapFullObstaclePub_.getNumSubscribers() > 0 ||
-                semanticOctoMapObstaclePub_.getNumSubscribers() > 0) &&
+                semanticOctoMapObstaclePub_.getNumSubscribers() > 0 ||
+                semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() > 0) &&
                 octreeId == SemanticOctoMap::LayerType::kTypeObstacle)
       {
         copyOctree = true;
@@ -2194,7 +2201,7 @@ void MapsManager::publishAPLMaps(
 
     // obstacle semantic octomap of a bounded region around platform
     boost::shared_ptr<SemanticColorOcTree> obstacles_octreePtr(new SemanticColorOcTree(0.05));
-    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0)
+    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0 || semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() > 0)
     {
       std::string octreeName = "obstacle_SemanticMap";
       obstacles_octreePtr->setOctTreeName(octreeName);
@@ -2267,16 +2274,16 @@ void MapsManager::publishAPLMaps(
 
 
     // publishes the bounded octree (with data). it corresponds to the obstacle layer {static,movable,dynamic} 
-    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0)
+    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0 || semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() > 0)
     {
-      rtabmap_ros::OctomapWithBBox msg;
+      rtabmap_ros::OctomapWithBBox bboxMsg;
       octomap_msgs::Octomap octoMsg;
       octomap_msgs::fullMapToMsg(*obstacles_octreePtr, octoMsg);
 
       octoMsg.header.frame_id = mapFrameId;
       octoMsg.header.stamp = stamp;
 
-      msg.octomap = octoMsg;
+      bboxMsg.octomap = octoMsg;
 
       octomap::point3d pose(baseToMap.x(), baseToMap.y(), baseToMap.z());
       octomap::point3d minBoundRange = pose + publish_bbx_min_range_obstacles_;
@@ -2298,12 +2305,14 @@ void MapsManager::publishAPLMaps(
       position_map.y = pose.y();
       position_map.z = pose.z();
 
-      msg.min_bbox_range_map = min_bbox_range_map;
-      msg.max_bbox_range_map = max_bbox_range_map;
-      msg.position_map = position_map;
+      bboxMsg.min_bbox_range_map = min_bbox_range_map;
+      bboxMsg.max_bbox_range_map = max_bbox_range_map;
+      bboxMsg.position_map = position_map;
 
-      semanticOctoMapObstaclePub_.publish(msg);
+      semanticOctoMapObstaclePub_.publish(octoMsg);
+      semanticOctoMapWithBBOXObstaclePub_.publish(bboxMsg);
       latched_.at(&semanticOctoMapObstaclePub_) = true;
+      latched_.at(&semanticOctoMapWithBBOXObstaclePub_) = true;
     }
     
     // publishes the binary octree. it corresponds to the obstacle layer {static,movable,dynamic} 
@@ -2341,7 +2350,8 @@ void MapsManager::publishAPLMaps(
     octoMapPubFull_.getNumSubscribers() == 0 &&
     octoMapFullGroundPub_.getNumSubscribers() == 0 &&
     octoMapFullObstaclePub_.getNumSubscribers() == 0 &&
-    semanticOctoMapObstaclePub_.getNumSubscribers() == 0)
+    semanticOctoMapObstaclePub_.getNumSubscribers() == 0 &&
+    semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() == 0)
   {
     octomap_mtx_.lock();
     semanticOctomap_->clear();
@@ -2367,6 +2377,10 @@ void MapsManager::publishAPLMaps(
   if(semanticOctoMapObstaclePub_.getNumSubscribers() == 0)
   {
     latched_.at(&semanticOctoMapObstaclePub_) = false;
+  }
+  if(semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() == 0)
+  {
+    latched_.at(&semanticOctoMapWithBBOXObstaclePub_) = false;
   }
 
 #endif

@@ -28,7 +28,8 @@
 #include <octomap_msgs/conversions.h>
 
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <geometry_msgs/Point.h>
+#include <geometry_msgs/Point32.h>
+#include <sensor_msgs/PointCloud.h>
 
 // boost
 #include <boost/thread/mutex.hpp>
@@ -81,14 +82,18 @@ namespace rtabmap_ros
 
       double rate = 2; // hz
       pnh.param("rate", rate, rate);
+      nh.param("obstacles_feedback/grid_res_x", grid_res_x_, 10.0);
+      nh.param("obstacles_feedback/grid_res_y", grid_res_y_, 10.0);
+      nh.param("obstacles_feedback/print_grid", print_grid_, false);
 
       // Subscriber
-      semanticObstaclesProcessingSub_ = nh.subscribe("octomap_bbx_obstacles", 1, &ObstaclesFeedbackProcessing::semanticObstacleFeedbackProcessingCallback, this);
+      semanticObstaclesProcessingSub_ = nh.subscribe("octomap_with_bbx_obstacles", 1, &ObstaclesFeedbackProcessing::semanticObstacleFeedbackProcessingCallback, this);
       poseSub_ = nh.subscribe("localization_pose", 1, &ObstaclesFeedbackProcessing::poseUpdateCallback, this);
 
       // publisher
       obstaclesFeedbackPub_ = nh.advertise<rtabmap_ros::ObstaclesBBXMapData>("obstacles_map_feedback", 1);
-      pointCloudPub_ = nh.advertise<rtabmap_ros::SelectedPointCloud>("obstacle_points_selected", 1);
+      // pointCloudPub_ = nh.advertise<rtabmap_ros::SelectedPointCloud>("obstacle_points_selected", 1);
+      pointCloudPub_ = nh.advertise<sensor_msgs::PointCloud>("obstacle_points_selected", 1);
       processingThread_ = boost::thread(boost::bind(&ObstaclesFeedbackProcessing::feedbackProcessingThread, this, rate));
     }
 
@@ -170,95 +175,163 @@ namespace rtabmap_ros
         cv::Point3f max_bbox_range_map = max_bbox_range_map_;
         cv::Point3f bbox_bounds_sizes = bbox_bounds_sizes_;
         obstacles_data_mtx_.unlock();
-
         UTimer total_timer;
         total_timer.start();
 
-        int grid_size = 40;
-        float grid_res_x = grid_size/bbox_bounds_sizes_.x;
-        float grid_res_y = grid_size/bbox_bounds_sizes_.y;
+        // float grid_res_x = grid_size/bbox_bounds_sizes_.x;
+        // float grid_res_y_ = grid_size/bbox_bounds_sizes_.y;
+        int grid_size_x = grid_res_x_ * bbox_bounds_sizes_.x;
+        int grid_size_y = grid_res_y_ * bbox_bounds_sizes_.y;
 
         // int c = (grid_size/2)/grid_res;
+        
+        
+        cv::Mat grid = cv::Mat::zeros(grid_size_x, grid_size_y, CV_8S);
+        cv::Mat connected_grid;
+        cv::Mat stats;
+        cv::Mat centroids;
+        std::vector<int> single_components;
 
-        cv::Mat grid = cv::Mat::zeros(grid_size, grid_size, CV_32F);
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr selected_points(new pcl::PointCloud<pcl::PointXYZRGB>);
-      
+       
+        // std::map<int, pcl::PointXYZRGB> point_map; //flattened coordinates to pointxyzrgb
+        std::map<int, cv::Point3f> point_map; //flattened coordinates to pointxyzrgb
         //NODELET_WARN_STREAM("poseOrientationVector : " << poseOrientationVector_);
   
-        // loop over all occupancy type groups
         if (octreePtr == nullptr)
         {
           rate.sleep();
           continue;
         }
-        // NODELET_ERROR("START_LOOP");
+
         for (auto octreeNodeIter = octreePtr->begin(); octreeNodeIter != octreePtr->end(); ++octreeNodeIter)
         {
           if (octreePtr->isNodeOccupied(*octreeNodeIter))
           {
+            
             cv::Point3f pt_map(octreeNodeIter.getX(), octreeNodeIter.getY(), octreeNodeIter.getZ());
-            float x_map_grid = pt_map.x - min_bbox_range_map.x;
-            float y_map_grid = pt_map.y - min_bbox_range_map.y;
-            if (x_map_grid >= bbox_bounds_sizes.x || y_map_grid >= bbox_bounds_sizes.y ||
-                x_map_grid < 0 || y_map_grid < 0)
+            float pt_grid_x = pt_map.x - min_bbox_range_map.x; //in meters
+            float pt_grid_y = pt_map.y - min_bbox_range_map.y; //in meters
+            if (pt_grid_x >= bbox_bounds_sizes.x || pt_grid_y >= bbox_bounds_sizes.y ||
+                pt_grid_x < 0 || pt_grid_y < 0)
             {
               continue;
-            }
-            int pixel_x = floor((pt_map.x - min_bbox_range_map.x) * grid_res_x);
-            int pixel_y = floor((pt_map.y - min_bbox_range_map.y) * grid_res_y);
+            }   
+
+            int pixel_x = floor(pt_grid_x * grid_res_x_); //in pixels
+            int pixel_y = floor(pt_grid_y * grid_res_y_); //in pixels
+            float pt_map_centered_x = ((pixel_x + 0.5) / grid_res_x_) + min_bbox_range_map.x; //meters
+            float pt_map_centered_y = ((pixel_y + 0.5) / grid_res_y_) + min_bbox_range_map.y; //meters
+
+      
             // NODELET_ERROR("pt_map X: %f, Y: %f", pt_map.x, pt_map.y);
+            // NODELET_ERROR("pt_map_centered X: %f, Y: %f", pt_map_centered_x, pt_map_centered_y);
             // NODELET_ERROR("bbx_min X: %f, Y: %f", min_bbox_range_map.x, min_bbox_range_map.y);
             // NODELET_ERROR("pt minus bbx X: %f, Y: %f", pt_map.x - min_bbox_range_map.x, pt_map.y - min_bbox_range_map.y);
             // NODELET_ERROR("bbx_range X: %f, Y: %f", bbox_bounds_sizes.x, bbox_bounds_sizes.y);
-            // NODELET_ERROR("grid_resolution: X: %f, Y: %f", grid_res_x, grid_res_y);
-            // NODELET_ERROR("pixel X: %d, pixel Y: %d", pixel_x, pixel_y);
-
-            if (grid.at<int>(pixel_x, pixel_y) == 0)
+            // NODELET_ERROR("grid_resolution: X: %f, Y: %f", grid_res_x_, grid_res_y_);
+            
+            // std::cout << "rows " << grid.rows << std::endl; 
+            // std::cout << "cols " << grid.cols << std::endl; 
+            if (grid.at<int8_t>(pixel_x, pixel_y) == 0)
             {
 
               rtabmap::SemanticColorOcTreeNode::Color pt_color = octreeNodeIter->getColor();
-              pcl::PointXYZRGB selected_point;
-
+              // pcl::PointXYZRGB selected_point;
+              cv::Point3f selected_point;
               selected_point.x = pt_map.x;
               selected_point.y = pt_map.y;
               selected_point.z = 0;
 
-              selected_point.r = pt_color.r;
-              selected_point.g = pt_color.g;
-              selected_point.b = pt_color.b;
+              // selected_point.r = pt_color.r;
+              // selected_point.g = pt_color.g;
+              // selected_point.b = pt_color.b;
 
+              int flattened_coordinate = pixel_x * grid_size_x + pixel_y;
+              point_map[flattened_coordinate] = selected_point;
+
+              // selected_points->push_back(selected_point);
+              
             
-              selected_points->push_back(selected_point);
-
-              grid.at<unsigned int>(pixel_x, pixel_y) = 1;
+              grid.at<int8_t>(pixel_x, pixel_y) = 1;
+              // NODELET_ERROR("pixel X: %d, pixel Y: %d", pixel_x, pixel_y);
 
             }
 
           }
 
         }
+ 
+        grid.convertTo(grid, CV_8U);
+        int num_components = cv::connectedComponentsWithStats(grid, connected_grid, stats, centroids, 8);
+        // NODELET_WARN("GOT COMPONENTS");
+        // NODELET_WARN("num components %d", num_components);
+        // NODELET_WARN("rows %d", connected_grid.rows);
+        // NODELET_WARN("cols %d", connected_grid.cols);
 
-        for (int i = grid_size-1; i >= 0; --i)
-        {
-          for (int j = 0; j < grid_size; ++j)
+        for (int i = 0; i < stats.rows; ++i)
+        { 
+          if (stats.at<int>(i, 4) == 1)
           {
-            std::cout << grid.at<int>(i, j) << " ";
+            // std::cout << "component " << i << " has " << stats.at<int>(i, 4) << " element" << std::endl;
+            // std::cout << "value at x: " << stats.at<int>(i, 0) << " y: " << stats.at<int>(i, 1);
+            // std::cout << "= " << connected_grid.at<int>(stats.at<int>(i, 1), stats.at<int>(i, 0)) << std::endl;
+            int flattened_coordinate = stats.at<int>(i, 1) * grid_size_x + stats.at<int>(i, 0);
+            if (point_map.find(flattened_coordinate) != point_map.end())
+            {
+              point_map.erase(flattened_coordinate);
+            }
+            // single_components.push_back(flattened_coordinate);
           }
-          std::cout << std::endl;
+        } 
+
+        // for (int component : single_components)
+        // {
+        //   pcl::PointXYZRGB current_point = point_map[component];
+        //   for (auto it = selected_points->begin(); it != selected_points->end(); ++it)
+        //   {
+        //     if (it->x == current_point.x && it->y == current_point.y)
+        //     {
+        //       selected_points->erase(it);
+        //     }
+        //   }
+        // }
+        
+
+        if (print_grid_)
+        {
+          std::cout << connected_grid << std::endl;
         }
 
- 
-        sensor_msgs::Image pointImage;
-        pcl::toROSMsg(*selected_points, pointImage);
-        rtabmap_ros::SelectedPointCloud pointCloud_msg;
-        pointCloud_msg.pointCloud = pointImage;
-        pointCloudPub_.publish(pointCloud_msg);
-        // // publish message
+        if (point_map.size() > 0)
+        {
+          sensor_msgs::PointCloud point_cloud_msg;
+
+          for (auto iterator : point_map)
+          {
+            cv::Point3f point = iterator.second;
+            geometry_msgs::Point32 point_msg;
+            point_msg.x = point.x;
+            point_msg.y = point.y;
+            point_msg.z = point.z;
+            point_cloud_msg.points.push_back(point_msg);
+          }
+          pointCloudPub_.publish(point_cloud_msg);
+        }
+        // if (selected_points->size() > 0)
+        // {
+        //   sensor_msgs::Image pointImage;
+        //   pcl::toROSMsg(*selected_points, pointImage);
+        //   rtabmap_ros::SelectedPointCloud pointCloud_msg;
+        //   pointCloud_msg.pointCloud = pointImage;
+        //   pointCloudPub_.publish(pointCloud_msg);
+        //   // // publish message
+        // }
         // data_msg.header.stamp = ros::Time::now();
         // data_msg.header.frame_id = "base_link";
         // obstaclesFeedbackPub_.publish(data_msg);
 
-        NODELET_ERROR("(obstacles processing) Semantic Octomap post-processing time = %0.4f sec", total_timer.ticks());
+        // NODELET_ERROR("(obstacles processing) Semantic Octomap post-processing time = %0.4f sec", total_timer.ticks());
 
         // sleep for the rest of the time
         rate.sleep();
@@ -276,12 +349,16 @@ namespace rtabmap_ros
 
     rtabmap::Transform g_map_base_;
     boost::mutex g_map2base_mtx_;
+    boost::mutex obstacles_data_mtx_;
+
     cv::Point3f poseOrientationVector_;
     cv::Point3f min_bbox_range_map_;
     cv::Point3f max_bbox_range_map_;
     cv::Point3f bbox_bounds_sizes_;
-    boost::mutex obstacles_data_mtx_;
-
+    
+    double grid_res_x_;
+    double grid_res_y_;
+    bool print_grid_;
     boost::thread processingThread_;
 
     boost::shared_ptr<rtabmap::SemanticColorOcTree> octreePtr_;

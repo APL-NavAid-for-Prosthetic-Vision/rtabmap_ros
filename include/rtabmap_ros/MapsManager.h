@@ -212,6 +212,7 @@ private:
 	ros::Publisher octoMapFullGroundPub_;
 	ros::Publisher octoMapFullObstaclePub_;
 	ros::Publisher semanticOctoMapObstaclePub_;
+	ros::Publisher semanticOctoMapWithBBOXObstaclePub_;
 	ros::Publisher objectsOfInterestPub_;
 
 	ros::ServiceServer clearRegisteredMapSrv_;
