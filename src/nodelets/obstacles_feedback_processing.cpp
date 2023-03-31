@@ -52,6 +52,7 @@
 
 #include <opencv2/core/types.hpp>
 #include <opencv2/core/mat.hpp>
+#include <cv_bridge/cv_bridge.h>
 
 // system
 #include <cstdint>
@@ -59,6 +60,7 @@
 #include <tuple>
 #include <utility>
 #include <math.h>
+#include <string.h>
 
 
 namespace rtabmap_ros
@@ -85,6 +87,8 @@ namespace rtabmap_ros
       nh.param("obstacles_feedback/grid_res_x", grid_res_x_, 10.0);
       nh.param("obstacles_feedback/grid_res_y", grid_res_y_, 10.0);
       nh.param("obstacles_feedback/print_grid", print_grid_, false);
+      nh.param("obstacles_feedback/min_connected_component_size", min_connected_component_size_, 2);
+      
 
       // Subscriber
       semanticObstaclesProcessingSub_ = nh.subscribe("octomap_with_bbx_obstacles", 1, &ObstaclesFeedbackProcessing::semanticObstacleFeedbackProcessingCallback, this);
@@ -93,7 +97,7 @@ namespace rtabmap_ros
       // publisher
       obstaclesFeedbackPub_ = nh.advertise<rtabmap_ros::ObstaclesBBXMapData>("obstacles_map_feedback", 1);
       // pointCloudPub_ = nh.advertise<rtabmap_ros::SelectedPointCloud>("obstacle_points_selected", 1);
-      pointCloudPub_ = nh.advertise<sensor_msgs::PointCloud>("obstacle_points_selected", 1);
+      pointCloudPub_ = nh.advertise<rtabmap_ros::SelectedPointCloud>("obstacle_points_selected", 1);
       processingThread_ = boost::thread(boost::bind(&ObstaclesFeedbackProcessing::feedbackProcessingThread, this, rate));
     }
 
@@ -269,17 +273,21 @@ namespace rtabmap_ros
         // NODELET_WARN("rows %d", connected_grid.rows);
         // NODELET_WARN("cols %d", connected_grid.cols);
 
+        // std::cout << type2str(connected_grid.type()) << std::endl;
+
         for (int i = 0; i < stats.rows; ++i)
         { 
-          if (stats.at<int>(i, 4) == 1)
+          if (stats.at<int>(i, 4) < min_connected_component_size_)
           {
             // std::cout << "component " << i << " has " << stats.at<int>(i, 4) << " element" << std::endl;
             // std::cout << "value at x: " << stats.at<int>(i, 0) << " y: " << stats.at<int>(i, 1);
             // std::cout << "= " << connected_grid.at<int>(stats.at<int>(i, 1), stats.at<int>(i, 0)) << std::endl;
+            // std::cout << connected_grid << std::endl;
             int flattened_coordinate = stats.at<int>(i, 1) * grid_size_x + stats.at<int>(i, 0);
             if (point_map.find(flattened_coordinate) != point_map.end())
             {
               point_map.erase(flattened_coordinate);
+              connected_grid.at<int>(stats.at<int>(i, 1), stats.at<int>(i, 0)) = 0;
             }
             // single_components.push_back(flattened_coordinate);
           }
@@ -305,8 +313,7 @@ namespace rtabmap_ros
 
         if (point_map.size() > 0)
         {
-          sensor_msgs::PointCloud point_cloud_msg;
-
+          rtabmap_ros::SelectedPointCloud selected_point_cloud_msg;
           for (auto iterator : point_map)
           {
             cv::Point3f point = iterator.second;
@@ -314,9 +321,21 @@ namespace rtabmap_ros
             point_msg.x = point.x;
             point_msg.y = point.y;
             point_msg.z = point.z;
-            point_cloud_msg.points.push_back(point_msg);
+
+            int component_label = connected_grid.at<int>(iterator.first / grid_size_x, iterator.first % grid_size_y);
+            selected_point_cloud_msg.point_cloud.points.push_back(point_msg);
+            selected_point_cloud_msg.point_connected_component.push_back(component_label);
           }
-          pointCloudPub_.publish(point_cloud_msg);
+
+          // std_msgs::Header header;
+          // header.seq = 0;
+          // header.stamp = ros::Time::now();
+          // cv_bridge::CvImage img_bridge(header, sensor_msgs::image_encodings::TYPE_32SC1, connected_grid);
+          // sensor_msgs::Image img_msg;
+          // img_bridge.toImageMsg(img_msg);
+          // selected_point_cloud_msg.component_grid = img_msg;
+
+          pointCloudPub_.publish(selected_point_cloud_msg);
         }
         // if (selected_points->size() > 0)
         // {
@@ -356,6 +375,7 @@ namespace rtabmap_ros
     cv::Point3f max_bbox_range_map_;
     cv::Point3f bbox_bounds_sizes_;
     
+    
     double grid_res_x_;
     double grid_res_y_;
     bool print_grid_;
@@ -363,8 +383,32 @@ namespace rtabmap_ros
 
     boost::shared_ptr<rtabmap::SemanticColorOcTree> octreePtr_;
     //std::map<int, std::map<unsigned int, std::tuple<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, std::vector<int>> > > obstacles_data_; // {occupancyType : {classId : (point cloud, list of nodeId)} }
+    int min_connected_component_size_;
 
-  }; /* class ObstaclesFeedbackProcessing */
+    std::string type2str(int type) {
+      std::string r;
+
+      uchar depth = type & CV_MAT_DEPTH_MASK;
+      uchar chans = 1 + (type >> CV_CN_SHIFT);
+
+      switch ( depth ) {
+        case CV_8U:  r = "8U"; break;
+        case CV_8S:  r = "8S"; break;
+        case CV_16U: r = "16U"; break;
+        case CV_16S: r = "16S"; break;
+        case CV_32S: r = "32S"; break;
+        case CV_32F: r = "32F"; break;
+        case CV_64F: r = "64F"; break;
+        default:     r = "User"; break;
+      }
+
+      r += "C";
+      r += (chans+'0');
+
+      return r;
+    }
+
+}; /* class ObstaclesFeedbackProcessing */
 
   PLUGINLIB_EXPORT_CLASS(rtabmap_ros::ObstaclesFeedbackProcessing, nodelet::Nodelet);
 

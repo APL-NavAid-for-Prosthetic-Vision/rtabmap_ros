@@ -2284,7 +2284,7 @@ void MapsManager::publishAPLMaps(
       octoMsg.header.stamp = stamp;
 
       bboxMsg.octomap = octoMsg;
-
+      
       octomap::point3d pose(baseToMap.x(), baseToMap.y(), baseToMap.z());
       octomap::point3d minBoundRange = pose + publish_bbx_min_range_obstacles_;
       octomap::point3d maxBoundRange = pose + publish_bbx_max_range_obstacles_;
