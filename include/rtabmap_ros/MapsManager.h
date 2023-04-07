@@ -54,9 +54,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include <rtabmap_ros/MapManagerStats.h>
-#include <rtabmap_ros/ObjectsOfInterest.h>
-#include <rtabmap_ros/ObjectsOfInterestUpdate.h>
-#include <rtabmap_ros/Object.h>
+#include <rtabmap_ros/TrackedVisibilityPts.h>
+#include <rtabmap_ros/TrackedVisibilityPtsUpdate.h>
+#include <rtabmap_ros/TrackedVisibilityPt.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
 #include <std_srvs/Trigger.h>
@@ -158,9 +158,9 @@ public:
 #ifdef RTABMAP_OCTOMAP
 	void semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatureData & auxSignatureData, const rtabmap::Memory * memory, UMutex& memory_mtx);
 
-	bool objectsOfInterestUpdate(rtabmap_ros::ObjectsOfInterestUpdate::Request& req,  rtabmap_ros::ObjectsOfInterestUpdate::Response& res);
+	bool setTrackedVisibilityPts(rtabmap_ros::TrackedVisibilityPtsUpdate::Request& req,  rtabmap_ros::TrackedVisibilityPtsUpdate::Response& res);
 
-	void objectsOfInterestSemanticOctoMapPub();
+	void publishTrackedVisibilityPts();
 #endif
 
 	// JHUAPL section end
@@ -210,14 +210,14 @@ private:
 	ros::Publisher octoMapFullGroundPub_;
 	ros::Publisher octoMapFullObstaclePub_;
 	ros::Publisher semanticOctoMapObstaclePub_;
-	ros::Publisher objectsOfInterestPub_;
+	ros::Publisher trackedVisibilityPtsPub_;
 
 	ros::ServiceServer clearRegisteredMapSrv_;
 	ros::ServiceServer mapAlwaysUpdateSrv_;
 	ros::ServiceServer getMapAlwaysUpdateSrv_;
 	ros::ServiceServer globalGndCorrectionSrv_;
 
-	ros::ServiceServer objectsOfInterestUpdateSrv_;
+	ros::ServiceServer trackedVisibilityPtsUpdateSrv_;
 	// JHUAPL end section
 
 	std::map<int, rtabmap::Transform> assembledGroundPoses_;

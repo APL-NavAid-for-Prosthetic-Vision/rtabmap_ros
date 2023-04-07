@@ -168,8 +168,8 @@ add_message_files(
    ObstaclesBBXMapData.msg
    OccupancyData.msg
    ObstacleData.msg
-   Object.msg
-   ObjectsOfInterest.msg
+   TrackedVisibilityPt.msg
+   TrackedVisibilityPts.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -203,7 +203,7 @@ add_message_files(
    SemanticDataAssociation.srv
    SelectedLandmarks.srv
    BaseToCamTransform.srv
-   ObjectsOfInterestUpdate.srv
+   TrackedVisibilityPtsUpdate.srv
  )
 
 ## Generate added messages and services with any dependencies listed here

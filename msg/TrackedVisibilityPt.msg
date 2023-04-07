@@ -1,8 +1,7 @@
 #
-# Object definition
-#
-#   id:     unique interger for indentifying object. 
+#   id:     unique interger for identifying object. 
 #   name:   string with the name of the object.
+#   visible whether point is visible or not from current position
 #   x:      coordinate of point of x-axis.
 #   y:      coordinate of point of y-axis.      
 #   z:      coordinate of point of z-axis.

@@ -5994,7 +5994,7 @@ namespace rtabmap_ros
         }
 
         // publish objects of interest visible state from map
-        mapsManager_.objectsOfInterestSemanticOctoMapPub();
+        mapsManager_.publishTrackedVisibilityPts();
 
       #endif
 
