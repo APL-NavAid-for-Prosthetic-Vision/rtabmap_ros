@@ -329,14 +329,14 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
   }
 
   // JHUAPL section
-  objectsOfInterestPub_ = nht->advertise<rtabmap_ros::ObjectsOfInterest>("object_of_interest_map", 1);
+  trackedVisibilityPtsPub_ = nht->advertise<rtabmap_ros::TrackedVisibilityPts>("object_of_interest_map", 1);
 
   clearRegisteredMapSrv_ = nht->advertiseService("clear_registered_map", &MapsManager::clearRegisteredMapCallback , this);
   mapAlwaysUpdateSrv_ = nht->advertiseService("map_always_update", &MapsManager::mapAlwaysUpdateCallback, this);
   getMapAlwaysUpdateSrv_ = nht->advertiseService("get_map_always_update", &MapsManager::getMapAlwaysUpdateStateCallback, this);
   globalGndCorrectionSrv_ = nht->advertiseService("apply_global_ground_correction", &MapsManager::globalGndCorrectionCallback, this);
   
-  objectsOfInterestUpdateSrv_ = nht->advertiseService("objects_of_interest_map_update", &MapsManager::objectsOfInterestUpdate, this);
+  trackedVisibilityPtsUpdateSrv_ = nht->advertiseService("objects_of_interest_map_update", &MapsManager::setTrackedVisibilityPts, this);
   // JHUAPL section end 
 
 #endif
@@ -2658,33 +2658,33 @@ void MapsManager::updateTransformMapPose(const rtabmap::Transform &g_map_pose)
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-bool MapsManager::objectsOfInterestUpdate(rtabmap_ros::ObjectsOfInterestUpdate::Request& req,  rtabmap_ros::ObjectsOfInterestUpdate::Response& res)
+bool MapsManager::setTrackedVisibilityPts(rtabmap_ros::TrackedVisibilityPtsUpdate::Request& req,  rtabmap_ros::TrackedVisibilityPtsUpdate::Response& res)
 {
   bool dataUpdated = false;
 
   octomap_mtx_.lock();
   if (req.clearObjects) 
   {
-    semanticOctomap_->removeObjectsOfInterest();
+    semanticOctomap_->clearTrackedVisibilityPts();
   }
 
-  if (!req.objectsOfInterest.empty())
+  if (!req.trackedPts.empty())
   {
-    std::list<rtabmap::Object> objectsList;
+    std::list<rtabmap::TrackedVisibilityPt> trackedPts;
     // coverting the msg into the data structure needed.
-    for (int n = 0; n < req.objectsOfInterest.size(); ++n)
+    for (int n = 0; n < req.trackedPts.size(); ++n)
     {
-      rtabmap_ros::Object objMsg = req.objectsOfInterest.at(n);
+      rtabmap_ros::TrackedVisibilityPt ptMsg = req.trackedPts.at(n);
 
-      std::string name = objMsg.name;
-      octomap::point3d pt(objMsg.x, objMsg.y, objMsg.z);
-      rtabmap::Object obj(name, pt);
+      std::string name = ptMsg.name;
+      octomap::point3d pt(ptMsg.x, ptMsg.y, ptMsg.z);
+      rtabmap::TrackedVisibilityPt trackedPt(name, pt);
       
-      objectsList.push_back(obj);
+      trackedPts.push_back(trackedPt);
     }
 
     // add to map
-    semanticOctomap_->addObjectsOfInterest(objectsList);
+    semanticOctomap_->setTrackedVisibilityPts(trackedPts);
 
     dataUpdated = true;
   }
@@ -2695,37 +2695,37 @@ bool MapsManager::objectsOfInterestUpdate(rtabmap_ros::ObjectsOfInterestUpdate::
   return true;
 }
 
-void MapsManager::objectsOfInterestSemanticOctoMapPub()
+void MapsManager::publishTrackedVisibilityPts()
 {
-  if (objectsOfInterestPub_.getNumSubscribers() <= 0)
+  if (trackedVisibilityPtsPub_.getNumSubscribers() <= 0)
     return;
 
-  rtabmap_ros::ObjectsOfInterest msg;
+  rtabmap_ros::TrackedVisibilityPts msg;
   msg.header.stamp = ros::Time::now();
 
   octomap_mtx_.lock();
-  std::list<rtabmap::Object> &objectsList = semanticOctomap_->getObjectOfInterest();
+  std::list<rtabmap::TrackedVisibilityPt> &trackedPts = semanticOctomap_->getTrackedVisibilityPts();
 
-  for (auto iter = objectsList.begin(); iter != objectsList.end(); ++iter)
+  for (auto iter = trackedPts.begin(); iter != trackedPts.end(); ++iter)
   {
-    rtabmap_ros::Object objMsg;
+    rtabmap_ros::TrackedVisibilityPt ptMsg;
 
     std::string &name = iter->getName();
     octomap::point3d &pt = iter->getPoint();
     bool visible = iter->isVisible();
 
-    objMsg.name = name;
+    ptMsg.name = name;
     // point w.r.t map
-    objMsg.x = pt.x();
-    objMsg.y = pt.y();
-    objMsg.z = pt.z();
-    objMsg.visible = visible;
+    ptMsg.x = pt.x();
+    ptMsg.y = pt.y();
+    ptMsg.z = pt.z();
+    ptMsg.visible = visible;
 
-    msg.objectsOfInterest.push_back(objMsg);
+    msg.trackedPts.push_back(ptMsg);
   }
   octomap_mtx_.unlock();
 
-  objectsOfInterestPub_.publish(msg);
+  trackedVisibilityPtsPub_.publish(msg);
 }
 #endif
 #endif

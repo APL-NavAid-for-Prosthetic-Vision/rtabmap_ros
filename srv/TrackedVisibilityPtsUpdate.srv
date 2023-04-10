@@ -1,9 +1,9 @@
 #request
 
-# objectsOfInterest: list of Object data to be added into map
+# trackedPts: list of TrackedVisibilityPt data to be added into map
 #  if sent empty, no object data will be updated.
 #  if sent with data, it will clear older data from list and add the newest data from message
-Object[] objectsOfInterest
+TrackedVisibilityPt[] trackedPts
 
 # if true, data will be clear.
 bool clearObjects
@@ -14,4 +14,3 @@ bool clearObjects
 
 # state of whether the data was updated successfully
 bool updated
-
