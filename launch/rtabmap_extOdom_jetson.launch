@@ -51,7 +51,6 @@
     <arg name="publish_obstacles_bbx_min_x"           default="-5.0"/> <!-- must be negative -->
     <arg name="publish_obstacles_bbx_min_y"           default="-5.0"/> <!-- must be negative -->
     <arg name="publish_obstacles_bbx_min_z"           default="-2.0"/> <!-- must be negative -->
-
     <arg name="publish_obstacles_bbx_max_x"           default="5.0"/> <!-- must be positive -->
     <arg name="publish_obstacles_bbx_max_y"           default="5.0"/> <!-- must be positive -->
     <arg name="publish_obstacles_bbx_max_z"           default="2.0"/> <!-- must be positive -->
