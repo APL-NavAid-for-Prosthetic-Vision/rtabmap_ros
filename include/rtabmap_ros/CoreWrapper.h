@@ -141,7 +141,7 @@ public:
 
 	///
 	///
-	void publishObstaclesData(const rtabmap::SensorData & data);
+	void publishObstacleFrameData(const rtabmap::SensorData & data);
 
 
 private:
@@ -535,7 +535,7 @@ private:
 
 	ros::Publisher publishRegisteredDataPub_;
 	ros::Publisher landmarksMapPub_;
-	ros::Publisher obstaclesDataPub_;
+	ros::Publisher obstacleFrameDataPub_;
 	ros::Publisher mapManagerStatsPub_;
 	ros::Publisher inputProcessThreadStatsPub_;
 	ros::Publisher alive_publisher_;

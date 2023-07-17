@@ -161,15 +161,15 @@ add_message_files(
    RGBDSemanticDetection.msg
    SemanticClassIdElement.msg 
    SemanticClassIdMap.msg
-   ObstaclesData.msg
+   ObstacleFrameData.msg
    Landmark.msg
    Landmarks.msg
    MapManagerStats.msg
    InputDataStats.msg
    ObstaclesBBXMapData.msg
    OccupancyData.msg
-   ObstacleData.msg
-   SelectedPointCloud.msg
+   ObstacleMapData.msg
+   ObstaclesLocalMap.msg
    TrackedVisibilityPt.msg
    TrackedVisibilityPts.msg
 )

@@ -109,7 +109,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap_ros/Landmarks.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include <rtabmap_ros/ObstaclesData.h>
+#include <rtabmap_ros/ObstacleFrameData.h>
 #include <rtabmap_ros/MapManagerStats.h>
 #include <rtabmap_ros/InputDataStats.h>
 
@@ -133,7 +133,7 @@ namespace rtabmap_ros
     rtabmap::SensorData sd = core_wrapper->get_rtabmap()->getMemory()->getLastAddedData();
 
     // publish obstacle data
-    core_wrapper->publishObstaclesData(sd);
+    core_wrapper->publishObstacleFrameData(sd);
   }
 
   CoreWrapper::CoreWrapper() : CommonDataSubscriber(false),
@@ -981,7 +981,7 @@ namespace rtabmap_ros
     // JHUAPL section
 
     landmarksMapPub_ = nh.advertise<visualization_msgs::MarkerArray>("landmarks_map", 1);
-    obstaclesDataPub_ = nh.advertise<rtabmap_ros::ObstaclesData>("obstacles_data", 1);
+    obstacleFrameDataPub_ = nh.advertise<rtabmap_ros::ObstacleFrameData>("obstacle_frame_data", 1);
     mapManagerStatsPub_ = nh.advertise<rtabmap_ros::MapManagerStats>("map_manager_stats", 1);
 
     alive_publisher_ = nh.advertise<std_msgs::Empty>("heartbeat", 1);
@@ -3001,7 +3001,7 @@ namespace rtabmap_ros
               publishVisualDepthImages(sd);
 
               // publish obstacles data of the last added Data
-              publishObstaclesData(sd);
+              publishObstacleFrameData(sd);
             }
             else
             {
@@ -3109,7 +3109,7 @@ namespace rtabmap_ros
 
               // moved this to callback to publish sooner
               // publish obstacles data of the last added Data
-              // publishObstaclesData(sd);
+              // publishObstacleFrameData(sd);
             }
             else
             {
@@ -6100,14 +6100,14 @@ namespace rtabmap_ros
     return true;
   }
 
-  void CoreWrapper::publishObstaclesData(const rtabmap::SensorData &data)
+  void CoreWrapper::publishObstacleFrameData(const rtabmap::SensorData &data)
   {
-    if (obstaclesDataPub_.getNumSubscribers())
+    if (obstacleFrameDataPub_.getNumSubscribers())
     {
       UTimer timer;
       timer.start();
 
-      rtabmap_ros::ObstaclesData msg;
+      rtabmap_ros::ObstacleFrameData msg;
       msg.header.seq = ++obstacleDataSeq;
       msg.header.stamp = ros::Time(data.stamp());
       msg.header.frame_id = frameId_;
@@ -6153,10 +6153,10 @@ namespace rtabmap_ros
           }
         }
       }
-      NODELET_DEBUG(" publishObstaclesData copying msg time elapsed: %f secs", timer.ticks());
+      NODELET_DEBUG(" publishObstacleFrameData copying msg time elapsed: %f secs", timer.ticks());
       timer.start();
-      obstaclesDataPub_.publish(msg);
-      NODELET_DEBUG(" publishObstaclesData sending msg time elapsed: %f secs", timer.ticks());
+      obstacleFrameDataPub_.publish(msg);
+      NODELET_DEBUG(" publishObstacleFrameData sending msg time elapsed: %f secs", timer.ticks());
     }
   }
 

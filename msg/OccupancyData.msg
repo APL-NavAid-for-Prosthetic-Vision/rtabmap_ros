@@ -9,4 +9,4 @@
 
 string[] obstaclesName
 uint32[] obstaclesId
-ObstacleData[] obstaclesData
+ObstacleMapData[] obstaclesData
