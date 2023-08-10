@@ -2289,6 +2289,9 @@ void MapsManager::publishAPLMaps(
       octomap::point3d minBoundRange = pose + publish_bbx_min_range_obstacles_;
       octomap::point3d maxBoundRange = pose + publish_bbx_max_range_obstacles_;
 
+      //ROS_ERROR("pose: (%.2f, %.2f, %.2f)", baseToMap.x(), baseToMap.y(), baseToMap.z());
+      //ROS_ERROR("min/max (x): (%.2f, %.2f)", minBoundRange.x(), maxBoundRange.x());
+
       geometry_msgs::Point min_bbox_range_map;
       geometry_msgs::Point max_bbox_range_map;
       geometry_msgs::Point position_map;

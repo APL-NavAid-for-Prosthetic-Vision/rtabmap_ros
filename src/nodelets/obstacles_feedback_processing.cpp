@@ -54,6 +54,8 @@
 #include <opencv2/core/mat.hpp>
 #include <cv_bridge/cv_bridge.h>
 
+#include<opencv2/opencv.hpp>
+
 // system
 #include <cstdint>
 #include <map>
@@ -114,10 +116,13 @@ namespace rtabmap_ros
 
       double rate = 2; // hz
       pnh.param("rate", rate, rate);
-      nh.param("obstacles_feedback/grid_resolution", grid_resolution_, 10.0);
-      nh.param("obstacles_feedback/print_grid", print_grid_, false);
-      nh.param("obstacles_feedback/min_connected_component_size", min_connected_component_size_, 2);
+      pnh.param("obstacle_feedback_grid_resolution", grid_resolution_, 10.0);
+      pnh.param("obstacle_feedback_min_connected_component_size", min_connected_component_size_, 5);
+      pnh.param("obstacle_feedback_print_grid", print_grid_, false);
       
+      NODELET_ERROR("grid_resolution: %f", grid_resolution_);
+      NODELET_ERROR("print_grid_: %u", print_grid_);
+
       // subscribers
       semanticObstaclesProcessingSub_ = nh.subscribe("octomap_with_bbx_obstacles", 1, &ObstaclesFeedbackProcessing::semanticObstacleFeedbackProcessingCallback, this);
       //poseSub_ = nh.subscribe("localization_pose", 1, &ObstaclesFeedbackProcessing::poseUpdateCallback, this);
@@ -204,16 +209,25 @@ namespace rtabmap_ros
     void feedbackProcessingThread(const double &updateRateHz)
     {
       //
+      // This routine flattens the obstacle data to 2D and applies connected
+      // component filtering on the 2D obstacle grid
+      //
+
+      //
       // Note: the obstacle grid created in this routine uses standard image
-      //       coordinates (X - right, Y - down) and the map coordinates are
-      //       mapped directly to these axis; therefore, the grid not represent
-      //       a top-down view of the map. I believe based on the ROS coordinate
-      //       convention that the grid actually ends up being a bottom-up view of
-      //       the map with the initial heading orientation pointing to the right
-      //       along the x-axis.
+      //       coordinates (X - right, Y - down) and the map coordinate points are
+      //       mapped directly to these axis; therefore, the generated grid does not 
+      //       show a top-down view of the map wrt the standard point of view for viewing 
+      //       an image grid. (It ends up being a turned bottom-up view of the map)
       //
 
       ros::Rate rate(updateRateHz);
+
+      std::string window_name = "Filtered Grid";
+      cv::namedWindow(window_name);
+
+      std::string window_name2 = "Filtered Grid 2";
+      cv::namedWindow(window_name2);
 
       while (ros::ok()) 
       {
@@ -229,20 +243,20 @@ namespace rtabmap_ros
         total_timer.start();
 
         // float grid_res_x = grid_size/bbox_bounds_sizes_.x;
-        // float grid_res_y_ = grid_size/bbox_bounds_sizes_.y;
+        // float grid_res_y = grid_size/bbox_bounds_sizes_.y;
         int grid_cols = floor(grid_resolution_ * bbox_bounds_sizes_.x);
         int grid_rows = floor(grid_resolution_ * bbox_bounds_sizes_.y);
         // int c = (grid_size/2)/grid_res;
         
-        cv::Mat grid = cv::Mat::zeros(grid_cols, grid_rows, CV_8U);
+        cv::Mat grid = cv::Mat::zeros(grid_rows, grid_cols, CV_8U);
         cv::Mat connected_grid;
         cv::Mat stats;
         cv::Mat centroids;
         //std::vector<int> single_components;
 
-        //pcl::PointCloud<pcl::PointXYZRGB>::Ptr selected_points(new pcl::PointCloud<pcl::PointXYZRGB>);
-        // std::map<int, pcl::PointXYZRGB> point_map; //flattened coordinates to pointxyzrgb
-        std::map<int, cv::Point3f> point_map; //flattened coordinates to pointxyzrgb
+        // pcl::PointCloud<pcl::PointXYZRGB>::Ptr selected_points(new pcl::PointCloud<pcl::PointXYZRGB>);
+        // std::map<int, pcl::PointXYZRGB> map_coord2point; //flattened coordinates to pointxyzrgb
+        std::map<int, cv::Point3f> map_coord2point; //flattened coordinates to pointxyzrgb
   
         if (octreePtr == nullptr)
         {
@@ -250,43 +264,44 @@ namespace rtabmap_ros
           continue;
         }
 
+        // for each point in the octree
         for (auto octreeNodeIter = octreePtr->begin(); octreeNodeIter != octreePtr->end(); ++octreeNodeIter)
         {
           if (octreePtr->isNodeOccupied(*octreeNodeIter))
           {
+            // get map coordinate of this point
             cv::Point3f pt_map(octreeNodeIter.getX(), octreeNodeIter.getY(), octreeNodeIter.getZ());
-            float pt_grid_x = pt_map.x - min_bbox_range_map.x; //in meters
-            float pt_grid_y = pt_map.y - min_bbox_range_map.y; //in meters
+
+            // compute local grid coordinate of this point
+            float pt_grid_x = pt_map.x - min_bbox_range_map.x; // meters
+            float pt_grid_y = pt_map.y - min_bbox_range_map.y; // meters
+            int pixel_x = floor(pt_grid_x * grid_resolution_); // pixels
+            int pixel_y = floor(pt_grid_y * grid_resolution_); // pixels
+            if (pixel_x >= grid_cols || pixel_y >= grid_rows || pixel_x < 0 || pixel_y < 0)
+            {
+              continue;
+            }
             // if (pt_grid_x >= bbox_bounds_sizes.x || pt_grid_y >= bbox_bounds_sizes.y ||
             //     pt_grid_x < 0 || pt_grid_y < 0)
             // {
             //   continue;
-            // }   
-            int pixel_x = floor(pt_grid_x * grid_resolution_); //in pixels
-            int pixel_y = floor(pt_grid_y * grid_resolution_); //in pixels
-            if (pixel_x >= grid_cols || pixel_y >= grid_rows || pixel_x < 0 || pixel_y < 0)
-            {
-              continue;
-            }   
-            
-            // std::cout << "rows " << grid.rows << std::endl; 
-            // std::cout << "cols " << grid.cols << std::endl; 
+            // }
+
+            // keep this point if a point for this grid position is not already found
             if (grid.at<uint8_t>(pixel_y, pixel_x) == 0)
             {
-              float pt_map_centered_x = ((pixel_x + 0.5) / grid_resolution_) + min_bbox_range_map.x; //meters
-              float pt_map_centered_y = ((pixel_y + 0.5) / grid_resolution_) + min_bbox_range_map.y; //meters
+              // use the map position of the center of the grid pixel rather than the original map point
+              cv::Point3f pt_map_for_grid;
+              pt_map_for_grid.x = ((pixel_x + 0.5) / grid_resolution_) + min_bbox_range_map.x; // pt_map.x;
+              pt_map_for_grid.y = ((pixel_y + 0.5) / grid_resolution_) + min_bbox_range_map.y; // pt_map.y;
+              pt_map_for_grid.z = 0.;
+
               // NODELET_ERROR("pt_map X: %f, Y: %f", pt_map.x, pt_map.y);
-              // NODELET_ERROR("pt_map_centered X: %f, Y: %f", pt_map_centered_x, pt_map_centered_y);
+              // NODELET_ERROR("pt_map for grid X: %f, Y: %f", pt_map_for_grid.x, pt_map_for_grid.y);
               // NODELET_ERROR("bbx_min X: %f, Y: %f", min_bbox_range_map.x, min_bbox_range_map.y);
               // NODELET_ERROR("pt minus bbx X: %f, Y: %f", pt_map.x - min_bbox_range_map.x, pt_map.y - min_bbox_range_map.y);
               // NODELET_ERROR("bbx_range X: %f, Y: %f", bbox_bounds_sizes.x, bbox_bounds_sizes.y);
               // NODELET_ERROR("grid_resolution: X: %f, Y: %f", grid_resolution_, grid_resolution_);
-
-              // pcl::PointXYZRGB grid_point;
-              cv::Point3f grid_point;
-              grid_point.x = pt_map_centered_x; //pt_map.x;
-              grid_point.y = pt_map_centered_y; //pt_map.y;
-              grid_point.z = 0;
 
               //rtabmap::SemanticColorOcTreeNode::Color pt_color = octreeNodeIter->getColor();
               // grid_point.r = pt_color.r;
@@ -294,30 +309,31 @@ namespace rtabmap_ros
               // grid_point.b = pt_color.b;
 
               int flattened_coordinate = pixel_y * grid_cols + pixel_x;
-              point_map[flattened_coordinate] = grid_point;
+              map_coord2point[flattened_coordinate] = pt_map_for_grid;
 
-              // selected_points->push_back(grid_point);
+              // selected_points->push_back(pt_map_for_grid);
               
               grid.at<uint8_t>(pixel_y, pixel_x) = 1;
               // NODELET_ERROR("pixel X: %d, pixel Y: %d", pixel_x, pixel_y);
             }
           }
-
         }
 
+        // this sets the cv::Mat parameter types to:
+        //   connected_grid:  CV_32S (int32)
+        //   stats:           CV_32S (int32)
         int num_components = cv::connectedComponentsWithStats(grid, connected_grid, stats, centroids, 8, CV_32S);
         // NODELET_WARN("GOT COMPONENTS");
         // NODELET_WARN("num components %d", num_components);
         // NODELET_WARN("rows %d", connected_grid.rows);
         // NODELET_WARN("cols %d", connected_grid.cols);
-
-        NODELET_WARN("stats type is %d (%s)", stats.type(), type2str(stats.type()).c_str());
-        NODELET_WARN("connected_grid type is %d (%s)", connected_grid.type(), type2str(connected_grid.type()).c_str());
+        // NODELET_WARN("stats type is %d (%s)", stats.type(), type2str(stats.type()).c_str());
+        // NODELET_WARN("connected_grid type is %d (%s)", connected_grid.type(), type2str(connected_grid.type()).c_str());
 
         // remove connected components that are too small
         //   Note: label 0 is the background label
         //
-        // first identify the connected component labels to be removed
+        // identify connected component to be removed
         std::set<int> labels_to_remove;
         for (int label = 1; label < num_components; ++label)
         { 
@@ -326,18 +342,21 @@ namespace rtabmap_ros
             labels_to_remove.insert(label);
           }
         }
-        // next remove identified labels from the grid and point map
+        // remove the identified components by creating a new filtered grid
         cv::Mat filtered_grid = connected_grid.clone();
+        // for each column and row of the grid
         for(int i = 0; i < filtered_grid.rows; i++)
         {
             int32_t* filtered_row = filtered_grid.ptr<int32_t>(i);
             for(int j = 0; j < filtered_grid.cols; j++)
             {
+              // if the component at this grid position is flagged for removal
+              // then set grid pixel to background and remove the stored map point
               if (labels_to_remove.count(filtered_row[j]))
-              { // this pixel belongs to an identified label; remove this pixel
+              {
                 filtered_row[j] = 0;
                 int flattened_coordinate = j * grid_cols + i;
-                point_map.erase(flattened_coordinate);
+                map_coord2point.erase(flattened_coordinate);
               }
             }
         }
@@ -351,9 +370,9 @@ namespace rtabmap_ros
         //     // std::cout << "= " << connected_grid.at<int>(stats.at<int>(i, 1), stats.at<int>(i, 0)) << std::endl;
         //     // std::cout << connected_grid << std::endl;
         //     int flattened_coordinate = stats.at<int>(i, cv::CC_STAT_TOP) * grid_cols + stats.at<int>(i, cv::CC_STAT_LEFT);
-        //     if (point_map.find(flattened_coordinate) != point_map.end())
+        //     if (map_coord2point.find(flattened_coordinate) != map_coord2point.end())
         //     {
-        //       point_map.erase(flattened_coordinate);
+        //       map_coord2point.erase(flattened_coordinate);
         //       connected_grid.at<int>(stats.at<int>(i, 1), stats.at<int>(i, 0)) = 0;
         //     }
         //     // single_components.push_back(flattened_coordinate);
@@ -362,7 +381,7 @@ namespace rtabmap_ros
 
         // for (int component : single_components)
         // {
-        //   pcl::PointXYZRGB current_point = point_map[component];
+        //   pcl::PointXYZRGB current_point = map_coord2point[component];
         //   for (auto it = selected_points->begin(); it != selected_points->end(); ++it)
         //   {
         //     if (it->x == current_point.x && it->y == current_point.y)
@@ -375,27 +394,41 @@ namespace rtabmap_ros
 
         if (print_grid_)
         {
-          std::cout << filtered_grid << std::endl;
+          std::cout << "filtered grid:\n" << filtered_grid << std::endl;
         }
 
-        if (point_map.size() > 0)
+        // display grid as OpenCV Image
+        cv::Mat filtered_grid_8U;
+        filtered_grid.convertTo(filtered_grid_8U, CV_8U, 255.);
+        cv::resize(filtered_grid_8U, filtered_grid_8U, cv::Size(filtered_grid_8U.cols*4,filtered_grid_8U.rows*4),0,0,cv::INTER_NEAREST);
+        cv::imshow(window_name, filtered_grid_8U);
+        //cv::waitKey(1);
+
+        if (map_coord2point.size() > 0)
         {
           rtabmap_ros::ObstaclesLocalMap connected_point_cloud_msg;
-          for (auto iterator : point_map)
+          for (auto iterator : map_coord2point)
           {
+            int flattened_coord = iterator.first;
             cv::Point3f point = iterator.second;
             geometry_msgs::Point32 point_msg;
             point_msg.x = point.x;
             point_msg.y = point.y;
             point_msg.z = point.z;
 
-            int component_label = connected_grid.at<int>(iterator.first / grid_cols, iterator.first % grid_rows);
+            int point_row = floor(flattened_coord / grid_cols);
+            int point_col = flattened_coord % grid_cols;
+            int component_label = connected_grid.at<int>(point_row, point_col);
             connected_point_cloud_msg.point_cloud.points.push_back(point_msg);
             connected_point_cloud_msg.point_connected_component.push_back(component_label);
+            connected_point_cloud_msg.point_row.push_back(point_row);
+            connected_point_cloud_msg.point_col.push_back(point_col);
           }
           connected_point_cloud_msg.grid_resolution_per_meter = grid_resolution_;
-          connected_point_cloud_msg.grid_size_meters_x = grid_cols / grid_resolution_;
-          connected_point_cloud_msg.grid_size_meters_y = grid_rows / grid_resolution_;
+          connected_point_cloud_msg.grid_cols = grid_cols;
+          connected_point_cloud_msg.grid_rows = grid_rows;
+          connected_point_cloud_msg.grid_origin_x = min_bbox_range_map.x;
+          connected_point_cloud_msg.grid_origin_y = min_bbox_range_map.y;
 
           // std_msgs::Header header;
           // header.seq = 0;
@@ -406,6 +439,65 @@ namespace rtabmap_ros
           // connected_point_cloud_msg.component_grid = img_msg;
 
           connectedPointCloudPub_.publish(connected_point_cloud_msg);
+
+
+
+          // convert back to grid and display as OpenCV Image
+          // load the x,y components of the map points into a numpy array
+          std::vector<cv::Point2f> points_map_2d, points_bodycentered_2d;
+          cv::Point2f bodyOrigin_map_2d;
+          cv::Mat obstacleImg = cv::Mat::zeros(connected_point_cloud_msg.grid_rows, connected_point_cloud_msg.grid_cols, CV_8U);
+          bodyOrigin_map_2d.x = connected_point_cloud_msg.grid_origin_x + connected_point_cloud_msg.grid_cols / connected_point_cloud_msg.grid_resolution_per_meter / 2;
+          bodyOrigin_map_2d.y = connected_point_cloud_msg.grid_origin_y + connected_point_cloud_msg.grid_rows / connected_point_cloud_msg.grid_resolution_per_meter / 2;
+          for (auto iter = connected_point_cloud_msg.point_cloud.points.begin(); iter != connected_point_cloud_msg.point_cloud.points.end(); ++iter)
+          {
+            cv::Point2f point, point_bodycentered_2d, point_img_2d;
+            cv::Point2i point_pixel, img_center;
+            point.x = iter->x;
+            point.y = iter->y;
+            //points_map_2d.push_back(point);
+
+            // first recenter on the body origin, then yaw to body heading keeping level with the horizon (i.e., no pitch/roll)
+            // rospy.logwarn(f"bodyOrigin_map_2d: \n{bodyOrigin_map_2d}")
+            // rospy.logwarn(f"points_map_2d: \n{points_map_2d}")
+            //cv::Mat Rz_2d = cv::eye(2);
+            point_bodycentered_2d = point - bodyOrigin_map_2d;
+
+            // transform to image-based pixel coordinates
+            // image coordinates follow the convention:
+            //    x = right, y = down
+            // we want the body frame axes to map into the image as follows:
+            //    body_x => img_up
+            //    body_y => img_left
+            // therefore, apply a further body to image transformation:
+            //   x_body => -y_img
+            //   y_body => -x_img
+            // point_img_2d.x = -point_bodycentered_2d.y;
+            // point_img_2d.y = -point_bodycentered_2d.x;
+            point_img_2d = point_bodycentered_2d;
+
+            // now convert from image (metric) to pixel coordinates
+            int img_width = connected_point_cloud_msg.grid_cols;
+            int img_height = connected_point_cloud_msg.grid_rows;
+            img_center.x = floor(img_width/2);
+            img_center.y = floor(img_height/2);
+            point_pixel.x = point_img_2d.x * connected_point_cloud_msg.grid_resolution_per_meter + img_center.x;  // shift the body origin to the image center
+            point_pixel.y = point_img_2d.y * connected_point_cloud_msg.grid_resolution_per_meter + img_center.y;  // shift the body origin to the image center
+
+            if (point_pixel.x >= 0 && point_pixel.x < img_width && point_pixel.y >= 0 && point_pixel.y < img_height)
+            {
+              obstacleImg.at<unsigned char>(point_pixel.y, point_pixel.x) = 255;
+            }
+            else
+            {
+              std::cout << "Invalid Pixel (row,col): (" << point_pixel.y << "," << point_pixel.x << ")" << std::endl;
+            }
+          }
+
+          // display grid as OpenCV Image
+          cv::resize(obstacleImg, obstacleImg, cv::Size(obstacleImg.cols*4, obstacleImg.rows*4), 0, 0, cv::INTER_NEAREST);
+          cv::imshow(window_name2, obstacleImg);
+          cv::waitKey(1);
         }
 
         // if (selected_points->size() > 0)
@@ -457,3 +549,4 @@ namespace rtabmap_ros
   PLUGINLIB_EXPORT_CLASS(rtabmap_ros::ObstaclesFeedbackProcessing, nodelet::Nodelet);
 
 } /* namespace rtabmap_ros */
+

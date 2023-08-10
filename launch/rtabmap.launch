@@ -111,14 +111,19 @@
   <arg name="grid_max_publish_height"               default="10.0"/>
   <arg name="grid_maxObstacleHeightAboveGnd"        default="0.0"/>   <!-- default set to disabled -->
 
-  <arg name="obstacles_feedback_processing"         default="$(arg rgbd_semantic_detection_sync)"/> 
+  <arg name="obstacle_feedback_processing"          default="$(arg rgbd_semantic_detection_sync)"/> 
   
+  <arg name="obstacle_feedback_grid_resolution"    default="10"/>
+  <arg name="obstacle_feedback_min_connected_component_size" default="5"/>
+  <arg name="obstacle_feedback_print_grid"         default="false"/>
+
   <arg name="publish_obstacles_bbx_min_x"           default="-5.0"/> <!-- must be negative -->
   <arg name="publish_obstacles_bbx_min_y"           default="-5.0"/> <!-- must be negative -->
   <arg name="publish_obstacles_bbx_min_z"           default="-2.0"/> <!-- must be negative -->
   <arg name="publish_obstacles_bbx_max_x"           default="5.0"/> <!-- must be positive -->
   <arg name="publish_obstacles_bbx_max_y"           default="5.0"/> <!-- must be positive -->
-  <arg name="publish_obstacles_bbx_max_z"           default="2.0"/> <!-- must be positive -->
+  <arg name="publish_obstacles_bbx_max_z"           default="0.5"/> <!-- must be positive -->
+  
 
 
   <!-- JHU APL : end -->
@@ -265,8 +270,11 @@
           <param name="queue_size"      type="int"    value="$(arg queue_size_rgbd)"/>
         </node>
       </group>
-      <group if="$(arg obstacles_feedback_processing)">
+      <group if="$(arg obstacle_feedback_processing)">
         <node pkg="nodelet" type="nodelet" name="obstacles_feedback_processing" args="standalone rtabmap_ros/obstacles_feedback_processing" output="$(arg output)">
+          <param name="obstacle_feedback_grid_resolution"  value="$(arg obstacle_feedback_grid_resolution)"/>
+          <param name="obstacle_feedback_min_connected_component_size" value="$(arg obstacle_feedback_min_connected_component_size)"/>
+          <param name="obstacle_feedback_print_grid"       value="$(arg obstacle_feedback_print_grid)"/>
         </node>
       </group>
     </group>
@@ -628,7 +636,6 @@
       <param name="publish_obstacles_bbx_max_x"  type="double"  value="$(arg publish_obstacles_bbx_max_x)"/>
       <param name="publish_obstacles_bbx_max_y"  type="double"  value="$(arg publish_obstacles_bbx_max_y)"/>
       <param name="publish_obstacles_bbx_max_z"  type="double"  value="$(arg publish_obstacles_bbx_max_z)"/>
-
     </node>
   
     <!-- Visualisation RTAB-Map -->

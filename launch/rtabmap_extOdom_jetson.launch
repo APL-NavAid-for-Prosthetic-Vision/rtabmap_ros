@@ -53,7 +53,10 @@
     <arg name="publish_obstacles_bbx_min_z"           default="-2.0"/> <!-- must be negative -->
     <arg name="publish_obstacles_bbx_max_x"           default="5.0"/> <!-- must be positive -->
     <arg name="publish_obstacles_bbx_max_y"           default="5.0"/> <!-- must be positive -->
-    <arg name="publish_obstacles_bbx_max_z"           default="2.0"/> <!-- must be positive -->
+    <arg name="publish_obstacles_bbx_max_z"           default="0.5"/> <!-- must be positive -->
+    <arg name="obstacle_feedback_grid_resolution"    default="10"/>
+    <arg name="obstacle_feedback_min_connected_component_size" default="5"/>
+    <arg name="obstacle_feedback_print_grid"         default="false"/>
 
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -146,7 +149,9 @@
         <arg name="publish_obstacles_bbx_max_x"           default="$(arg publish_obstacles_bbx_max_x)"/> <!-- must be positive -->
         <arg name="publish_obstacles_bbx_max_y"           default="$(arg publish_obstacles_bbx_max_y)"/> <!-- must be positive -->
         <arg name="publish_obstacles_bbx_max_z"           default="$(arg publish_obstacles_bbx_max_z)"/> <!-- must be positive -->
-
+        <arg name="obstacle_feedback_grid_resolution"     default="$(arg obstacle_feedback_grid_resolution)"/>
+        <arg name="obstacle_feedback_min_connected_component_size" default="$(arg obstacle_feedback_min_connected_component_size)"/>
+        <arg name="obstacle_feedback_print_grid"          default="$(arg obstacle_feedback_print_grid)"/>
     </include>
 
 </launch>
