@@ -420,7 +420,7 @@ endif(objectrecognition_FOUND)
 if(octomap_msgs_FOUND)
    set(rtabmap_plugins_lib_src 
       ${rtabmap_plugins_lib_src} 
-      src/nodelets/obstacles_feedback_processing.cpp
+      src/nodelets/obstacle_feedback_processing.cpp
    )
 endif(octomap_msgs_FOUND)
 # ---- 

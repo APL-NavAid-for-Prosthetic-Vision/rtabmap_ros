@@ -3069,23 +3069,15 @@ namespace rtabmap_ros
           //  most of the time, AtoB means the transformation that transforms points from Frame A to Frame B;
           //  however, for mapToOdom_ this naming convention is flipped
           //
-          // mapToOdom_ : actually transforms points from Odom frame to Map frame
-          //
-          mapToOdom_ = rtabmap_.getMapCorrection();
-          odomFrameId_ = odomFrameId;
-          mapToOdomMutex_.unlock();
-
-          // The author of rtabmap is not consistent in his naming convention for transformation variables;
-          //  most of the time, AtoB means the transformation that transforms points from Frame A to Frame B;
-          //  however, for mapToOdom_ this naming convention is flipped
-          //
           //  mapToOdom_ : actually transforms points from Odom frame to Map frame
           //
           //  odom        : T_odom_base : transforms pt from base to odom frame
           //  mapToOdom_  : T_map_odom  : transforms pt from odom frame to map frame [NAMING CONVENTION REVERSED FOR "mapToOdom_"]
           //  baseToMap   : T_map_base  : transforms pt from base to map frame
+          mapToOdom_ = rtabmap_.getMapCorrection();
+          odomFrameId_ = odomFrameId;
+          mapToOdomMutex_.unlock();
 
-          //rtabmap::Transform baseToMap = rtabmap::Transform::getIdentity();
           rtabmap::Transform baseToMap;
           if (!rtabmap_.getStatistics().localizationCovariance().empty())
           {
@@ -3104,15 +3096,7 @@ namespace rtabmap_ros
           if (data.id() < 0)
           {
             NODELET_INFO("Intermediate node added");
-
-            // TODO: enable last baseToMap update here or don't do this for intermediate 
-            //       nodes since they are from the past?
-            //
-            // mmu_data_mtx_.lock();
-            // // last_baseToMap_ : last T_map_pose or T_map_baselink : reads from baselink to map frame
-            // last_baseToMap_ = baseToMap;
-            // NODELET_WARN("CoreWrapper2 last_baseToMap_: (%.2f, %.2f, %.2f)", last_baseToMap_.x(), last_baseToMap_.y(), last_baseToMap_.z());
-            // mmu_data_mtx_.unlock();
+            // This is a special case for processing of a dataset; it can be ignored
           }
           else
           {
@@ -3183,23 +3167,7 @@ namespace rtabmap_ros
                 const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
                 memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
               }            
-              // if (!rtabmap_.getStatistics().localizationCovariance().empty())
-              // {
-              //   baseToMap = mapToOdom_ * odom;
-              //   rtabmap_ros::transformToPoseMsg(baseToMap, poseMsg.pose.pose);
-              //   const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
-              //   memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
-              //   mapToOdomPrev_ = mapToOdom_;
-              // }
-              // else
-              // {
-              //   // NOTE: due to mapToOdom_ naming convention being flipped, mapToOdomPrev_ also uses
-              //   //       a reverse naming convention, i.e.
-              //   //       mapToOdomPrev_  transforms point from odom frame to map frame
-              //   //
-              //   baseToMap = mapToOdomPrev_ * odom;
-              //   rtabmap_ros::transformToPoseMsg(baseToMap, poseMsg.pose.pose);
-              // }
+
               localizationPosePub_.publish(poseMsg);
             }
             std::map<int, rtabmap::Transform> filteredPoses(rtabmap_.getLocalOptimizedPoses().lower_bound(1), rtabmap_.getLocalOptimizedPoses().end());
@@ -3264,7 +3232,6 @@ namespace rtabmap_ros
             stamp_ = stamp;
             // last_baseToMap_ : last T_map_base : transform pt from base to map frame
             last_baseToMap_ = baseToMap;
-            NODELET_ERROR("CoreWrapper baseToMap: (%.2f, %.2f, %.2f)", baseToMap.x(), baseToMap.y(), baseToMap.z());
             mmu_data_mtx_.unlock();
 
             this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
@@ -5831,9 +5798,6 @@ namespace rtabmap_ros
         rtabmap::Transform mapToOdom = mapToOdom_;
         mapToOdomMutex_.unlock();
 
-        //NODELET_WARN("CoreWrapper odom: (%.2f, %.2f, %.2f)", odom.x(), odom.y(), odom.z());
-        //NODELET_WARN("CoreWrapper mapToOdom: (%.2f, %.2f, %.2f)", mapToOdom.x(), mapToOdom.y(), mapToOdom.z());
-
         // The author of rtabmap is not consistent in his naming convention for transformation variables;
         //  most of the time, AtoB means the transformation that transforms points from Frame A to Frame B;
         //  however, for mapToOdom_ this naming convention is flipped
@@ -5844,7 +5808,6 @@ namespace rtabmap_ros
         //  mapToOdom_  : T_map_odom  : transforms pt from odom frame to map frame [NAMING CONVENTION REVERSED FOR "mapToOdom_"]
         //  baseToMap   : T_map_base  : transforms pt from base to map frame
 
-        //rtabmap::Transform baseToMap = rtabmap::Transform::getIdentity();
         rtabmap::Transform baseToMap;
         if (!rtabmap_.getStatistics().localizationCovariance().empty())
         {
@@ -5860,20 +5823,10 @@ namespace rtabmap_ros
           baseToMap = mapToOdomPrev_ * odom;
         }
 
-        NODELET_ERROR("CoreWrapper T_map_base: (%.2f, %.2f, %.2f)", baseToMap.x(), baseToMap.y(), baseToMap.z());
-
         if (data.id() < 0)
         {
-          NODELET_INFO("Intermediate node added");
-
-          // TODO: enable last baseToMap update here or don't do this for intermediate 
-          //       nodes since they are from the past?
-          //
-          // mmu_data_mtx_.lock();
-          // // last_baseToMap_ : last T_map_pose or T_map_baselink : reads from baselink to map frame
-          // last_baseToMap_ = baseToMap;
-          // NODELET_WARN("CoreWrapper2 last_baseToMap_: (%.2f, %.2f, %.2f)", last_baseToMap_.x(), last_baseToMap_.y(), last_baseToMap_.z());
-          // mmu_data_mtx_.unlock();
+          NODELET_ERROR("Intermediate node encountered");
+          // Note: these are special nodes for processing a dataset; this case can be ignored
         }
         else
         {
@@ -5893,19 +5846,7 @@ namespace rtabmap_ros
               const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
               memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
             }            
-            // if (!rtabmap_.getStatistics().localizationCovariance().empty())
-            // {
-            //   baseToMap = mapToOdom * odom;
-            //   rtabmap_ros::transformToPoseMsg(baseToMap, poseMsg.pose.pose);
-            //   const cv::Mat &cov = rtabmap_.getStatistics().localizationCovariance();
-            //   memcpy(poseMsg.pose.covariance.data(), cov.data, cov.total() * sizeof(double));
-            //   mapToOdomPrev_ = mapToOdom;
-            // }
-            // else
-            // {
-            //   baseToMap = mapToOdomPrev_ * odom;
-            //   rtabmap_ros::transformToPoseMsg(baseToMap, poseMsg.pose.pose);
-            // }
+
             localizationPosePub_.publish(poseMsg);
           }
           std::map<int, rtabmap::Transform> filteredPoses(rtabmap_.getLocalOptimizedPoses().lower_bound(1), rtabmap_.getLocalOptimizedPoses().end());
@@ -5970,7 +5911,6 @@ namespace rtabmap_ros
           stamp_ = stamp;
           // last_baseToMap_ : last T_map_pose or T_map_baselink : reads from baselink to map frame
           last_baseToMap_ = baseToMap;
-          //NODELET_WARN("CoreWrapper last_baseToMap_: (%.2f, %.2f, %.2f)", last_baseToMap_.x(), last_baseToMap_.y(), last_baseToMap_.z());
           mmu_data_mtx_.unlock();
 
           this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);

@@ -115,7 +115,6 @@
   
   <arg name="obstacle_feedback_grid_resolution"    default="10"/>
   <arg name="obstacle_feedback_min_connected_component_size" default="5"/>
-  <arg name="obstacle_feedback_print_grid"         default="false"/>
 
   <arg name="publish_obstacles_bbx_min_x"           default="-5.0"/> <!-- must be negative -->
   <arg name="publish_obstacles_bbx_min_y"           default="-5.0"/> <!-- must be negative -->
@@ -271,10 +270,9 @@
         </node>
       </group>
       <group if="$(arg obstacle_feedback_processing)">
-        <node pkg="nodelet" type="nodelet" name="obstacles_feedback_processing" args="standalone rtabmap_ros/obstacles_feedback_processing" output="$(arg output)">
+        <node pkg="nodelet" type="nodelet" name="obstacle_feedback_processing" args="standalone rtabmap_ros/obstacle_feedback_processing" output="$(arg output)">
           <param name="obstacle_feedback_grid_resolution"  value="$(arg obstacle_feedback_grid_resolution)"/>
           <param name="obstacle_feedback_min_connected_component_size" value="$(arg obstacle_feedback_min_connected_component_size)"/>
-          <param name="obstacle_feedback_print_grid"       value="$(arg obstacle_feedback_print_grid)"/>
         </node>
       </group>
     </group>

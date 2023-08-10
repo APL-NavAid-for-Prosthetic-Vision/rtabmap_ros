@@ -193,8 +193,8 @@
     </description>
   </class>
 
-  <class name="rtabmap_ros/obstacles_feedback_processing"
-         type="rtabmap_ros::ObstaclesFeedbackProcessing" 
+  <class name="rtabmap_ros/obstacle_feedback_processing"
+         type="rtabmap_ros::ObstacleFeedbackProcessing" 
          base_class_type="nodelet::Nodelet">
     <description>
       This is my nodelet.
