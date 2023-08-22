@@ -738,11 +738,12 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
       const std::map<int, rtabmap::Signature> & signatures)
 {
   UMutex mutex;
+  rtabmap_ros::MapManagerStats mapManagerStats;
 #ifdef RTABMAP_OCTOMAP
   rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
-  return updateMapCaches(poses, memory, updateGrid, updateOctomap, mutex, auxSignatureData, signatures);
+  return updateMapCaches(poses, memory, updateGrid, updateOctomap, mutex, auxSignatureData, signatures, &mapManagerStats);
 #else
-  return updateMapCaches(poses, memory, updateGrid, updateOctomap, mutex, signatures);
+  return updateMapCaches(poses, memory, updateGrid, updateOctomap, mutex, signatures, &mapManagerStats);
 #endif
 }
 
@@ -1157,6 +1158,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
                 (third.empty() || third.channels() > 0) )
             {
               semanticOctomap_->addToCache(iter->first, first, second, pter->second, third);
+              UDEBUG("");
             }
             else
             {
@@ -1207,6 +1209,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
     octomap_u_mtx_.lock();
     if(updateOctomap && semanticSegmentationEnable_)
     {
+      UDEBUG(" update map ..");
       mapManagerStatsPtr->is_octomap_data = true;
       if(octomapRayTracing_) 
       {

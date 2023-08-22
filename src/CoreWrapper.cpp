@@ -1021,10 +1021,10 @@ namespace rtabmap_ros
     {
       rtabmapProcessThreadRunning_ = true;
       rtabmapProcessThread_ = new boost::thread(boost::bind(&CoreWrapper::rtabmapProcessThread, this));
-    }
 
-    mapManagerUpdateThreadRunning_ = true;
-    mapManagerUpdateThread_ = new boost::thread(boost::bind(&CoreWrapper::mapManagerUpdateThread, this, mapManagerUpdateRate));
+      mapManagerUpdateThreadRunning_ = true;
+      mapManagerUpdateThread_ = new boost::thread(boost::bind(&CoreWrapper::mapManagerUpdateThread, this, mapManagerUpdateRate));
+    }
 
     // JHUAPL section end
   }
@@ -2878,7 +2878,7 @@ namespace rtabmap_ros
 
       double timeRtabmap = 0.0;
       double timeUpdateMaps = 0.0;
-      // double timePublishMaps = 0.0;
+      double timePublishMaps = 0.0;
 
       cv::Mat covariance = odomCovariance;
       if (covariance.empty() || !uIsFinite(covariance.at<double>(0, 0)) || covariance.at<double>(0, 0) <= 0.0f)
@@ -3055,11 +3055,11 @@ namespace rtabmap_ros
       }
       else
       {
-        // mutex to sync with map manager thread
-        rtabmap_mtx_.lock();
+        // non-thread mode
+        // rtabmap_mtx_.lock();
         timeMsgConversion += timer.ticks();
         bool rtabmapProcessed = rtabmap_.process(data, odom, covariance, odomVelocity, externalStats, signature_complete_callback, this);
-        rtabmap_mtx_.unlock();
+        // rtabmap_mtx_.unlock();
 
         if (rtabmapProcessed)
         {
@@ -3226,29 +3226,67 @@ namespace rtabmap_ros
               filteredPoses = nearestPoses;
             }
 
-            mmu_data_mtx_.lock();
-            filteredPoses_ = filteredPoses;
-            tmpSignature_ = tmpSignature;
-            stamp_ = stamp;
-            // last_baseToMap_ : last T_map_base : transform pt from base to map frame
-            last_baseToMap_ = baseToMap;
-            mmu_data_mtx_.unlock();
+            // mmu_data_mtx_.lock();
+            // filteredPoses_ = filteredPoses;
+            // tmpSignature_ = tmpSignature;
+            // stamp_ = stamp;
+            // // last_baseToMap_ : last T_map_base : transform pt from base to map frame
+            // last_baseToMap_ = baseToMap;
+            // mmu_data_mtx_.unlock();
 
             this->publishLandmarksMap(rtabmap_.getMemory(), mapFrameId_);
 
-            timeUpdateMaps = timer.ticks();
-
-            // Update maps
-            // filteredPoses = mapsManager_.updateMapCaches(
-            // 		filteredPoses,
-            // 		rtabmap_.getMemory(),
-            // 		false,
-            // 		false,
-            // 		tmpSignature);
-
             // timeUpdateMaps = timer.ticks();
 
-            // UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
+            // Update maps
+            if(!mapsManager_.isSemanticSegmentationEnabled())
+            {
+              filteredPoses = mapsManager_.updateMapCaches(
+                  filteredPoses,
+                  rtabmap_.getMemory(),
+                  false,
+                  false,
+                  tmpSignature);
+            }
+            else 
+            {
+              mapsManager_.updateTransformMapPose(baseToMap);
+
+              rtabmap_ros::MapManagerStats mapManagerStats;
+              rtabmap::SemanticOctoMap::AuxSignatureData auxSignatureData;
+              filteredPoses = mapsManager_.updateMapCaches(
+                  filteredPoses,
+                  rtabmap_.getMemory(),
+                  false,
+                  false,
+                  rtabmap_mtx_,
+                  auxSignatureData,
+                  tmpSignature,
+                  &mapManagerStats);
+
+              // updates map to the data base
+              if (auxSignatureData.emptyPoints.size() > 0 || auxSignatureData.groundReferences.size() > 0)
+              {
+                mapsManager_.semanticOctomapStoreData(auxSignatureData, rtabmap_.getMemory(), rtabmap_mtx_);
+              }
+
+              // publish objects of interest visible state from map
+              mapsManager_.publishTrackedVisibilityPts();
+            }
+            
+            timeUpdateMaps = timer.ticks();
+
+            UDEBUG("filteredPoses map size: (%d)", filteredPoses.size());
+
+            if(!mapsManager_.isSemanticSegmentationEnabled())
+            {
+              mapsManager_.publishMaps(filteredPoses, stamp, mapFrameId_);
+            }
+            else
+            {
+              // publish maps in semantic segmentation mode
+              mapsManager_.publishAPLMaps(baseToMap, stamp, mapFrameId_);
+            }
 
             // update goal if planning is enabled
             // if(!currentMetricGoal_.isNull())
@@ -3338,29 +3376,30 @@ namespace rtabmap_ros
             // 	}
             // }
 
-            // timePublishMaps = timer.ticks();
+            timePublishMaps = timer.ticks();
           }
         }
         else
         {
           timeRtabmap = timer.ticks();
         }
-        NODELET_INFO("rtabmap (%d): Rate=%.2fs, Limit=%.3fs, Conversion=%.4fs, RTAB-Map=%.4fs, pub landmarks=%.4fs total=%.4fs (local map=%d, WM=%d)",
+        NODELET_INFO("rtabmap (%d): Rate=%.2fs, Limit=%.3fs, Conversion=%.4fs, RTAB-Map=%.4fs, map update=%.4fs, pub map=%.4fs total=%.4fs (local map=%d, WM=%d)",
                      rtabmap_.getLastLocationId(),
                      rate_ > 0 ? 1.0f / rate_ : 0,
                      rtabmap_.getTimeThreshold() / 1000.0f,
                      timeMsgConversion,
                      timeRtabmap,
                      timeUpdateMaps,
-                     timeRtabmap + timeUpdateMaps,
+                     timePublishMaps,
+                     timeRtabmap + timeUpdateMaps + timePublishMaps,
                      (int)rtabmap_.getLocalOptimizedPoses().size(),
                      rtabmap_.getWMSize() + rtabmap_.getSTMSize());
         rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/HasSubscribers/"), mapsManager_.hasSubscribers() ? 1 : 0));
         rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeMsgConversion/ms"), timeMsgConversion * 1000.0f));
         rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeRtabmap/ms"), timeRtabmap * 1000.0f));
         rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeUpdatingMaps/ms"), timeUpdateMaps * 1000.0f));
-        // rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimePublishing/ms"), timePublishMaps*1000.0f));
-        rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeTotal/ms"), (timeRtabmap + timeUpdateMaps) * 1000.0f));
+        rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimePublishing/ms"), timePublishMaps*1000.0f));
+        rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeTotal/ms"), (timeRtabmap + timeUpdateMaps + timePublishMaps) * 1000.0f));
       }
     }
     else if (!rtabmap_.isIDsGenerated())
