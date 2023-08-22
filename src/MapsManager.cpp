@@ -178,7 +178,7 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
   }
 
   pnh.param("octomap_raytracing", octomapRayTracing_, octomapRayTracing_);
-  ROS_INFO("octomap_raytracing = %s", octomapRayTracing_?"True":"False");
+  ROS_INFO("octomap_raytracing = %s", octomapRayTracing_?"true":"false");
 
   pnh.param("octomap_maxPublishedHeight", maxPublishedHeight_, maxPublishedHeight_);
   ROS_INFO("%s(maps): maxPublishedHeight = %.2f", name.c_str(), maxPublishedHeight_);
@@ -305,8 +305,6 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
     latched_.insert(std::make_pair((void*)&octoMapFullGroundPub_, false));
     octoMapFullObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_full_obstacle", 1, latching_);
     latched_.insert(std::make_pair((void*)&octoMapFullObstaclePub_, false));
-    // semanticOctoMapObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_bbx_obstacles", 1, latching_);
-    // latched_.insert(std::make_pair((void*)&semanticOctoMapObstaclePub_, false));
     semanticOctoMapWithBBOXObstaclePub_ = nht->advertise<rtabmap_ros::OctomapWithBBox>("octomap_with_bbx_obstacles", 1, latching_);
     latched_.insert(std::make_pair((void*)&semanticOctoMapWithBBOXObstaclePub_, false));
     semanticOctoMapObstaclePub_ = nht->advertise<octomap_msgs::Octomap>("octomap_bbx_obstacles", 1, latching_);
@@ -691,7 +689,19 @@ void MapsManager::clear()
 
 bool MapsManager::hasSubscribers() const
 {
-  return  cloudMapPub_.getNumSubscribers() != 0 ||
+
+  if(semanticSegmentationEnable_) 
+  {
+    return  octoMapPubBin_.getNumSubscribers() != 0 ||
+      octoMapPubFull_.getNumSubscribers() != 0 ||
+      octoMapFullGroundPub_.getNumSubscribers() != 0 ||
+      octoMapFullObstaclePub_.getNumSubscribers() != 0 ||
+      semanticOctoMapObstaclePub_.getNumSubscribers() != 0 ||
+      semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() != 0;
+  }
+  else
+  {
+    return  cloudMapPub_.getNumSubscribers() != 0 ||
       cloudObstaclesPub_.getNumSubscribers() != 0 ||
       cloudGroundPub_.getNumSubscribers() != 0 ||
       projMapPub_.getNumSubscribers() != 0 ||
@@ -705,11 +715,8 @@ bool MapsManager::hasSubscribers() const
       octoMapObstacleCloud_.getNumSubscribers() != 0 ||
       octoMapGroundCloud_.getNumSubscribers() != 0 ||
       octoMapEmptySpace_.getNumSubscribers() != 0 ||
-      octoMapProj_.getNumSubscribers() != 0 ||
-      octoMapFullGroundPub_.getNumSubscribers() != 0 ||
-      octoMapFullObstaclePub_.getNumSubscribers() != 0 ||
-      semanticOctoMapObstaclePub_.getNumSubscribers() != 0 ||
-      semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() != 0;
+      octoMapProj_.getNumSubscribers() != 0;
+  }
 }
 
 std::map<int, Transform> MapsManager::getFilteredPoses(const std::map<int, Transform> & poses)
@@ -2528,7 +2535,10 @@ bool MapsManager::octomapRayTracingInit(const rtabmap::SensorData & data)
   } 
   else 
   {
-    ROS_WARN(" OCTOMAP RAY TRACE not initializing!! No pointer to octomap.");
+    if(semanticSegmentationEnable_)
+    {
+      ROS_WARN(" OCTOMAP RAY TRACE not initializing!! No pointer to octomap.");
+    }
     return false;
   }
   

@@ -26,6 +26,7 @@
     <arg name="rgbd_semantic_detection_sync"   default="false"/>
     <arg name="model_classes_file_path"        default="" />
     <arg name="orb_cuda"                       default="true" />
+    <arg name="depth_Filters"                  default="true"/>
     <arg name="queue_size_rgbd"                default="30"/>  <!--default for depth mode -->
     <arg name="queue_size"                     default="200"/> <!--default for depth mode --> 
     <arg name="multi_level_cell_size"          default="0.05 0.05 0.05 0.05 0.05"/>   <!-- 5 layers supported {ground, ceiling, static, movable, dynamic} resolution of each octree -->
@@ -56,6 +57,7 @@
     <arg name="publish_obstacles_bbx_max_z"           default="0.5"/> <!-- must be positive -->
     <arg name="obstacle_feedback_grid_resolution"    default="10"/>
     <arg name="obstacle_feedback_min_connected_component_size" default="5"/>
+    
 
     <!-- Localization-only mode -->
     <arg name="localization"                default="false"/>
@@ -116,7 +118,7 @@
         <!-- <arg name="optimizer_robust"            default="true"/> -->
         <arg name="model_classes_file_path"     default="$(arg model_classes_file_path)"/>
         <arg name="orb_cuda"                              default="$(arg orb_cuda)" />
-        <arg name="depth_Filters"                         default="true"/>
+        <arg name="depth_Filters"                         default="$(arg depth_Filters)"/>
         <arg name="publish_semantic_mask"                 default="true"/>
         <arg name="publish_depth_image"                   default="true"/>
         <arg name="publish_visual_image"                  default="true"/>
