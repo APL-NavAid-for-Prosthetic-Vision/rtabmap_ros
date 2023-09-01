@@ -36,7 +36,7 @@ sudo apt install libfmt-dev
 
 ```bash
 #clone repo with submodules
-git clone https://bitbucket.xrcs.jhuapl.edu/scm/slamr01/rtabmap_ros.git
+git clone https://gitlab.jhuapl.edu/slamr01/rtabmap_ros.git
 git submodule init
 git submodule update
 ```
