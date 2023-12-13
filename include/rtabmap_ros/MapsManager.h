@@ -174,8 +174,6 @@ private:
 	bool mapAlwaysUpdateCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
 
 	bool getMapAlwaysUpdateStateCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& resp);
-	
-	bool globalGndCorrectionCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res);
 
 	// JHUAPL section end
 
@@ -218,7 +216,6 @@ private:
 	ros::ServiceServer clearRegisteredMapSrv_;
 	ros::ServiceServer mapAlwaysUpdateSrv_;
 	ros::ServiceServer getMapAlwaysUpdateSrv_;
-	ros::ServiceServer globalGndCorrectionSrv_;
 
 	ros::ServiceServer trackedVisibilityPtsUpdateSrv_;
 	// JHUAPL end section

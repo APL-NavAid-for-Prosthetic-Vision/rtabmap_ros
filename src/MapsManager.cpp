@@ -332,7 +332,6 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
   clearRegisteredMapSrv_ = nht->advertiseService("clear_registered_map", &MapsManager::clearRegisteredMapCallback , this);
   mapAlwaysUpdateSrv_ = nht->advertiseService("map_always_update", &MapsManager::mapAlwaysUpdateCallback, this);
   getMapAlwaysUpdateSrv_ = nht->advertiseService("get_map_always_update", &MapsManager::getMapAlwaysUpdateStateCallback, this);
-  globalGndCorrectionSrv_ = nht->advertiseService("apply_global_ground_correction", &MapsManager::globalGndCorrectionCallback, this);
   
   trackedVisibilityPtsUpdateSrv_ = nht->advertiseService("objects_of_interest_map_update", &MapsManager::setTrackedVisibilityPts, this);
   // JHUAPL section end 
@@ -1217,7 +1216,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
         octomapUpdated_ = semanticOctomap_->update(filteredPoses, auxSignatureData, true);
         mapManagerStatsPtr->octomap_update_time = time.ticks();
         mapManagerStatsPtr->octomap_gnd_height = semanticOctomap_->getGndReferenceHeight();
-        UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
+        UINFO("++++ SemanticOctomap update time = %f sec; gnd_height= %f", mapManagerStatsPtr->octomap_update_time, mapManagerStatsPtr->octomap_gnd_height);
       }
       else 
       {
@@ -1225,7 +1224,7 @@ std::map<int, rtabmap::Transform> MapsManager::updateMapCaches(
         octomapUpdated_ = semanticOctomap_->update(filteredPoses, auxSignatureData);
         mapManagerStatsPtr->octomap_update_time = time.ticks();
         mapManagerStatsPtr->octomap_gnd_height = semanticOctomap_->getGndReferenceHeight();
-        UINFO("++++ SemanticOctomap update time = %f sec", mapManagerStatsPtr->octomap_update_time);
+        UINFO("++++ SemanticOctomap update time = %f sec; gnd_height= %f", mapManagerStatsPtr->octomap_update_time, mapManagerStatsPtr->octomap_gnd_height);
       }
     }
     else if(updateOctomap)
@@ -2650,20 +2649,6 @@ void MapsManager::semanticOctomapStoreData(rtabmap::SemanticOctoMap::AuxSignatur
   // UWARN(ss.str().c_str());
 }
 #endif
-
-bool MapsManager::globalGndCorrectionCallback(std_srvs::Trigger::Request& req, std_srvs::Trigger::Response& res)
-{
-  octomap_mtx_.lock();
-  if (semanticOctomap_)
-  {
-    // enables post ground correction during a map update (semantic octomap)
-    semanticOctomap_->enablePostGroundCorrection();
-    res.success = true;
-  }
-  octomap_mtx_.unlock();
-
-  return true;
-}
 
 void MapsManager::updateTransformMapPose(const rtabmap::Transform &g_map_pose)
 {
