@@ -326,6 +326,7 @@ private:
 	bool loadDatabaseCallback(rtabmap_ros::LoadDatabase::Request&, rtabmap_ros::LoadDatabase::Response&);
 	bool triggerNewMapCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
 	bool backupDatabaseCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
+	bool closeDatabaseCallback(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
 	bool detectMoreLoopClosuresCallback(rtabmap_ros::DetectMoreLoopClosures::Request&, rtabmap_ros::DetectMoreLoopClosures::Response&);
 	bool globalBundleAdjustmentCallback(rtabmap_ros::GlobalBundleAdjustment::Request&, rtabmap_ros::GlobalBundleAdjustment::Response&);
 	bool cleanupLocalGridsCallback(rtabmap_ros::CleanupLocalGrids::Request&, rtabmap_ros::CleanupLocalGrids::Response&);
@@ -454,6 +455,7 @@ private:
 	ros::ServiceServer loadDatabaseSrv_;
 	ros::ServiceServer triggerNewMapSrv_;
 	ros::ServiceServer backupDatabase_;
+	ros::ServiceServer closeDatabase_;
 	ros::ServiceServer detectMoreLoopClosuresSrv_;
 	ros::ServiceServer globalBundleAdjustmentSrv_;
 	ros::ServiceServer cleanupLocalGridsSrv_;
@@ -577,6 +579,10 @@ private:
 	UMutex camTobaseT_mtx_;
 
 	boost::thread* eventHandlerThread_;
+	bool eventHandlerThreadRunning_;
+
+	bool isDBClosed_;
+	
 
 	//  JHUAPL section end
 };

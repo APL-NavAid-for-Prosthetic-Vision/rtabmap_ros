@@ -190,7 +190,9 @@ namespace rtabmap_ros
                                threadedMode_(false),
                                timeInputLastProcess_(0),
                                camTobaseTransform_(rtabmap::Transform::getIdentity()),
-                               eventHandlerThread_()
+                               eventHandlerThread_(0),
+                               eventHandlerThreadRunning_(false),
+                               isDBClosed_(false)
   {
     char *rosHomePath = getenv("ROS_HOME");
     std::string workingDir = rosHomePath ? rosHomePath : UDirectory::homeDir() + "/.ros";
@@ -835,6 +837,7 @@ namespace rtabmap_ros
     loadDatabaseSrv_ = nh.advertiseService("load_database", &CoreWrapper::loadDatabaseCallback, this);
     triggerNewMapSrv_ = nh.advertiseService("trigger_new_map", &CoreWrapper::triggerNewMapCallback, this);
     backupDatabase_ = nh.advertiseService("backup", &CoreWrapper::backupDatabaseCallback, this);
+    closeDatabase_ = nh.advertiseService("close_rtabmap", &CoreWrapper::closeDatabaseCallback, this);
     detectMoreLoopClosuresSrv_ = nh.advertiseService("detect_more_loop_closures", &CoreWrapper::detectMoreLoopClosuresCallback, this);
     globalBundleAdjustmentSrv_ = nh.advertiseService("global_bundle_adjustment", &CoreWrapper::globalBundleAdjustmentCallback, this);
     cleanupLocalGridsSrv_ = nh.advertiseService("cleanup_local_grids", &CoreWrapper::cleanupLocalGridsCallback, this);
@@ -1014,6 +1017,7 @@ namespace rtabmap_ros
     // THIS IS NOT WORKING IN NOETIC
     //float heartbeat_time_update = 0.5; // in seconds [0.01 to 1.0]
     //ros::Timer keepAliveTimer = nh.createTimer(ros::Duration(heartbeat_time_update), boost::bind(&CoreWrapper::aliveEventCb, this, _1));
+    eventHandlerThreadRunning_ = true;
     eventHandlerThread_ = new boost::thread(boost::bind(&CoreWrapper::heartbeatEventThread, this));
 
     // this thread is only used in this mode.
@@ -1031,6 +1035,22 @@ namespace rtabmap_ros
 
   CoreWrapper::~CoreWrapper()
   {
+
+    // JHUAPL section
+    if (mapManagerUpdateThread_)
+    {
+      mapManagerUpdateThreadRunning_ = false;
+      mapManagerUpdateThread_->join();
+      delete mapManagerUpdateThread_;
+    }
+
+    if (rtabmapProcessThread_)
+    {
+      rtabmapProcessThreadRunning_ = false;
+      rtabmapProcessThread_->join();
+      delete rtabmapProcessThread_;
+    }
+
     if (transformThread_)
     {
       tfThreadRunning_ = false;
@@ -1038,15 +1058,16 @@ namespace rtabmap_ros
       delete transformThread_;
     }
 
-    // JHUAPL section
-    if (rtabmapProcessThread_)
+    if (eventHandlerThread_)
     {
-      rtabmapProcessThreadRunning_ = false;
-      rtabmapProcessThread_->join();
-      delete rtabmapProcessThread_;
+      // ROS::okay should end it ; unless at closing
+      eventHandlerThreadRunning_ = false;
+      eventHandlerThread_->join();
+      delete eventHandlerThread_;
+      eventHandlerThread_ = 0;
     }
-    // JHUAPL section  end
-
+  
+    // JHUAPL section end
     this->saveParameters(configPath_);
 
     printf("rtabmap: Saving database/long-term memory... (located at %s)\n", databasePath_.c_str());
@@ -1062,31 +1083,19 @@ namespace rtabmap_ros
         rtabmap_.getMemory()->save2DMap(pixels, xMin, yMin, gridCellSize);
       }
     }
-    rtabmap_mtx_.unlock();
-
-    // JHUAPL section
-    if (mapManagerUpdateThread_)
-    {
-      mapManagerUpdateThreadRunning_ = false;
-      mapManagerUpdateThread_->join();
-      delete mapManagerUpdateThread_;
-    }
-
-    if (eventHandlerThread_)
-    {
-      // ROS::okay should end it
-      eventHandlerThread_->join();
-      delete eventHandlerThread_;
-    }
-    // JHUAPL section  end
-
-    rtabmap_mtx_.lock();
+    
     rtabmap_.close();
     rtabmap_mtx_.unlock();
     printf("rtabmap: Saving database/long-term memory...done! (located at %s, %ld MB)\n", databasePath_.c_str(), UFile::length(databasePath_) / (1024 * 1024));
 
-    delete interOdomSync_;
-    delete mbClient_;
+    if (interOdomSync_) 
+    {
+      delete interOdomSync_;
+    }
+    if (mbClient_) 
+    {
+      delete mbClient_;
+    }
   }
 
   void CoreWrapper::loadParameters(const std::string &configFile, ParametersMap &parameters)
@@ -1797,6 +1806,11 @@ namespace rtabmap_ros
       return false;
     }
 
+    if (isDBClosed_)
+    {
+      return false;
+    }
+
     rtabmap_mtx_.lock();
     for (int i = 0; i < req.landmarks.size(); ++i)
     {
@@ -1843,6 +1857,11 @@ namespace rtabmap_ros
 
   bool CoreWrapper::landmarksQuerySrvCallback(rtabmap_ros::LandmarksQuery::Request &req, rtabmap_ros::LandmarksQuery::Response &res)
   {
+    if (isDBClosed_)
+    {
+      return false;
+    }
+
     std::map<int, std::vector<rtabmap::Link>> landmarks;
     // gets all landmarks in the working map
     rtabmap_mtx_.lock();
@@ -1913,6 +1932,12 @@ namespace rtabmap_ros
 
   bool CoreWrapper::landmarksRemoveSrvCallback(rtabmap_ros::LandmarksRemove::Request &req, rtabmap_ros::LandmarksRemove::Response &res)
   {
+
+    if (isDBClosed_)
+    {
+      return false;
+    }
+
     rtabmap_mtx_.lock();
     if (req.removeAll)
     {
@@ -2675,6 +2700,14 @@ namespace rtabmap_ros
       const OdometryInfo &odomInfo,
       double timeMsgConversion)
   {
+    if (isDBClosed_)
+    {
+      ros::Rate r(1.0 / 2);
+      NODELET_WARN("RTABMAP is closing !!!! CTL^C to kill the Node");
+      r.sleep();
+      return;
+    }
+
     UTimer timer;
     if (rtabmap_.isIDsGenerated() || data.id() > 0)
     {
@@ -4107,6 +4140,7 @@ namespace rtabmap_ros
   bool CoreWrapper::backupDatabaseCallback(std_srvs::Empty::Request &, std_srvs::Empty::Response &)
   {
     NODELET_INFO("Backup: Saving memory...");
+    rtabmap_mtx_.lock();
     if (rtabmap_.getMemory())
     {
       // save the grid map
@@ -4143,7 +4177,69 @@ namespace rtabmap_ros
     rtabmap_.init(parameters_, databasePath_);
     NODELET_INFO("Backup: Reloading memory... done!");
 
+    rtabmap_mtx_.unlock();
+
     return true;
+  }
+
+  bool CoreWrapper::closeDatabaseCallback(std_srvs::Empty::Request &, std_srvs::Empty::Response &)
+  {
+
+    // JHUAPL section
+    if (mapManagerUpdateThread_)
+    {
+      mapManagerUpdateThreadRunning_ = false;
+      mapManagerUpdateThread_->join();
+      delete mapManagerUpdateThread_;
+      mapManagerUpdateThread_ = 0;
+    }
+
+    if (rtabmapProcessThread_)
+    {
+      rtabmapProcessThreadRunning_ = false;
+      rtabmapProcessThread_->join();
+      delete rtabmapProcessThread_;
+      rtabmapProcessThread_ = 0;
+    }
+
+    isDBClosed_ = true;  // no need to lock, no multi thread calls for ROS callbacks
+
+    // JHUAPL section end
+
+    this->saveParameters(configPath_);
+    
+    printf("rtabmap: Saving database/long-term memory... (located at %s)\n", databasePath_.c_str());
+    rtabmap_mtx_.lock();
+    if (rtabmap_.getMemory())
+    {
+      // save the grid map
+      float xMin = 0.0f, yMin = 0.0f, gridCellSize = 0.05f;
+      cv::Mat pixels = mapsManager_.getGridMap(xMin, yMin, gridCellSize);
+      if (!pixels.empty())
+      {
+        printf("rtabmap: 2D occupancy grid map saved.\n");
+        rtabmap_.getMemory()->save2DMap(pixels, xMin, yMin, gridCellSize);
+      }
+    }
+
+    // closes and save map into database
+    rtabmap_.close();
+    rtabmap_mtx_.unlock();
+    printf("rtabmap: Saving database/long-term memory...done! (located at %s, %ld MB)\n", databasePath_.c_str(), UFile::length(databasePath_) / (1024 * 1024));
+
+    if (eventHandlerThread_)
+    {
+      // ROS::okay should end it ; unless at closing
+      eventHandlerThreadRunning_ = false;
+      eventHandlerThread_->join();
+      delete eventHandlerThread_;
+      eventHandlerThread_ = 0;
+    }
+
+    NODELET_WARN("RTABMAP has been closed. ");
+
+    return true;
+
   }
 
   void CoreWrapper::republishMaps()
@@ -5810,7 +5906,7 @@ namespace rtabmap_ros
     double timeRtabmap = 0.0;
     double timeUpdateMaps = 0.0;
 
-    ROS_INFO("Starting RTabMap Process Thread");
+    NODELET_INFO("Starting RTabMap Process Thread");
 
     boost::shared_ptr<PreProcessSignatureDataType> preProcessedData;
 
@@ -5976,6 +6072,7 @@ namespace rtabmap_ros
         rtabmapROSStats_.insert(std::make_pair(std::string("RtabmapROS/TimeTotal/ms"), (timeRtabmap + timeUpdateMaps) * 1000.0f));
       }
     }
+    NODELET_INFO("Exiting RTabMap Process Thread.");
   }
 
   void CoreWrapper::mapManagerUpdateThread(const double &threadDelay)
@@ -6087,6 +6184,7 @@ namespace rtabmap_ros
     publishMapThread.interrupt();
     // exiting thread - wait for publish map thread to finish before ending this thread.
     publishMapThread.join();
+    NODELET_INFO(" Exiting Map Manager Thread.");
   }
 
   void CoreWrapper::publishMapThread(const std::map<int, rtabmap::Transform> filteredPoses,
@@ -6253,7 +6351,7 @@ namespace rtabmap_ros
     float heartbeat_time_delay = 1.0;
     ros::Rate rate(1.0 / heartbeat_time_delay);
 
-    while (ros::ok())
+    while (ros::ok() && eventHandlerThreadRunning_)
     {
       std_msgs::Empty alive_msg;
       alive_publisher_.publish(alive_msg);
