@@ -579,7 +579,6 @@ private:
 	UMutex camTobaseT_mtx_;
 
 	boost::thread* eventHandlerThread_;
-	bool eventHandlerThreadRunning_;
 
 	bool isDBClosed_;
 	

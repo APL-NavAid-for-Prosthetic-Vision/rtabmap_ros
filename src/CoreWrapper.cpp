@@ -191,7 +191,6 @@ namespace rtabmap_ros
                                timeInputLastProcess_(0),
                                camTobaseTransform_(rtabmap::Transform::getIdentity()),
                                eventHandlerThread_(0),
-                               eventHandlerThreadRunning_(false),
                                isDBClosed_(false)
   {
     char *rosHomePath = getenv("ROS_HOME");
@@ -1017,7 +1016,6 @@ namespace rtabmap_ros
     // THIS IS NOT WORKING IN NOETIC
     //float heartbeat_time_update = 0.5; // in seconds [0.01 to 1.0]
     //ros::Timer keepAliveTimer = nh.createTimer(ros::Duration(heartbeat_time_update), boost::bind(&CoreWrapper::aliveEventCb, this, _1));
-    eventHandlerThreadRunning_ = true;
     eventHandlerThread_ = new boost::thread(boost::bind(&CoreWrapper::heartbeatEventThread, this));
 
     // this thread is only used in this mode.
@@ -1058,15 +1056,8 @@ namespace rtabmap_ros
       delete transformThread_;
     }
 
-    if (eventHandlerThread_)
-    {
-      // ROS::okay should end it ; unless at closing
-      eventHandlerThreadRunning_ = false;
-      eventHandlerThread_->join();
-      delete eventHandlerThread_;
-      eventHandlerThread_ = 0;
-    }
-  
+    isDBClosed_ = true;
+
     // JHUAPL section end
     this->saveParameters(configPath_);
 
@@ -1087,6 +1078,13 @@ namespace rtabmap_ros
     rtabmap_.close();
     rtabmap_mtx_.unlock();
     printf("rtabmap: Saving database/long-term memory...done! (located at %s, %ld MB)\n", databasePath_.c_str(), UFile::length(databasePath_) / (1024 * 1024));
+
+    if (eventHandlerThread_)
+    {
+      // ROS::okay should end it
+      eventHandlerThread_->join();
+      delete eventHandlerThread_;
+    }
 
     if (interOdomSync_) 
     {
@@ -2703,7 +2701,7 @@ namespace rtabmap_ros
     if (isDBClosed_)
     {
       ros::Rate r(1.0 / 2);
-      NODELET_WARN("RTABMAP is closing !!!! CTL^C to kill the Node");
+      NODELET_WARN("RTABMAP has been closed. !!!! CTL^C to kill the Node");
       r.sleep();
       return;
     }
@@ -4140,6 +4138,7 @@ namespace rtabmap_ros
   bool CoreWrapper::backupDatabaseCallback(std_srvs::Empty::Request &, std_srvs::Empty::Response &)
   {
     NODELET_INFO("Backup: Saving memory...");
+    isDBClosed_ = true;
     rtabmap_mtx_.lock();
     if (rtabmap_.getMemory())
     {
@@ -4175,6 +4174,7 @@ namespace rtabmap_ros
 
     NODELET_INFO("Backup: Reloading memory...");
     rtabmap_.init(parameters_, databasePath_);
+    isDBClosed_ = false;
     NODELET_INFO("Backup: Reloading memory... done!");
 
     rtabmap_mtx_.unlock();
@@ -4202,7 +4202,7 @@ namespace rtabmap_ros
       rtabmapProcessThread_ = 0;
     }
 
-    isDBClosed_ = true;  // no need to lock, no multi thread calls for ROS callbacks
+    isDBClosed_ = true;
 
     // JHUAPL section end
 
@@ -4226,18 +4226,7 @@ namespace rtabmap_ros
     rtabmap_.close();
     rtabmap_mtx_.unlock();
     printf("rtabmap: Saving database/long-term memory...done! (located at %s, %ld MB)\n", databasePath_.c_str(), UFile::length(databasePath_) / (1024 * 1024));
-
-    if (eventHandlerThread_)
-    {
-      // ROS::okay should end it ; unless at closing
-      eventHandlerThreadRunning_ = false;
-      eventHandlerThread_->join();
-      delete eventHandlerThread_;
-      eventHandlerThread_ = 0;
-    }
-
-    NODELET_WARN("RTABMAP has been closed. ");
-
+    
     return true;
 
   }
@@ -5912,6 +5901,14 @@ namespace rtabmap_ros
 
     while (rtabmapProcessThreadRunning_)
     {
+      if (isDBClosed_)
+      {
+        ros::Rate r(1.0 / 2);
+        NODELET_WARN("RtabMap waiting for DB to Reload ...");
+        r.sleep();
+        continue;
+      }
+
       // mutex to sync with map manager thread
       rtabmap_mtx_.lock();
       bool rtabmapProcessed = rtabmap_.process_threaded(preProcessedData);
@@ -6094,6 +6091,14 @@ namespace rtabmap_ros
 
     while (mapManagerUpdateThreadRunning_)
     {
+      if (isDBClosed_)
+      {
+        ros::Rate r(1.0 / 2);
+        NODELET_WARN("RTABMAP:Map Manager thread Waiting for DB to reload ... ");
+        r.sleep();
+        continue;
+      }
+
       startTime = ros::Time::now();
       rtabmap_ros::MapManagerStats mapManagerStats;
 
@@ -6181,7 +6186,7 @@ namespace rtabmap_ros
       rate.sleep();
     }
 
-    publishMapThread.interrupt();
+    //publishMapThread.interrupt();
     // exiting thread - wait for publish map thread to finish before ending this thread.
     publishMapThread.join();
     NODELET_INFO(" Exiting Map Manager Thread.");
@@ -6223,6 +6228,12 @@ namespace rtabmap_ros
 
   bool CoreWrapper::semanticDataAssociationSrvCallback(rtabmap_ros::SemanticDataAssociation::Request &req, rtabmap_ros::SemanticDataAssociation::Response &res)
   {
+    
+    if (isDBClosed_) 
+    {
+      return false;
+    }
+
     // Class ID is the semantic label id, corresponds to a supported classed detected in the semantic segmentation model.
     std::map<unsigned int, std::string> classId2StringMap = mapsManager_.getClassIdAssociation();
 
@@ -6351,7 +6362,7 @@ namespace rtabmap_ros
     float heartbeat_time_delay = 1.0;
     ros::Rate rate(1.0 / heartbeat_time_delay);
 
-    while (ros::ok() && eventHandlerThreadRunning_)
+    while (ros::ok())
     {
       std_msgs::Empty alive_msg;
       alive_publisher_.publish(alive_msg);
