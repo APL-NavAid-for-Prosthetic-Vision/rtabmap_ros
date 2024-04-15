@@ -53,6 +53,9 @@ git submodule update
 # If building with semantic segmentation (with CUDA and yaml support)
 catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DOPENCV_CUDA=ON -DWITH_YAMLCPP=ON
 
+# Or to specify python executable as well
+catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release -DOPENCV_CUDA=ON -DWITH_YAMLCPP=ON -DPYTHON_EXECUTABLE=/usr/bin/python3
+
 # Second, run build
 
 # If building without RTABMap's custom graphics (default):

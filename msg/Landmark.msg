@@ -26,5 +26,6 @@ geometry_msgs/Transform landmarkPose
 geometry_msgs/Transform odometryPose
 float64[36] covariance
 int32 landmarkMapId
+float64 landmarkSize
 
 geometry_msgs/Transform landmarkPose_WorldCoords

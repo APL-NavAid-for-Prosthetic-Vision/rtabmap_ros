@@ -1818,6 +1818,20 @@ namespace rtabmap_ros
       int signatureId = landmarkMsg.nodeId;
       std::string description = landmarkMsg.description;
 
+      // landmark size
+      // rtabmap doesn't have support for landmark size, so hack the description
+      // to include a size parameter there
+      if (landmarkMsg.landmarkSize != 0.0) {
+        std::stringstream sizeStr;
+        sizeStr << "landmarkSize:" << landmarkMsg.landmarkSize;
+        description = sizeStr.str() + description;
+        // ROS_WARN("encoding landmark size (%lf) as (%s)", landmarkMsg.landmarkSize, description.c_str());
+      }
+      else
+      {
+        ROS_WARN("no landmark size (%lf) not encoded for (%s)", landmarkMsg.landmarkSize, description.c_str());
+      }
+
       if (timeStamp == 0 && signatureId <= 0)
       {
         ROS_WARN("landmark (%d) msg is missing timestamp", landmarkId);
@@ -1876,8 +1890,30 @@ namespace rtabmap_ros
         landmark.landmarkId = -1 * lIter->first;
         landmark.landmarkMapId = lIter->first;
 
-        landmark.description = setLinkIter->getDescription();
+        // landmark size
+        double landmarkSize = 0.0;
+        // check if description contains the landmark size hack
+        std::string description = setLinkIter->getDescription();
+        if (description.find("landmarkSize:") == 0) {
+          std::istringstream iss(description.substr(13)); // skip "landmarkSize:"
+          if (iss >> landmarkSize) {
+            // remove "landmarkSize" and number from description
+            description.erase(0, 13 + iss.tellg());
+            //ROS_WARN("decoded landmark size (%lf) from (%s)", landmarkSize, description.c_str());
+          }
+          else {
+            ROS_ERROR("failed to extract landmarkSize floating value from '%s'", description.c_str());
+          }
+        }
+        else
+        {
+          ROS_WARN("no landmark size found for (%s)", description.c_str());
+        }
+        landmark.landmarkSize = landmarkSize;
+        landmark.description = description;
+        //landmark.description = setLinkIter->getDescription();
         landmark.nodeId = setLinkIter->from();
+        
 
         // compute the pose of landmark with respect to map reference frame
         // assuming the landmark's node is in the optimized map.
