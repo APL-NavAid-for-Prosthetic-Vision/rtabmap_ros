@@ -57,6 +57,12 @@
     <arg name="publish_obstacles_bbx_max_z"           default="0.5"/> <!-- must be positive -->
     <arg name="obstacle_feedback_grid_resolution"    default="10"/>
     <arg name="obstacle_feedback_min_connected_component_size" default="5"/>
+    <arg name="obstacles_feedback_bbx_min_range_x"    default="-4.0"/> <!-- must be negative -->
+    <arg name="obstacles_feedback_bbx_min_range_y"    default="-4.0"/> <!-- must be negative -->
+    <arg name="obstacles_feedback_bbx_min_range_z"    default="-1.0"/> <!-- must be negative -->
+    <arg name="obstacles_feedback_bbx_max_range_x"    default="4.0"/> <!-- must be positive -->
+    <arg name="obstacles_feedback_bbx_max_range_y"    default="4.0"/> <!-- must be positive -->
+    <arg name="obstacles_feedback_bbx_max_range_z"    default="0.5"/> <!-- must be positive -->
     
 
     <!-- Localization-only mode -->
@@ -152,6 +158,13 @@
         <arg name="publish_obstacles_bbx_max_z"           default="$(arg publish_obstacles_bbx_max_z)"/> <!-- must be positive -->
         <arg name="obstacle_feedback_grid_resolution"     default="$(arg obstacle_feedback_grid_resolution)"/>
         <arg name="obstacle_feedback_min_connected_component_size" default="$(arg obstacle_feedback_min_connected_component_size)"/>
+        <arg name="obstacles_feedback_bbx_min_range_x"    default="$(arg obstacles_feedback_bbx_min_range_x)"/> <!-- must be negative -->
+        <arg name="obstacles_feedback_bbx_min_range_y"    default="$(arg obstacles_feedback_bbx_min_range_y)"/> <!-- must be negative -->
+        <arg name="obstacles_feedback_bbx_min_range_z"    default="$(arg obstacles_feedback_bbx_min_range_z)"/> <!-- must be negative -->
+        <arg name="obstacles_feedback_bbx_max_range_x"    default="$(arg obstacles_feedback_bbx_max_range_x)"/> <!-- must be positive -->
+        <arg name="obstacles_feedback_bbx_max_range_y"    default="$(arg obstacles_feedback_bbx_max_range_y)"/> <!-- must be positive -->
+        <arg name="obstacles_feedback_bbx_max_range_z"    default="$(arg obstacles_feedback_bbx_max_range_z)"/> <!-- must be positive -->
+
     </include>
 
 </launch>

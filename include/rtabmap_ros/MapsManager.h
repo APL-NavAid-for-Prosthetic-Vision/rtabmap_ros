@@ -265,6 +265,8 @@ private:
 #ifdef RTABMAP_OCTOMAP
 	octomap::point3d publish_bbx_min_range_obstacles_;
 	octomap::point3d publish_bbx_max_range_obstacles_;
+	octomap::point3d obstacles_feedback_bbx_min_range_;
+	octomap::point3d obstacles_feedback_bbx_max_range_;
 #endif
 
 	// JHUAPL section end

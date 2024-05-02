@@ -185,8 +185,8 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
 
 #ifdef WITH_OCTOMAP_MSGS
 #ifdef RTABMAP_OCTOMAP
-  float publish_obstacles_bbx_min_x = -2, publish_obstacles_bbx_min_y = -2, publish_obstacles_bbx_min_z = -2;
-  float publish_obstacles_bbx_max_x = 2, publish_obstacles_bbx_max_y = 2, publish_obstacles_bbx_max_z = 2;
+  float publish_obstacles_bbx_min_x = -5, publish_obstacles_bbx_min_y = -5, publish_obstacles_bbx_min_z = -1;
+  float publish_obstacles_bbx_max_x = 5, publish_obstacles_bbx_max_y = 5, publish_obstacles_bbx_max_z = 1;
   pnh.param("publish_obstacles_bbx_min_x", publish_obstacles_bbx_min_x, publish_obstacles_bbx_min_x);
   pnh.param("publish_obstacles_bbx_min_y", publish_obstacles_bbx_min_y, publish_obstacles_bbx_min_y);
   pnh.param("publish_obstacles_bbx_min_z", publish_obstacles_bbx_min_z, publish_obstacles_bbx_min_z);
@@ -195,13 +195,32 @@ void MapsManager::init(ros::NodeHandle & nh, ros::NodeHandle & pnh, const std::s
   pnh.param("publish_obstacles_bbx_max_y", publish_obstacles_bbx_max_y, publish_obstacles_bbx_max_y);
   pnh.param("publish_obstacles_bbx_max_z", publish_obstacles_bbx_max_z, publish_obstacles_bbx_max_z);
 
+
+  float obstacles_feedback_bbx_min_range_x = -2, obstacles_feedback_bbx_min_range_y = -2, obstacles_feedback_bbx_min_range_z = -1;
+  float obstacles_feedback_bbx_max_range_x = 2, obstacles_feedback_bbx_max_range_y = 2, obstacles_feedback_bbx_max_range_z = 1;
+  pnh.param("obstacles_feedback_bbx_min_range_x", obstacles_feedback_bbx_min_range_x, obstacles_feedback_bbx_min_range_x);
+  pnh.param("obstacles_feedback_bbx_min_range_y", obstacles_feedback_bbx_min_range_y, obstacles_feedback_bbx_min_range_y);
+  pnh.param("obstacles_feedback_bbx_min_range_z", obstacles_feedback_bbx_min_range_z, obstacles_feedback_bbx_min_range_z);
+
+  pnh.param("obstacles_feedback_bbx_max_range_x", obstacles_feedback_bbx_max_range_x, obstacles_feedback_bbx_max_range_x);
+  pnh.param("obstacles_feedback_bbx_max_range_y", obstacles_feedback_bbx_max_range_y, obstacles_feedback_bbx_max_range_y);
+  pnh.param("obstacles_feedback_bbx_max_range_z", obstacles_feedback_bbx_max_range_z, obstacles_feedback_bbx_max_range_z);
+
   publish_bbx_min_range_obstacles_ = octomap::point3d(publish_obstacles_bbx_min_x, publish_obstacles_bbx_min_y, publish_obstacles_bbx_min_z);
   publish_bbx_max_range_obstacles_ = octomap::point3d(publish_obstacles_bbx_max_x, publish_obstacles_bbx_max_y, publish_obstacles_bbx_max_z);
+
+  obstacles_feedback_bbx_min_range_ = octomap::point3d(obstacles_feedback_bbx_min_range_x, obstacles_feedback_bbx_min_range_y, obstacles_feedback_bbx_min_range_z);
+  obstacles_feedback_bbx_max_range_ = octomap::point3d(obstacles_feedback_bbx_max_range_x, obstacles_feedback_bbx_max_range_y, obstacles_feedback_bbx_max_range_z);
 
   ROS_INFO("%s (maps): publish_bbx_min_range_obstacles_(x,y,z)  = (%.2f,%.2f,%.2f) ", name.c_str(), 
           publish_bbx_min_range_obstacles_.x(), publish_bbx_min_range_obstacles_.y(), publish_bbx_min_range_obstacles_.z());
   ROS_INFO("%s (maps): publish_bbx_max_range_obstacles_(x,y,z)  = (%.2f,%.2f,%.2f) ", name.c_str(), 
           publish_bbx_max_range_obstacles_.x(), publish_bbx_max_range_obstacles_.y(), publish_bbx_max_range_obstacles_.z());
+
+  ROS_INFO("%s (maps): obstacles_feedback_bbx_min_range_(x,y,z)  = (%.2f,%.2f,%.2f) ", name.c_str(), 
+          obstacles_feedback_bbx_min_range_.x(), obstacles_feedback_bbx_min_range_.y(), obstacles_feedback_bbx_min_range_.z());
+  ROS_INFO("%s (maps): obstacles_feedback_bbx_max_range_(x,y,z)  = (%.2f,%.2f,%.2f) ", name.c_str(), 
+          obstacles_feedback_bbx_max_range_.x(), obstacles_feedback_bbx_max_range_.y(), obstacles_feedback_bbx_max_range_.z());
 #endif
 #endif
   // JHUAPL section end
@@ -2125,7 +2144,7 @@ void MapsManager::publishAPLMaps(
       (octoMapFullGroundPub_.getNumSubscribers() && !latched_.at(&octoMapFullGroundPub_)) ||
       (octoMapFullObstaclePub_.getNumSubscribers() && !latched_.at(&octoMapFullObstaclePub_)) ||
       (semanticOctoMapObstaclePub_.getNumSubscribers() && !latched_.at(&semanticOctoMapObstaclePub_)) ||
-      (semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() && !latched_.at(&semanticOctoMapObstaclePub_))
+      (semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() && !latched_.at(&semanticOctoMapWithBBOXObstaclePub_))
     )
   {
     octomap_mtx_.lock();
@@ -2210,9 +2229,9 @@ void MapsManager::publishAPLMaps(
 
     // obstacle semantic octomap of a bounded region around platform
     boost::shared_ptr<SemanticColorOcTree> obstacles_octreePtr(new SemanticColorOcTree(0.05));
-    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0 || semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() > 0)
+    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0)
     {
-      std::string octreeName = "obstacle_SemanticMap";
+      std::string octreeName = "Obstacles_SemanticMap";
       obstacles_octreePtr->setOctTreeName(octreeName);
 
       std::vector<enum SemanticOctoMap::LayerType> multiLevelOctreeName = {SemanticOctoMap::LayerType::kTypeObstacle};
@@ -2232,6 +2251,29 @@ void MapsManager::publishAPLMaps(
       }
     }
 
+    boost::shared_ptr<SemanticColorOcTree> obstacles_feedback_octreePtr(new SemanticColorOcTree(0.05));
+    if(semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() > 0)
+    {
+      std::string octreeName = "Obstacles_Feedback_SemanticMap";
+      obstacles_feedback_octreePtr->setOctTreeName(octreeName);
+
+      std::vector<enum SemanticOctoMap::LayerType> multiLevelOctreeName = {SemanticOctoMap::LayerType::kTypeObstacle};
+
+      octomap::point3d pose(baseToMap.x(), baseToMap.y(), baseToMap.z());
+      octomap::point3d minBoundRange = pose + obstacles_feedback_bbx_min_range_;
+      octomap::point3d maxBoundRange = pose + obstacles_feedback_bbx_max_range_;
+
+      auto layerIter = octreeLayersCopy.find(SemanticOctoMap::LayerType::kTypeObstacle);
+      if (layerIter != octreeLayersCopy.end())
+      {
+        SemanticColorOcTree* octreePtr = layerIter->second;
+        if (octreePtr)
+        {
+          semanticOctomap_->mergeOctreeBBX(obstacles_feedback_octreePtr.get(), octreePtr, minBoundRange, maxBoundRange, true);
+        }
+      }
+    }
+
     if(octoMapFullGroundPub_.getNumSubscribers() > 0)
     {
       int octreeId = SemanticOctoMap::LayerType::kTypeGround;
@@ -2246,13 +2288,12 @@ void MapsManager::publishAPLMaps(
         if(octomap_msgs::fullMapToMsg(*treeLayerIter->second, msg)) 
         {
           octoMapFullGroundPub_.publish(msg);
+          latched_.at(&octoMapFullGroundPub_) = true;
         }
         else 
         {
           ROS_ERROR("ERROR serializing Octomap (%d)", 0);
         }
-      
-        latched_.at(&octoMapFullGroundPub_) = true;
       }
     }
 
@@ -2271,23 +2312,36 @@ void MapsManager::publishAPLMaps(
         if(octomap_msgs::fullMapToMsg(*treeLayerIter->second, msg)) 
         {
           octoMapFullObstaclePub_.publish(msg);
+          latched_.at(&octoMapFullObstaclePub_) = true;
         }
         else 
         {
           ROS_ERROR("ERROR serializing Octomap (%d)", 0);
         }
-      
-        latched_.at(&octoMapFullObstaclePub_) = true;
       }
     }
 
 
     // publishes the bounded octree (with data). it corresponds to the obstacle layer {static,movable,dynamic} 
-    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0 || semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() > 0)
+    if(semanticOctoMapObstaclePub_.getNumSubscribers() > 0)
+    {
+      octomap_msgs::Octomap octoMsg;
+      octomap_msgs::fullMapToMsg(*obstacles_octreePtr, octoMsg);
+
+      octoMsg.header.frame_id = mapFrameId;
+      octoMsg.header.stamp = stamp;
+
+      semanticOctoMapObstaclePub_.publish(octoMsg);
+      latched_.at(&semanticOctoMapObstaclePub_) = true;
+    }
+
+    // publishes the bounded octree (with data). it corresponds to the obstacle layer {static,movable,dynamic} 
+    // for feedback
+    if(semanticOctoMapWithBBOXObstaclePub_.getNumSubscribers() > 0)
     {
       rtabmap_ros::OctomapWithBBox bboxMsg;
       octomap_msgs::Octomap octoMsg;
-      octomap_msgs::fullMapToMsg(*obstacles_octreePtr, octoMsg);
+      octomap_msgs::fullMapToMsg(*obstacles_feedback_octreePtr, octoMsg);
 
       octoMsg.header.frame_id = mapFrameId;
       octoMsg.header.stamp = stamp;
@@ -2295,8 +2349,8 @@ void MapsManager::publishAPLMaps(
       bboxMsg.octomap = octoMsg;
       
       octomap::point3d pose(baseToMap.x(), baseToMap.y(), baseToMap.z());
-      octomap::point3d minBoundRange = pose + publish_bbx_min_range_obstacles_;
-      octomap::point3d maxBoundRange = pose + publish_bbx_max_range_obstacles_;
+      octomap::point3d minBoundRange = pose + obstacles_feedback_bbx_min_range_;
+      octomap::point3d maxBoundRange = pose + obstacles_feedback_bbx_max_range_;
 
       //ROS_ERROR("pose: (%.2f, %.2f, %.2f)", baseToMap.x(), baseToMap.y(), baseToMap.z());
       //ROS_ERROR("min/max (x): (%.2f, %.2f)", minBoundRange.x(), maxBoundRange.x());
@@ -2321,9 +2375,7 @@ void MapsManager::publishAPLMaps(
       bboxMsg.max_bbox_range_map = max_bbox_range_map;
       bboxMsg.position_map = position_map;
 
-      semanticOctoMapObstaclePub_.publish(octoMsg);
       semanticOctoMapWithBBOXObstaclePub_.publish(bboxMsg);
-      latched_.at(&semanticOctoMapObstaclePub_) = true;
       latched_.at(&semanticOctoMapWithBBOXObstaclePub_) = true;
     }
     

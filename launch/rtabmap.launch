@@ -122,6 +122,14 @@
   <arg name="publish_obstacles_bbx_max_x"           default="5.0"/> <!-- must be positive -->
   <arg name="publish_obstacles_bbx_max_y"           default="5.0"/> <!-- must be positive -->
   <arg name="publish_obstacles_bbx_max_z"           default="0.5"/> <!-- must be positive -->
+
+
+  <arg name="obstacles_feedback_bbx_min_range_x"    default="-3.0"/> <!-- must be negative -->
+  <arg name="obstacles_feedback_bbx_min_range_y"    default="-3.0"/> <!-- must be negative -->
+  <arg name="obstacles_feedback_bbx_min_range_z"    default="-1.5"/> <!-- must be negative -->
+  <arg name="obstacles_feedback_bbx_max_range_x"    default="3.0"/> <!-- must be positive -->
+  <arg name="obstacles_feedback_bbx_max_range_y"    default="3.0"/> <!-- must be positive -->
+  <arg name="obstacles_feedback_bbx_max_range_z"    default="0.5"/> <!-- must be positive -->
   
 
 
@@ -634,6 +642,14 @@
       <param name="publish_obstacles_bbx_max_x"  type="double"  value="$(arg publish_obstacles_bbx_max_x)"/>
       <param name="publish_obstacles_bbx_max_y"  type="double"  value="$(arg publish_obstacles_bbx_max_y)"/>
       <param name="publish_obstacles_bbx_max_z"  type="double"  value="$(arg publish_obstacles_bbx_max_z)"/>
+
+      <param name="obstacles_feedback_bbx_min_range_x"  type="double"  value="$(arg obstacles_feedback_bbx_min_range_x)"/>
+      <param name="obstacles_feedback_bbx_min_range_y"  type="double"  value="$(arg obstacles_feedback_bbx_min_range_y)"/>
+      <param name="obstacles_feedback_bbx_min_range_z"  type="double"  value="$(arg obstacles_feedback_bbx_min_range_z)"/>
+      <param name="obstacles_feedback_bbx_max_range_x"  type="double"  value="$(arg obstacles_feedback_bbx_max_range_x)"/>
+      <param name="obstacles_feedback_bbx_max_range_y"  type="double"  value="$(arg obstacles_feedback_bbx_max_range_y)"/>
+      <param name="obstacles_feedback_bbx_max_range_z"  type="double"  value="$(arg obstacles_feedback_bbx_max_range_z)"/>
+
     </node>
   
     <!-- Visualisation RTAB-Map -->
