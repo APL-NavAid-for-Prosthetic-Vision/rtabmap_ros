@@ -35,6 +35,9 @@ sudo apt install libfmt-dev
 ## Installation
 
 ```bash
+# build it within the catkin workspace folder for your application
+cd <catkin-workspace>/src
+
 #clone repo with submodules
 git clone https://gitlab.jhuapl.edu/slamr01/rtabmap_ros.git
 git submodule init
