@@ -40,6 +40,7 @@ cd <catkin-workspace>/src
 
 #clone repo with submodules
 git clone https://gitlab.jhuapl.edu/slamr01/rtabmap_ros.git
+cd rtabmap_ros
 git submodule init
 git submodule update
 ```
