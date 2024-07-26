@@ -17,6 +17,14 @@ Octomap packages need to be from source:
 - octomap_ros: https://github.com/OctoMap/octomap_ros.git (branch: melodic-devel)
 - octomap_rviz_plugins (if using RVIZ): https://github.com/OctoMap/octomap_rviz_plugins.git (branch: kinetic-devel)  
   
+```bash
+cd <catkin-workspace>/src
+# may need to disconnect from APLNIS for this:
+git clone --branch melodic-devel https://github.com/OctoMap/octomap_msgs.git
+git clone --branch melodic-devel https://github.com/OctoMap/octomap_ros.git
+git clone --branch kinetic-devel https://github.com/OctoMap/octomap_rviz_plugins.git
+```
+
 common packages:
 ros-noetic-perception-pcl, ros-noetic-geometry2
 
@@ -39,13 +47,15 @@ sudo apt install libfmt-dev
 cd <catkin-workspace>/src
 
 #clone repo with submodules
+# must be on APLNIS for this
 git clone https://gitlab.jhuapl.edu/slamr01/rtabmap_ros.git
 cd rtabmap_ros
+# may need to disconnect from APLNIS for this
 git submodule init
 git submodule update
 ```
 
-- From your workspace initialize and configure the catkin project (make sure to have source the ROS environment 'source /opt/ros/melodic/setup.bash')
+- From your workspace initialize and configure the catkin project (make sure to have source the ROS environment 'source /opt/ros/noetic/setup.bash')
 
 ```bash
 
@@ -81,7 +91,7 @@ While it is possible to catch the SIGINT and SIGTERM signals with custom handler
 
 File: /opt/ros/noetic/lib/python3/dist-packages/roslaunch/nodeprocess.py
 
-  DEFAULT_TIMEOUT_SIGINT  = 15.0 #seconds
-  DEFAULT_TIMEOUT_SIGTERM = 2.0 #seconds
+   DEFAULT_TIMEOUT_SIGINT  = 15.0 #seconds
+   DEFAULT_TIMEOUT_SIGTERM = 2.0 #seconds
 
 Increasing the DEFAULT_TIMEOUT_SIGINT timeout to a sufficiently large value will allow the database write to complete without being interrupted by the ROS shutdown.
