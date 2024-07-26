@@ -19,6 +19,7 @@ Octomap packages need to be from source:
   
 ```bash
 cd <catkin-workspace>/src
+mkdir dependencies && cd dependencies
 # may need to disconnect from APLNIS for this:
 git clone --branch melodic-devel https://github.com/OctoMap/octomap_msgs.git
 git clone --branch melodic-devel https://github.com/OctoMap/octomap_ros.git
