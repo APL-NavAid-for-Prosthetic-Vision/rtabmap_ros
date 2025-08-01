@@ -1,3 +1,6 @@
+Johns Hopkins University Applied Physics Laboratory
+©2025 The Johns Hopkins University Applied Physics Laboratory LLC
+
 # rtabmap_ros by JHUAPL
 This is a wrapper of the original RTABMap_ros package based on the RTABMap_apl library.
 
@@ -96,3 +99,7 @@ File: /opt/ros/noetic/lib/python3/dist-packages/roslaunch/nodeprocess.py
    DEFAULT_TIMEOUT_SIGTERM = 2.0 #seconds
 
 Increasing the DEFAULT_TIMEOUT_SIGINT timeout to a sufficiently large value will allow the database write to complete without being interrupted by the ROS shutdown.
+
+# Acknowledgements
+
+Research reported in this publication was supported by the National Eye Institute of the National Institutes of Health under Award Number R01EY029741. The content is solely the responsibility of the authors and does not necessarily represent the official views of the National Institutes of Health.
