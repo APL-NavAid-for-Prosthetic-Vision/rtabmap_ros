@@ -1,6 +1,10 @@
 Johns Hopkins University Applied Physics Laboratory
 ©2025 The Johns Hopkins University Applied Physics Laboratory LLC
 
+Portions of the code are Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+(for original code from https://github.com/introlab/rtabmap_ros.git upon which this code is based).
+
+
 # rtabmap_ros by JHUAPL
 This is a wrapper of the original RTABMap_ros package based on the RTABMap_apl library.
 
